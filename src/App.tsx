@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, LogIn, UserPlus, Headphones, ChevronDown, MapPin } from 'lucide-react';
+import { Globe, LogIn, UserPlus, Headphones, ChevronDown, MapPin, AlertCircle } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import OnboardingScreen from './components/OnboardingScreen';
 import GuestOnboardingScreen from './components/GuestOnboardingScreen';
@@ -15,6 +15,7 @@ function App() {
   const [location, setLocation] = useState<string>('Detecting location...');
   const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [onboardingData, setOnboardingData] = useState<any>(null);
+  const [supabaseError, setSupabaseError] = useState<string>('');
 
   const { user, userProfile, loading: authLoading } = useAuth();
 
@@ -26,6 +27,20 @@ function App() {
     'Malayalam',
     'Kannada'
   ];
+
+  // Check Supabase configuration on mount
+  useEffect(() => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    if (!supabaseUrl || !supabaseAnonKey || 
+        supabaseUrl === 'your_supabase_project_url' || 
+        supabaseAnonKey === 'your_supabase_anon_key' ||
+        supabaseUrl.includes('placeholder') ||
+        supabaseAnonKey.includes('placeholder')) {
+      setSupabaseError('Supabase is not properly configured. Please click "Connect to Supabase" in the top right corner.');
+    }
+  }, []);
 
   // Auto-detect location on component mount
   useEffect(() => {
@@ -101,10 +116,18 @@ function App() {
   };
 
   const handleLogin = () => {
+    if (supabaseError) {
+      alert(supabaseError);
+      return;
+    }
     setCurrentScreen('login');
   };
 
   const handleSignUp = () => {
+    if (supabaseError) {
+      alert(supabaseError);
+      return;
+    }
     setCurrentScreen('onboarding');
   };
 
@@ -215,6 +238,16 @@ function App() {
       {/* Spiritual Visual Layer */}
       <div className="absolute inset-0 bg-gradient-to-br from-spiritual-400/10 via-spiritual-300/5 to-spiritual-900/5"></div>
       
+      {/* Supabase Error Banner */}
+      {supabaseError && (
+        <div className="absolute top-0 left-0 right-0 bg-red-50 border-b border-red-200 p-3 z-30">
+          <div className="flex items-center justify-center gap-3 text-red-700">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <p className="text-sm font-medium tracking-spiritual">{supabaseError}</p>
+          </div>
+        </div>
+      )}
+      
       {/* Sacred Beginning Text - Bottom Right with Continuous Animation */}
       <div className={`absolute bottom-24 right-8 z-10 transition-opacity duration-1000 ${showSacredText ? 'opacity-100' : 'opacity-0'}`}>
         <div className="text-right">
@@ -226,7 +259,7 @@ function App() {
       </div>
 
       {/* Top Right Controls - Language & Location */}
-      <div className="absolute top-6 right-6 z-20 flex items-center gap-4">
+      <div className={`absolute ${supabaseError ? 'top-20' : 'top-6'} right-6 z-20 flex items-center gap-4`}>
         
         {/* Location Auto-Detect */}
         <div className="group relative">
@@ -292,7 +325,7 @@ function App() {
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-col items-center justify-center min-h-screen px-6 pb-24 relative z-10">
+      <div className={`flex flex-col items-center justify-center min-h-screen px-6 pb-24 relative z-10 ${supabaseError ? 'pt-20' : ''}`}>
         
         {/* Center Block */}
         <div className="text-center mb-12 max-w-2xl animate-fade-in">
