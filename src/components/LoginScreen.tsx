@@ -10,7 +10,7 @@ interface LoginScreenProps {
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotPin }) => {
   const [email, setEmail] = useState('');
-  const [pin, setPin] = useState(['', '', '', '']);
+  const [pin, setPin] = useState(['', '', '', '', '', '']);
   const [showSacredText, setShowSacredText] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [pinError, setPinError] = useState('');
@@ -60,7 +60,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
     if (authError) setAuthError('');
 
     // Auto-focus next input
-    if (value && index < 3) {
+    if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -75,13 +75,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').slice(0, 4);
+    const pastedData = e.clipboardData.getData('text').slice(0, 6);
     if (!/^\d+$/.test(pastedData)) return;
 
-    const newPin = pastedData.split('').concat(['', '', '', '']).slice(0, 4);
+    const newPin = pastedData.split('').concat(['', '', '', '', '', '']).slice(0, 6);
     setPin(newPin);
     
-    const nextIndex = Math.min(pastedData.length, 3);
+    const nextIndex = Math.min(pastedData.length, 5);
     inputRefs.current[nextIndex]?.focus();
   };
 
@@ -127,7 +127,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
 
   const clearForm = () => {
     setEmail('');
-    setPin(['', '', '', '']);
+    setPin(['', '', '', '', '', '']);
     setEmailError('');
     setPinError('');
     setAuthError('');
@@ -248,7 +248,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <Shield className="w-5 h-5 text-spiritual-600" />
-                <h3 className="text-lg font-semibold text-spiritual-900 tracking-spiritual">Enter your 4-digit PIN</h3>
+                <h3 className="text-lg font-semibold text-spiritual-900 tracking-spiritual">Enter your 6-digit PIN</h3>
               </div>
               <button
                 onClick={() => setShowPin(!showPin)}
@@ -260,7 +260,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
             </div>
             
             {/* PIN Input Fields */}
-            <div className="flex justify-center gap-3 mb-4">
+            <div className="flex justify-center gap-2 mb-4">
               {pin.map((digit, index) => (
                 <input
                   key={index}
@@ -272,7 +272,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
                   onChange={(e) => handlePinChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onPaste={index === 0 ? handlePaste : undefined}
-                  className={`w-12 h-12 text-center text-xl font-bold border-2 rounded-spiritual focus:outline-none focus:ring-4 transition-all duration-300 bg-white/70 text-spiritual-900 hover:border-spiritual-300 focus:scale-105 ${
+                  className={`w-10 h-10 text-center text-lg font-bold border-2 rounded-spiritual focus:outline-none focus:ring-4 transition-all duration-300 bg-white/70 text-spiritual-900 hover:border-spiritual-300 focus:scale-105 ${
                     pinError 
                       ? 'border-red-400 focus:border-red-500 focus:ring-red-200' 
                       : 'border-spiritual-200 focus:border-spiritual-400 focus:ring-spiritual-200/50'
@@ -294,7 +294,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
             )}
             
             <p className="text-sm text-spiritual-700/70 text-center tracking-spiritual">
-              Enter the 4-digit PIN you created when signing up.
+              Enter the 6-digit PIN you created when signing up.
             </p>
           </div>
 

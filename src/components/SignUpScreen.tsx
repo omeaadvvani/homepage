@@ -16,8 +16,8 @@ interface SignUpScreenProps {
 
 const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboardingData }) => {
   const [email, setEmail] = useState('');
-  const [pin, setPin] = useState(['', '', '', '']);
-  const [confirmPin, setConfirmPin] = useState(['', '', '', '']);
+  const [pin, setPin] = useState(['', '', '', '', '', '']);
+  const [confirmPin, setConfirmPin] = useState(['', '', '', '', '', '']);
   const [showSacredText, setShowSacredText] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [showPin, setShowPin] = useState(false);
@@ -70,7 +70,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
       if (authError) setAuthError('');
 
       // Auto-focus next input
-      if (value && index < 3) {
+      if (value && index < 5) {
         confirmInputRefs.current[index + 1]?.focus();
       }
     } else {
@@ -79,7 +79,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
       setPin(newPin);
 
       // Auto-focus next input
-      if (value && index < 3) {
+      if (value && index < 5) {
         inputRefs.current[index + 1]?.focus();
       }
     }
@@ -97,18 +97,18 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
 
   const handlePaste = (e: React.ClipboardEvent, isConfirm = false) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').slice(0, 4);
+    const pastedData = e.clipboardData.getData('text').slice(0, 6);
     if (!/^\d+$/.test(pastedData)) return;
 
-    const newPin = pastedData.split('').concat(['', '', '', '']).slice(0, 4);
+    const newPin = pastedData.split('').concat(['', '', '', '', '', '']).slice(0, 6);
     
     if (isConfirm) {
       setConfirmPin(newPin);
-      const nextIndex = Math.min(pastedData.length, 3);
+      const nextIndex = Math.min(pastedData.length, 5);
       confirmInputRefs.current[nextIndex]?.focus();
     } else {
       setPin(newPin);
-      const nextIndex = Math.min(pastedData.length, 3);
+      const nextIndex = Math.min(pastedData.length, 5);
       inputRefs.current[nextIndex]?.focus();
     }
   };
@@ -134,7 +134,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
     
     if (!pinsMatch) {
       setPinError('PINs do not match. Please try again.');
-      setConfirmPin(['', '', '', '']);
+      setConfirmPin(['', '', '', '', '', '']);
       setTimeout(() => {
         confirmInputRefs.current[0]?.focus();
       }, 100);
@@ -170,7 +170,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
       } else if (error.message?.includes('Invalid email')) {
         setAuthError('Please enter a valid email address.');
       } else if (error.message?.includes('Password')) {
-        setAuthError('PIN must be exactly 4 digits.');
+        setAuthError('PIN must be exactly 6 digits.');
       } else {
         setAuthError('Failed to create account. Please try again.');
       }
@@ -189,7 +189,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
     setStep('create');
     setPinError('');
     setAuthError('');
-    setConfirmPin(['', '', '', '']);
+    setConfirmPin(['', '', '', '', '', '']);
   };
 
   const handleGoogleSignUp = () => {
@@ -199,8 +199,8 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
 
   const clearForm = () => {
     setEmail('');
-    setPin(['', '', '', '']);
-    setConfirmPin(['', '', '', '']);
+    setPin(['', '', '', '', '', '']);
+    setConfirmPin(['', '', '', '', '', '']);
     setEmailError('');
     setPinError('');
     setAuthError('');
@@ -350,7 +350,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <Shield className="w-5 h-5 text-spiritual-600" />
-                  <h3 className="text-lg font-semibold text-spiritual-900 tracking-spiritual">Create a 4-digit PIN</h3>
+                  <h3 className="text-lg font-semibold text-spiritual-900 tracking-spiritual">Create a 6-digit PIN</h3>
                 </div>
                 <button
                   onClick={() => setShowPin(!showPin)}
@@ -362,7 +362,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
               </div>
               
               {/* PIN Input Fields */}
-              <div className="flex justify-center gap-3 mb-4">
+              <div className="flex justify-center gap-2 mb-4">
                 {pin.map((digit, index) => (
                   <input
                     key={index}
@@ -374,7 +374,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
                     onChange={(e) => handlePinChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     onPaste={index === 0 ? (e) => handlePaste(e) : undefined}
-                    className="w-12 h-12 text-center text-xl font-bold border-2 border-spiritual-200 rounded-spiritual focus:border-spiritual-400 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 transition-all duration-300 bg-white/70 text-spiritual-900 hover:border-spiritual-300 focus:scale-105"
+                    className="w-10 h-10 text-center text-lg font-bold border-2 border-spiritual-200 rounded-spiritual focus:border-spiritual-400 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 transition-all duration-300 bg-white/70 text-spiritual-900 hover:border-spiritual-300 focus:scale-105"
                     placeholder={showPin ? "0" : "•"}
                   />
                 ))}
@@ -404,7 +404,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
               </div>
               
               {/* Confirm PIN Input Fields */}
-              <div className="flex justify-center gap-3 mb-4">
+              <div className="flex justify-center gap-2 mb-4">
                 {confirmPin.map((digit, index) => (
                   <input
                     key={index}
@@ -416,7 +416,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
                     onChange={(e) => handlePinChange(index, e.target.value, true)}
                     onKeyDown={(e) => handleKeyDown(index, e, true)}
                     onPaste={index === 0 ? (e) => handlePaste(e, true) : undefined}
-                    className={`w-12 h-12 text-center text-xl font-bold border-2 rounded-spiritual focus:outline-none focus:ring-4 transition-all duration-300 bg-white/70 text-spiritual-900 hover:border-spiritual-300 focus:scale-105 ${
+                    className={`w-10 h-10 text-center text-lg font-bold border-2 rounded-spiritual focus:outline-none focus:ring-4 transition-all duration-300 bg-white/70 text-spiritual-900 hover:border-spiritual-300 focus:scale-105 ${
                       pinError 
                         ? 'border-red-400 focus:border-red-500 focus:ring-red-200' 
                         : 'border-spiritual-200 focus:border-spiritual-400 focus:ring-spiritual-200/50'
@@ -438,7 +438,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
               )}
               
               <p className="text-sm text-spiritual-700/70 text-center tracking-spiritual">
-                Re-enter the same 4-digit PIN you created above.
+                Re-enter the same 6-digit PIN you created above.
               </p>
             </div>
           )}
