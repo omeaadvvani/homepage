@@ -365,17 +365,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
             </div>
           )}
 
-          {/* Main CTA Button - Finish Sign Up */}
-          {step === 'create' && isEmailValid && isPinComplete && (
-            <button
-              onClick={handleContinueToConfirm}
-              className="group flex items-center justify-center gap-3 w-full py-4 px-6 bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-amber-500 text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-2 border-red-800/20"
-            >
-              <CheckCircle className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
-              <span className="text-lg">Finish Sign Up</span>
-            </button>
-          )}
-
+          {/* 1. CONFIRM PIN BUTTON - Show in confirm step */}
           {step === 'confirm' && isConfirmPinComplete && (
             <button
               onClick={handleConfirmPin}
@@ -383,7 +373,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
               className={`group flex items-center justify-center gap-3 w-full py-4 px-6 font-semibold rounded-2xl shadow-lg transition-all duration-300 transform ${
                 isCreatingAccount
                   ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-amber-400 to-orange-500 hover:from-orange-500 hover:to-amber-500 text-white hover:shadow-xl hover:scale-105 border-2 border-red-800/20'
+                  : 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-rose-600 text-white hover:shadow-xl hover:scale-105 border-2 border-red-800/20'
               }`}
             >
               {isCreatingAccount ? (
@@ -394,15 +384,27 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
               ) : (
                 <>
                   <Lock className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
-                  <span className="text-lg">Create My Account</span>
+                  <span className="text-lg">Confirm PIN</span>
                 </>
               )}
             </button>
           )}
 
-          {/* OR Divider - Only show in create step */}
+          {/* 2. FINISH SIGN UP BUTTON - Show in create step when form is valid */}
+          {step === 'create' && isEmailValid && isPinComplete && (
+            <button
+              onClick={handleContinueToConfirm}
+              className="group flex items-center justify-center gap-3 w-full py-4 px-6 bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-amber-500 text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-2 border-red-800/20"
+            >
+              <CheckCircle className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
+              <span className="text-lg">Finish Sign Up</span>
+            </button>
+          )}
+
+          {/* 3. SIGN UP WITH GOOGLE - Only show in create step */}
           {step === 'create' && (
             <>
+              {/* OR Divider */}
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-orange-200/60"></div>
