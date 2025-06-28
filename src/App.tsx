@@ -163,14 +163,14 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-spiritual-gradient relative overflow-hidden">
-      {/* Subtle overlay for depth */}
-      <div className="absolute inset-0 bg-gradient-to-br from-saffron-400/10 via-transparent to-maroon-900/5"></div>
+    <div className="min-h-screen bg-gradient-to-br from-amber-400 via-orange-200 to-cream-100 relative overflow-hidden">
+      {/* Diagonal gradient overlay with maroon corner hints */}
+      <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-orange-300/10 to-red-900/5"></div>
       
       {/* Sacred Beginning Text - Bottom Right with Continuous Animation */}
-      <div className={`absolute bottom-8 right-8 z-10 transition-opacity duration-1000 ${showSacredText ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`absolute bottom-20 right-8 z-10 transition-opacity duration-1000 ${showSacredText ? 'opacity-100' : 'opacity-0'}`}>
         <div className="text-right">
-          <p className="text-3xl md:text-4xl font-spiritual text-maroon-900 tracking-spiritual select-none animate-float animate-glow opacity-30" 
+          <p className="text-2xl md:text-3xl font-serif text-red-900 tracking-wide select-none animate-float animate-glow" 
              style={{ fontFamily: '"Noto Serif Devanagari", "Tiro Devanagari", serif' }}>
             शुभ आरंभ।
           </p>
@@ -178,37 +178,37 @@ function App() {
       </div>
 
       {/* Top Right Controls - Language & Location */}
-      <div className="absolute top-6 right-6 z-20 flex items-center gap-4">
+      <div className="absolute top-4 right-4 z-20 flex items-center gap-3">
         
         {/* Location Auto-Detect */}
         <div className="group relative">
           <div 
-            className={`flex items-center gap-3 px-5 py-3 bg-white/95 backdrop-blur-sm rounded-full shadow-lg border border-saffron-200/60 transition-all duration-300 hover:shadow-xl hover:bg-white ${
-              locationStatus === 'success' ? 'hover:border-saffron-300' : ''
+            className={`flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-orange-200/50 transition-all duration-300 ${
+              locationStatus === 'success' ? 'hover:bg-white hover:shadow-xl' : ''
             }`}
             title="Used to calculate accurate ritual timings based on your region"
           >
             <MapPin className={`w-4 h-4 transition-colors duration-300 ${
-              locationStatus === 'loading' ? 'text-saffron-500 animate-pulse' :
+              locationStatus === 'loading' ? 'text-amber-500 animate-pulse' :
               locationStatus === 'success' ? 'text-green-600' :
               'text-gray-400'
             }`} />
-            <span className={`text-sm font-medium font-soft-sans transition-colors duration-300 ${
-              locationStatus === 'loading' ? 'text-saffron-700' :
-              locationStatus === 'success' ? 'text-maroon-800' :
+            <span className={`text-sm font-medium transition-colors duration-300 ${
+              locationStatus === 'loading' ? 'text-amber-700' :
+              locationStatus === 'success' ? 'text-amber-800' :
               'text-gray-500'
             }`}>
               {location}
             </span>
             {locationStatus === 'loading' && (
-              <div className="w-3 h-3 border border-saffron-500 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-3 h-3 border border-amber-500 border-t-transparent rounded-full animate-spin"></div>
             )}
           </div>
           
           {/* Tooltip */}
-          <div className="absolute top-full right-0 mt-3 px-4 py-3 bg-maroon-900 text-white text-xs font-soft-sans rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap z-30 shadow-xl">
+          <div className="absolute top-full right-0 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap z-30">
             Used to calculate accurate ritual timings based on your region
-            <div className="absolute bottom-full right-6 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-maroon-900"></div>
+            <div className="absolute bottom-full right-4 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
           </div>
         </div>
 
@@ -216,23 +216,23 @@ function App() {
         <div className="relative">
           <button
             onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
-            className="flex items-center gap-3 px-5 py-3 bg-white/95 backdrop-blur-sm rounded-full shadow-lg border border-saffron-200/60 hover:bg-white hover:shadow-xl hover:border-saffron-300 transition-all duration-300 text-maroon-800 font-medium font-soft-sans animate-spiritual-pulse"
+            className="flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-orange-200/50 hover:bg-white hover:shadow-xl transition-all duration-300 text-amber-800 font-medium"
           >
-            <Globe className="w-4 h-4 text-saffron-600" />
+            <Globe className="w-4 h-4 text-orange-600" />
             <span className="text-sm">{selectedLanguage}</span>
             <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isLanguageDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
           
           {isLanguageDropdownOpen && (
-            <div className="absolute top-full right-0 mt-3 bg-white rounded-2xl shadow-2xl border border-saffron-100 overflow-hidden min-w-40 z-30">
+            <div className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-2xl border border-orange-100 overflow-hidden min-w-32 z-30">
               {languages.map((language) => (
                 <button
                   key={language}
                   onClick={() => handleLanguageSelect(language)}
-                  className={`block w-full text-left px-5 py-4 text-sm font-soft-sans hover:bg-saffron-50 transition-colors duration-200 ${
+                  className={`block w-full text-left px-4 py-3 text-sm hover:bg-orange-50 transition-colors duration-200 ${
                     selectedLanguage === language 
-                      ? 'bg-saffron-100 text-saffron-800 font-medium' 
-                      : 'text-maroon-700 hover:text-saffron-700'
+                      ? 'bg-orange-100 text-orange-800 font-medium' 
+                      : 'text-gray-700'
                   }`}
                 >
                   {language}
@@ -244,94 +244,85 @@ function App() {
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-col items-center justify-center min-h-screen px-6 pb-24 relative z-10">
+      <div className="flex flex-col items-center justify-center min-h-screen px-4 pb-20 relative z-10">
         
-        {/* Center Block - Enhanced Typography */}
-        <div className="text-center mb-18 max-w-3xl" style={{ marginTop: '72px' }}>
-          <h1 className="text-5xl md:text-7xl font-spiritual font-bold text-maroon-900 mb-6 leading-spiritual tracking-spiritual">
+        {/* Center Block */}
+        <div className="text-center mb-12 max-w-2xl">
+          <h1 className="text-4xl md:text-6xl font-bold text-amber-900 mb-4 leading-tight">
             Namaste. Welcome to
             <br />
-            <span className="bg-gradient-to-r from-saffron-600 to-maroon-600 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
               VoiceVedic
             </span>
           </h1>
           
-          <h2 className="text-2xl md:text-3xl text-maroon-800/80 font-medium font-soft-sans mb-12 tracking-wide-spiritual leading-relaxed-spiritual">
+          <h2 className="text-xl md:text-2xl text-amber-800/80 font-medium mb-8">
             Your daily spiritual companion
           </h2>
         </div>
 
-        {/* CTA Buttons - Enhanced with Visual DNA */}
-        <div className="flex flex-col gap-6 w-full max-w-md">
+        {/* CTA Buttons */}
+        <div className="flex flex-col gap-4 w-full max-w-sm">
           {/* Login Button */}
           <button 
             onClick={handleLogin}
-            className="group relative overflow-hidden flex items-center justify-center gap-4 w-full py-5 px-8 bg-gradient-to-r from-saffron-400 to-saffron-500 hover:from-saffron-500 hover:to-yellow-500 text-white font-semibold font-soft-sans rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border-2 border-saffron-600/30 hover:border-yellow-500/50 focus:outline-none focus:ring-4 focus:ring-saffron-200/50 animate-spiritual-pulse"
+            className="group flex items-center justify-center gap-3 w-full py-4 px-6 bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-amber-500 text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-2 border-red-800/20"
           >
-            {/* Glow Effect */}
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-saffron-400 to-yellow-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
-            
-            <LogIn className="w-6 h-6 group-hover:rotate-12 group-active:rotate-6 transition-transform duration-300" />
-            <span className="text-lg tracking-spiritual">Login</span>
+            <LogIn className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
+            <span className="text-lg">Login</span>
           </button>
 
-          {/* Sign Up Button */}
+          {/* Sign Up Button - Goes to Onboarding */}
           <button 
             onClick={handleSignUp}
-            className="group relative overflow-hidden flex items-center justify-center gap-4 w-full py-5 px-8 bg-gradient-to-r from-maroon-500 to-maroon-600 hover:from-maroon-600 hover:to-red-600 text-white font-semibold font-soft-sans rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border-2 border-maroon-700/30 hover:border-red-600/50 focus:outline-none focus:ring-4 focus:ring-maroon-200/50"
+            className="group flex items-center justify-center gap-3 w-full py-4 px-6 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-rose-600 text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-2 border-red-800/20"
           >
-            {/* Glow Effect */}
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-maroon-500 to-red-600 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
-            
-            <UserPlus className="w-6 h-6 group-hover:rotate-12 group-active:rotate-6 transition-transform duration-300" />
-            <span className="text-lg tracking-spiritual">Sign Up</span>
+            <UserPlus className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
+            <span className="text-lg">Sign Up</span>
           </button>
 
           {/* Try Demo Button */}
           <button 
             onClick={handleTryDemo}
-            className="group relative overflow-hidden flex items-center justify-center gap-4 w-full py-5 px-8 bg-gradient-to-r from-saffron-400 to-yellow-500 hover:from-yellow-500 hover:to-orange-400 text-maroon-900 font-semibold font-soft-sans rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border-2 border-saffron-600/40 hover:border-orange-500/50 focus:outline-none focus:ring-4 focus:ring-saffron-200/50"
+            className="group flex items-center justify-center gap-3 w-full py-4 px-6 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-yellow-500 hover:to-orange-400 text-amber-900 font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-2 border-amber-600/30"
           >
-            {/* Glow Effect */}
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-yellow-400 to-orange-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
-            
-            <Headphones className="w-6 h-6 group-hover:rotate-12 group-active:rotate-6 transition-transform duration-300" />
-            <span className="text-lg tracking-spiritual">Try Demo</span>
+            <Headphones className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
+            <span className="text-lg">Try Demo</span>
           </button>
         </div>
 
-        {/* Guest Access - Enhanced Typography */}
-        <div className="mt-12 text-center">
+        {/* Guest Access */}
+        <div className="mt-8 text-center">
           <button 
             onClick={handleContinueAsGuest}
-            className="group text-maroon-700 hover:text-saffron-600 font-medium font-soft-sans transition-colors duration-300 relative text-lg tracking-spiritual"
+            className="group text-amber-700 hover:text-orange-600 font-medium transition-colors duration-300 relative"
             title="Explore basic features without logging in"
           >
             <span className="relative">
               Continue as Guest
-              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-saffron-400 group-hover:w-full transition-all duration-300"></span>
+              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-300"></span>
             </span>
           </button>
         </div>
       </div>
 
-      {/* Footer - Enhanced with Visual DNA */}
-      <footer className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-cream-100/80 to-transparent py-8 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex flex-wrap justify-center gap-8 mb-6 text-base font-soft-sans">
-            <a href="#" className="text-maroon-700 hover:text-saffron-600 transition-colors duration-300 hover:underline tracking-spiritual">
+      {/* Footer */}
+      <footer className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-cream-100/60 to-transparent py-6 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex flex-wrap justify-center gap-6 mb-4 text-sm">
+            <a href="#" className="text-amber-700 hover:text-orange-600 transition-colors duration-300 hover:underline">
               Terms of Service
             </a>
-            <span className="text-saffron-400 font-bold">|</span>
-            <a href="#" className="text-maroon-700 hover:text-saffron-600 transition-colors duration-300 hover:underline tracking-spiritual">
+            <span className="text-amber-400">|</span>
+            <a href="#" className="text-amber-700 hover:text-orange-600 transition-colors duration-300 hover:underline">
               Privacy Policy
             </a>
-            <span className="text-saffron-400 font-bold">|</span>
-            <a href="#" className="text-maroon-700 hover:text-saffron-600 transition-colors duration-300 hover:underline tracking-spiritual">
+            <span className="text-amber-400">|</span>
+            <a href="#" className="text-amber-700 hover:text-orange-600 transition-colors duration-300 hover:underline">
               About Us
             </a>
           </div>
-          <div className="text-center text-saffron-600 text-base font-medium font-soft-sans tracking-spiritual">
+          <div className="text-center text-amber-600 text-sm font-medium">
             Made with love by the VoiceVedic Team
           </div>
         </div>
