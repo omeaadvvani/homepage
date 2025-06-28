@@ -3,12 +3,13 @@ import { Globe, LogIn, UserPlus, Headphones, ChevronDown } from 'lucide-react';
 import OnboardingScreen from './components/OnboardingScreen';
 import GuestOnboardingScreen from './components/GuestOnboardingScreen';
 import SignUpScreen from './components/SignUpScreen';
+import LoginScreen from './components/LoginScreen';
 
 function App() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [showSacredText, setShowSacredText] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState<'home' | 'onboarding' | 'guest-onboarding' | 'signup'>('home');
+  const [currentScreen, setCurrentScreen] = useState<'home' | 'onboarding' | 'guest-onboarding' | 'signup' | 'login'>('home');
 
   const languages = [
     'English',
@@ -25,9 +26,7 @@ function App() {
   };
 
   const handleLogin = () => {
-    // For now, just show an alert for login
-    // In a real app, this would navigate to a login form
-    alert('Login functionality will be implemented here. This would typically show a login form with email/password fields.');
+    setCurrentScreen('login');
   };
 
   const handleSignUp = () => {
@@ -61,6 +60,13 @@ function App() {
     alert('Welcome to VoiceVedic! Your account has been created successfully. Your spiritual journey begins now. 🙏');
   };
 
+  const handleLoginComplete = () => {
+    // Here you would typically navigate to the main app
+    console.log('Login completed!');
+    // For demo purposes, we'll just show an alert
+    alert('Welcome back to VoiceVedic! Your spiritual journey continues. 🙏');
+  };
+
   const handleTryDemo = () => {
     // For now, just show an alert for demo
     // In a real app, this would show a demo/tutorial
@@ -85,6 +91,10 @@ function App() {
 
   if (currentScreen === 'signup') {
     return <SignUpScreen onComplete={handleSignUpComplete} onBack={() => setCurrentScreen('onboarding')} />;
+  }
+
+  if (currentScreen === 'login') {
+    return <LoginScreen onComplete={handleLoginComplete} onBack={handleBackToHome} />;
   }
 
   return (
