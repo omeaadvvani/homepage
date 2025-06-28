@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Globe, LogIn, UserPlus, Headphones, ChevronDown } from 'lucide-react';
 import OnboardingScreen from './components/OnboardingScreen';
+import GuestOnboardingScreen from './components/GuestOnboardingScreen';
 
 function App() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [showSacredText, setShowSacredText] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState<'home' | 'onboarding'>('home');
+  const [currentScreen, setCurrentScreen] = useState<'home' | 'onboarding' | 'guest-onboarding'>('home');
 
   const languages = [
     'English',
@@ -32,6 +33,10 @@ function App() {
     setCurrentScreen('onboarding');
   };
 
+  const handleContinueAsGuest = () => {
+    setCurrentScreen('guest-onboarding');
+  };
+
   const handleBackToHome = () => {
     setCurrentScreen('home');
   };
@@ -41,6 +46,19 @@ function App() {
     console.log('Onboarding completed!');
     // For demo purposes, we'll just show an alert
     alert('Welcome to VoiceVedic! Your spiritual journey begins now. 🙏');
+  };
+
+  const handleGuestOnboardingComplete = () => {
+    // Here you would typically navigate to the main app in guest mode
+    console.log('Guest onboarding completed!');
+    // For demo purposes, we'll just show an alert
+    alert('Welcome to VoiceVedic! Explore our features as a guest. You can create an account anytime to save your preferences. 🙏');
+  };
+
+  const handleTryDemo = () => {
+    // For now, just show an alert for demo
+    // In a real app, this would show a demo/tutorial
+    alert('Demo functionality will be implemented here. This would typically show an interactive tutorial of the app features.');
   };
 
   // Fade in the sacred text after component mounts
@@ -53,6 +71,10 @@ function App() {
 
   if (currentScreen === 'onboarding') {
     return <OnboardingScreen onComplete={handleOnboardingComplete} onBack={handleBackToHome} />;
+  }
+
+  if (currentScreen === 'guest-onboarding') {
+    return <GuestOnboardingScreen onComplete={handleGuestOnboardingComplete} onBack={handleBackToHome} />;
   }
 
   return (
@@ -141,7 +163,10 @@ function App() {
           </button>
 
           {/* Try Demo Button */}
-          <button className="group flex items-center justify-center gap-3 w-full py-4 px-6 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-yellow-500 hover:to-orange-400 text-amber-900 font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-2 border-amber-600/30">
+          <button 
+            onClick={handleTryDemo}
+            className="group flex items-center justify-center gap-3 w-full py-4 px-6 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-yellow-500 hover:to-orange-400 text-amber-900 font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-2 border-amber-600/30"
+          >
             <Headphones className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
             <span className="text-lg">Try Demo</span>
           </button>
@@ -150,6 +175,7 @@ function App() {
         {/* Guest Access */}
         <div className="mt-8 text-center">
           <button 
+            onClick={handleContinueAsGuest}
             className="group text-amber-700 hover:text-orange-600 font-medium transition-colors duration-300 relative"
             title="Explore basic features without logging in"
           >
