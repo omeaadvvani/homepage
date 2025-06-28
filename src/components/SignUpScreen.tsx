@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, Lock, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Shield, Lock, CheckCircle, ArrowLeft, Mail, Eye, EyeOff } from 'lucide-react';
 
 interface SignUpScreenProps {
   onComplete: () => void;
@@ -7,9 +7,12 @@ interface SignUpScreenProps {
 }
 
 const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
+  const [email, setEmail] = useState('');
   const [pin, setPin] = useState(['', '', '', '']);
   const [showSacredText, setShowSacredText] = useState(false);
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [showPin, setShowPin] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -18,6 +21,24 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
     }, 800);
     return () => clearTimeout(timer);
   }, []);
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (emailError && validateEmail(value)) {
+      setEmailError('');
+    }
+  };
+
+  const handleEmailBlur = () => {
+    if (email && !validateEmail(email)) {
+      setEmailError('Please enter a valid email address');
+    }
+  };
 
   const handlePinChange = (index: number, value: string) => {
     if (value.length > 1) return; // Only allow single digit
@@ -53,9 +74,11 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
   };
 
   const isPinComplete = pin.every(digit => digit !== '');
+  const isEmailValid = email && validateEmail(email);
+  const isFormValid = isEmailValid && isPinComplete;
 
   const handleCreateAccount = async () => {
-    if (!isPinComplete) return;
+    if (!isFormValid) return;
     
     setIsCreatingAccount(true);
     
@@ -99,10 +122,10 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-col items-center justify-center min-h-screen px-4 py-8 relative z-10">
+      <div className="flex flex-col items-center justify-start min-h-screen px-4 py-8 relative z-10">
         
         {/* Header Section */}
-        <div className="text-center mb-12 max-w-lg">
+        <div className="text-center mb-8 max-w-lg mt-12">
           <div className="flex items-center justify-center gap-3 mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
             <h1 className="text-3xl md:text-4xl font-bold text-amber-900 leading-tight">
@@ -116,32 +139,85 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
         </div>
 
         {/* Sign-Up Form */}
-        <div className="w-full max-w-md space-y-8">
+        <div className="w-full max-w-md space-y-6">
           
+          {/* Email Address Section */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-orange-200/50">
+            <div className="flex items-center gap-3 mb-4">
+              <Mail className="w-5 h-5 text-orange-600" />
+              <h3 className="text-lg font-semibold text-amber-900">Email Address</h3>
+            </div>
+            
+            <div className="relative">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => handleEmailChange(e.target.value)}
+                onBlur={handleEmailBlur}
+                placeholder="Enter your email address"
+                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-200 transition-all duration-300 bg-white/70 text-amber-900 placeholder-amber-600/50 ${
+                  emailError 
+                    ? 'border-red-400 focus:border-red-500' 
+                    : email && isEmailValid
+                      ? 'border-green-400 focus:border-green-500'
+                      : 'border-orange-200 focus:border-orange-400 hover:border-orange-300'
+                }`}
+              />
+              
+              {email && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  {isEmailValid ? (
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                  ) : emailError ? (
+                    <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">!</span>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+            
+            {emailError && (
+              <p className="text-sm text-red-600 mt-2 flex items-center gap-1">
+                <span className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">!</span>
+                </span>
+                {emailError}
+              </p>
+            )}
+          </div>
+
           {/* Create PIN Section */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-orange-200/50">
-            <div className="text-center mb-6">
-              <div className="flex items-center justify-center gap-3 mb-3">
-                <Shield className="w-6 h-6 text-orange-600" />
-                <h3 className="text-xl font-semibold text-amber-900">Create a 4-digit PIN</h3>
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-orange-200/50">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <Shield className="w-5 h-5 text-orange-600" />
+                <h3 className="text-lg font-semibold text-amber-900">Create a 4-digit PIN</h3>
               </div>
+              <button
+                onClick={() => setShowPin(!showPin)}
+                className="p-1 text-amber-600 hover:text-orange-600 transition-colors duration-300"
+                title={showPin ? "Hide PIN" : "Show PIN"}
+              >
+                {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
             
             {/* PIN Input Fields */}
-            <div className="flex justify-center gap-4 mb-4">
+            <div className="flex justify-center gap-3 mb-4">
               {pin.map((digit, index) => (
                 <input
                   key={index}
                   ref={el => inputRefs.current[index] = el}
-                  type="text"
+                  type={showPin ? "text" : "password"}
                   inputMode="numeric"
                   maxLength={1}
                   value={digit}
                   onChange={(e) => handlePinChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onPaste={index === 0 ? handlePaste : undefined}
-                  className="w-14 h-14 text-center text-2xl font-bold border-2 border-orange-200 rounded-xl focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200 transition-all duration-300 bg-white/70 text-amber-900 hover:border-orange-300 focus:scale-105"
-                  placeholder="•"
+                  className="w-12 h-12 text-center text-xl font-bold border-2 border-orange-200 rounded-xl focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200 transition-all duration-300 bg-white/70 text-amber-900 hover:border-orange-300 focus:scale-105"
+                  placeholder={showPin ? "0" : "•"}
                 />
               ))}
             </div>
@@ -150,6 +226,31 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
               This PIN helps you quickly access your account across devices.
             </p>
           </div>
+
+          {/* Create Account Button */}
+          {isFormValid && (
+            <button
+              onClick={handleCreateAccount}
+              disabled={isCreatingAccount}
+              className={`group flex items-center justify-center gap-3 w-full py-4 px-6 font-semibold rounded-2xl shadow-lg transition-all duration-300 transform ${
+                isCreatingAccount
+                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-amber-400 to-orange-500 hover:from-orange-500 hover:to-amber-500 text-white hover:shadow-xl hover:scale-105 border-2 border-red-800/20'
+              }`}
+            >
+              {isCreatingAccount ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-lg">Creating Account...</span>
+                </>
+              ) : (
+                <>
+                  <Lock className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
+                  <span className="text-lg">Create My Account</span>
+                </>
+              )}
+            </button>
+          )}
 
           {/* OR Divider */}
           <div className="relative">
@@ -177,31 +278,6 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
             </svg>
             <span className="text-lg">Sign up with Google</span>
           </button>
-
-          {/* Create Account Button (PIN) */}
-          {isPinComplete && (
-            <button
-              onClick={handleCreateAccount}
-              disabled={isCreatingAccount}
-              className={`group flex items-center justify-center gap-3 w-full py-4 px-6 font-semibold rounded-2xl shadow-lg transition-all duration-300 transform ${
-                isCreatingAccount
-                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-amber-400 to-orange-500 hover:from-orange-500 hover:to-amber-500 text-white hover:shadow-xl hover:scale-105 border-2 border-red-800/20'
-              }`}
-            >
-              {isCreatingAccount ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-lg">Creating Account...</span>
-                </>
-              ) : (
-                <>
-                  <Lock className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
-                  <span className="text-lg">Create My Account</span>
-                </>
-              )}
-            </button>
-          )}
 
           {/* Terms & Privacy */}
           <div className="text-center">
