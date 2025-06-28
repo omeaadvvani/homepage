@@ -1,24 +1,34 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, Lock, CheckCircle, ArrowLeft, Mail, Eye, EyeOff, RotateCcw } from 'lucide-react';
+import { Shield, Lock, CheckCircle, ArrowLeft, Mail, Eye, EyeOff, RotateCcw, AlertCircle } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
 interface SignUpScreenProps {
   onComplete: () => void;
   onBack?: () => void;
+  onboardingData?: {
+    calendar_tradition: string;
+    preferred_language: string;
+    selected_rituals: string[];
+    notification_time: string;
+    location?: string;
+  };
 }
 
-const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
+const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboardingData }) => {
   const [email, setEmail] = useState('');
   const [pin, setPin] = useState(['', '', '', '']);
   const [confirmPin, setConfirmPin] = useState(['', '', '', '']);
   const [showSacredText, setShowSacredText] = useState(false);
-  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [showConfirmPin, setShowConfirmPin] = useState(false);
   const [pinError, setPinError] = useState('');
   const [step, setStep] = useState<'create' | 'confirm'>('create');
+  const [authError, setAuthError] = useState('');
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const confirmInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const { signUp, loading } = useAuth();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -37,6 +47,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
     if (emailError && validateEmail(value)) {
       setEmailError('');
     }
+    if (authError) setAuthError('');
   };
 
   const handleEmailBlur = () => {
@@ -56,6 +67,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
       
       // Clear error when user starts typing
       if (pinError) setPinError('');
+      if (authError) setAuthError('');
 
       // Auto-focus next input
       if (value && index < 3) {
@@ -110,6 +122,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
     if (!isPinComplete) return;
     setStep('confirm');
     setPinError('');
+    setAuthError('');
     // Focus first confirm input after a short delay
     setTimeout(() => {
       confirmInputRefs.current[0]?.focus();
@@ -133,24 +146,65 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
   };
 
   const handleCreateAccount = async () => {
-    setIsCreatingAccount(true);
+    if (!isEmailValid || !isPinComplete || !pinsMatch) return;
+
+    const pinString = pin.join('');
     
-    // Simulate account creation
-    setTimeout(() => {
-      setIsCreatingAccount(false);
+    // Use onboarding data or defaults
+    const profileData = onboardingData || {
+      calendar_tradition: 'north-indian',
+      preferred_language: 'English',
+      selected_rituals: ['ekadashi'],
+      notification_time: '07:00',
+      location: null
+    };
+
+    const { data, error } = await signUp(email, pinString, profileData);
+
+    if (error) {
+      console.error('Sign up error:', error);
+      
+      // Handle specific error types
+      if (error.message?.includes('already registered')) {
+        setAuthError('This email is already registered. Please try logging in instead.');
+      } else if (error.message?.includes('Invalid email')) {
+        setAuthError('Please enter a valid email address.');
+      } else if (error.message?.includes('Password')) {
+        setAuthError('PIN must be exactly 4 digits.');
+      } else {
+        setAuthError('Failed to create account. Please try again.');
+      }
+      
+      // Go back to create step if there's an error
+      setStep('create');
+      return;
+    }
+
+    if (data?.user) {
       onComplete();
-    }, 2000);
+    }
   };
 
   const handleBackToCreate = () => {
     setStep('create');
     setPinError('');
+    setAuthError('');
     setConfirmPin(['', '', '', '']);
   };
 
   const handleGoogleSignUp = () => {
     // In a real app, this would integrate with Google OAuth
     alert('Google Sign-Up integration would be implemented here. This would redirect to Google OAuth flow.');
+  };
+
+  const clearForm = () => {
+    setEmail('');
+    setPin(['', '', '', '']);
+    setConfirmPin(['', '', '', '']);
+    setEmailError('');
+    setPinError('');
+    setAuthError('');
+    setStep('create');
   };
 
   const isFormValid = isEmailValid && isPinComplete && (step === 'create' || (isConfirmPinComplete && pinsMatch));
@@ -169,6 +223,18 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
         >
           <ArrowLeft className="w-5 h-5 text-spiritual-600 group-hover:-translate-x-1 transition-transform duration-300" />
           <span className="text-sm">Back</span>
+        </button>
+      </div>
+
+      {/* Clear Form Button - Top Right */}
+      <div className="absolute top-6 right-6 z-20">
+        <button
+          onClick={clearForm}
+          className="group flex items-center gap-3 px-4 py-3 bg-white/90 backdrop-blur-sm rounded-spiritual shadow-spiritual border border-spiritual-200/50 hover:bg-white hover:shadow-spiritual-lg transition-all duration-300 text-spiritual-800 font-medium tracking-spiritual"
+          title="Clear Form"
+        >
+          <RotateCcw className="w-5 h-5 text-spiritual-600 group-hover:rotate-180 transition-transform duration-300" />
+          <span className="text-sm">Clear</span>
         </button>
       </div>
       
@@ -201,6 +267,18 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
             }
           </p>
         </div>
+
+        {/* Error Display */}
+        {authError && (
+          <div className="w-full max-w-md mb-6 animate-slide-up">
+            <div className="bg-red-50 border border-red-200 rounded-spiritual p-4">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                <p className="text-sm text-red-700 tracking-spiritual">{authError}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Sign-Up Form */}
         <div className="w-full max-w-md space-y-6 animate-slide-up">
@@ -369,7 +447,8 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
           {step === 'create' && isEmailValid && isPinComplete && (
             <button
               onClick={handleContinueToConfirm}
-              className="group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 bg-gradient-to-r from-spiritual-900 to-red-600 hover:from-red-600 hover:to-rose-600 text-white font-semibold rounded-button shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border-2 border-spiritual-900/30 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 tracking-spiritual"
+              disabled={loading}
+              className="group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 bg-gradient-to-r from-spiritual-900 to-red-600 hover:from-red-600 hover:to-rose-600 text-white font-semibold rounded-button shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border-2 border-spiritual-900/30 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 tracking-spiritual disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {/* Glow Effect */}
               <div className="absolute inset-0 rounded-button bg-gradient-to-r from-spiritual-900 to-red-600 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
@@ -383,19 +462,19 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
           {step === 'confirm' && isConfirmPinComplete && (
             <button
               onClick={handleConfirmPin}
-              disabled={isCreatingAccount}
+              disabled={loading}
               className={`group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 font-semibold rounded-button shadow-spiritual transition-all duration-300 transform tracking-spiritual ${
-                isCreatingAccount
+                loading
                   ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
                   : 'bg-gradient-to-r from-spiritual-400 to-spiritual-500 hover:from-spiritual-500 hover:to-spiritual-600 text-white hover:shadow-spiritual-lg hover:scale-[1.02] active:scale-[0.98] border-2 border-spiritual-600/30 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50'
               }`}
             >
               {/* Glow Effect */}
-              {!isCreatingAccount && (
+              {!loading && (
                 <div className="absolute inset-0 rounded-button bg-gradient-to-r from-spiritual-400 to-spiritual-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
               )}
               
-              {isCreatingAccount ? (
+              {loading ? (
                 <>
                   <div className="w-5 h-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
                   <span className="text-lg">Creating Account...</span>
@@ -427,7 +506,8 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
               {/* Google Sign-Up Button */}
               <button
                 onClick={handleGoogleSignUp}
-                className="group flex items-center justify-center gap-4 w-full py-4 px-6 bg-white border-2 border-gray-200 hover:border-gray-300 rounded-button shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] font-medium text-gray-700 hover:text-gray-900 tracking-spiritual focus:outline-none focus:ring-4 focus:ring-gray-200/50"
+                disabled={loading}
+                className="group flex items-center justify-center gap-4 w-full py-4 px-6 bg-white border-2 border-gray-200 hover:border-gray-300 rounded-button shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] font-medium text-gray-700 hover:text-gray-900 tracking-spiritual focus:outline-none focus:ring-4 focus:ring-gray-200/50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {/* Google G Logo */}
                 <svg className="w-5 h-5" viewBox="0 0 24 24">

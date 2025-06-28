@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, ArrowLeft, Mail, Eye, EyeOff, LogIn, RotateCcw } from 'lucide-react';
+import { Shield, ArrowLeft, Mail, Eye, EyeOff, LogIn, RotateCcw, AlertCircle } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
 interface LoginScreenProps {
   onComplete: () => void;
@@ -11,11 +12,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
   const [email, setEmail] = useState('');
   const [pin, setPin] = useState(['', '', '', '']);
   const [showSacredText, setShowSacredText] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [pinError, setPinError] = useState('');
+  const [authError, setAuthError] = useState('');
   const [showPin, setShowPin] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const { signIn, loading } = useAuth();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -34,6 +37,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
     if (emailError && validateEmail(value)) {
       setEmailError('');
     }
+    if (authError) setAuthError('');
   };
 
   const handleEmailBlur = () => {
@@ -53,6 +57,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
     // Clear errors when user starts typing
     if (pinError) setPinError('');
     if (emailError) setEmailError('');
+    if (authError) setAuthError('');
 
     // Auto-focus next input
     if (value && index < 3) {
@@ -87,13 +92,28 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
   const handleLogin = async () => {
     if (!isFormValid) return;
 
-    setIsLoggingIn(true);
-    
-    // Simulate login process
-    setTimeout(() => {
-      setIsLoggingIn(false);
+    const pinString = pin.join('');
+    const { data, error } = await signIn(email, pinString);
+
+    if (error) {
+      console.error('Login error:', error);
+      
+      // Handle specific error types
+      if (error.message?.includes('Invalid login credentials')) {
+        setAuthError('Invalid email or PIN. Please check your credentials and try again.');
+      } else if (error.message?.includes('Email not confirmed')) {
+        setAuthError('Please confirm your email address before logging in.');
+      } else if (error.message?.includes('Too many requests')) {
+        setAuthError('Too many login attempts. Please wait a moment and try again.');
+      } else {
+        setAuthError('Login failed. Please check your credentials and try again.');
+      }
+      return;
+    }
+
+    if (data?.user) {
       onComplete();
-    }, 1500);
+    }
   };
 
   const handleForgotPin = () => {
@@ -110,6 +130,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
     setPin(['', '', '', '']);
     setEmailError('');
     setPinError('');
+    setAuthError('');
   };
 
   return (
@@ -164,6 +185,18 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
             Enter your details to continue your spiritual journey
           </p>
         </div>
+
+        {/* Error Display */}
+        {authError && (
+          <div className="w-full max-w-md mb-6 animate-slide-up">
+            <div className="bg-red-50 border border-red-200 rounded-spiritual p-4">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+                <p className="text-sm text-red-700 tracking-spiritual">{authError}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Login Form */}
         <div className="w-full max-w-md space-y-6 animate-slide-up">
@@ -265,25 +298,25 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
             </p>
           </div>
 
-          {/* Login Button - ENHANCED WITH PROPER INTERACTIONS */}
+          {/* Login Button */}
           <button
             onClick={handleLogin}
-            disabled={!isFormValid || isLoggingIn}
+            disabled={!isFormValid || loading}
             className={`group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 font-semibold rounded-button shadow-spiritual transition-all duration-300 transform tracking-spiritual ${
-              isFormValid && !isLoggingIn
+              isFormValid && !loading
                 ? 'bg-gradient-to-r from-spiritual-400 to-spiritual-500 hover:from-spiritual-500 hover:to-spiritual-600 text-white hover:shadow-spiritual-lg hover:scale-[1.02] active:scale-[0.98] border-2 border-spiritual-600/30 hover:border-spiritual-500/50 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
             title={!isFormValid ? "Please enter your email and PIN" : "Login to your account"}
           >
             {/* Ripple Effect Background */}
-            {isFormValid && !isLoggingIn && (
+            {isFormValid && !loading && (
               <div className="absolute inset-0 bg-gradient-to-r from-spiritual-300/20 to-spiritual-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-button"></div>
             )}
             
             {/* Button Content */}
             <div className="relative z-10 flex items-center gap-3">
-              {isLoggingIn ? (
+              {loading ? (
                 <>
                   <div className="w-5 h-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
                   <span className="text-lg">Logging in...</span>
@@ -297,7 +330,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
             </div>
             
             {/* Glow Effect */}
-            {isFormValid && !isLoggingIn && (
+            {isFormValid && !loading && (
               <div className="absolute inset-0 rounded-button bg-gradient-to-r from-spiritual-400 to-spiritual-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
             )}
           </button>
