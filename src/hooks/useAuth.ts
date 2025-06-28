@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 
 export interface UserProfile {
   id: string;
@@ -19,9 +20,67 @@ export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(false); // Changed to false to prevent infinite loading
+  const [loading, setLoading] = useState(true);
 
-  // Mock functions for now - will work without Supabase connection
+  useEffect(() => {
+    // Get initial session
+    const getInitialSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          await fetchUserProfile(session.user.id);
+        }
+      } catch (error) {
+        console.error('Error getting initial session:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getInitialSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session);
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          await fetchUserProfile(session.user.id);
+        } else {
+          setUserProfile(null);
+        }
+        
+        setLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching user profile:', error);
+        return;
+      }
+
+      setUserProfile(data);
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+
   const signUp = async (email: string, pin: string, profileData: {
     calendar_tradition: string;
     preferred_language: string;
@@ -31,30 +90,37 @@ export const useAuth = () => {
   }) => {
     try {
       setLoading(true);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock successful response
-      const mockUser = {
-        id: 'mock-user-id',
+
+      // Create auth user with email and PIN as password
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
-        created_at: new Date().toISOString(),
-      } as User;
-      
-      setUser(mockUser);
-      setUserProfile({
-        id: 'mock-profile-id',
-        user_id: 'mock-user-id',
-        email,
-        pin_hash: 'hashed-pin',
-        ...profileData,
-        location: profileData.location || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        password: pin, // Using PIN as password for simplicity
+        options: {
+          emailRedirectTo: undefined, // Disable email confirmation
+        }
       });
 
-      return { data: { user: mockUser }, error: null };
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // Create user profile with hashed PIN
+        const pinHash = await hashPin(pin);
+        
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .insert({
+            user_id: authData.user.id,
+            email,
+            pin_hash: pinHash,
+            ...profileData
+          });
+
+        if (profileError) throw profileError;
+
+        await fetchUserProfile(authData.user.id);
+      }
+
+      return { data: authData, error: null };
     } catch (error) {
       console.error('Sign up error:', error);
       return { data: null, error };
@@ -66,33 +132,20 @@ export const useAuth = () => {
   const signIn = async (email: string, pin: string) => {
     try {
       setLoading(true);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock successful response
-      const mockUser = {
-        id: 'mock-user-id',
+
+      // Sign in with email and PIN
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        created_at: new Date().toISOString(),
-      } as User;
-      
-      setUser(mockUser);
-      setUserProfile({
-        id: 'mock-profile-id',
-        user_id: 'mock-user-id',
-        email,
-        pin_hash: 'hashed-pin',
-        calendar_tradition: 'north-indian',
-        preferred_language: 'English',
-        selected_rituals: ['ekadashi'],
-        notification_time: '07:00',
-        location: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        password: pin
       });
 
-      return { data: { user: mockUser }, error: null };
+      if (error) throw error;
+
+      if (data.user) {
+        await fetchUserProfile(data.user.id);
+      }
+
+      return { data, error: null };
     } catch (error) {
       console.error('Sign in error:', error);
       return { data: null, error };
@@ -104,6 +157,9 @@ export const useAuth = () => {
   const signOut = async () => {
     try {
       setLoading(true);
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
       setUser(null);
       setSession(null);
       setUserProfile(null);
@@ -118,20 +174,19 @@ export const useAuth = () => {
     if (!user) return { error: 'No user logged in' };
 
     try {
-      // Mock update
-      if (userProfile) {
-        setUserProfile({ ...userProfile, ...updates });
-      }
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      await fetchUserProfile(user.id);
       return { error: null };
     } catch (error) {
       console.error('Update profile error:', error);
       return { error };
     }
-  };
-
-  const fetchUserProfile = async (userId: string) => {
-    // Mock function - does nothing for now
-    console.log('Fetching profile for user:', userId);
   };
 
   return {
@@ -145,4 +200,13 @@ export const useAuth = () => {
     updateProfile,
     fetchUserProfile
   };
+};
+
+// Simple PIN hashing function (in production, use bcrypt or similar)
+const hashPin = async (pin: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(pin + 'voicevedic_salt'); // Add salt
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 };
