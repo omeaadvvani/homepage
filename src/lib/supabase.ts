@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+let supabase;
+
 // Check if environment variables are properly set
 if (!supabaseUrl || !supabaseAnonKey || 
     supabaseUrl === 'your_supabase_project_url' || 
@@ -13,10 +15,12 @@ if (!supabaseUrl || !supabaseAnonKey ||
   console.error('Please connect to Supabase using the "Connect to Supabase" button.');
   
   // Create a dummy client to prevent crashes
-  export const supabase = createClient('https://placeholder.supabase.co', 'placeholder-key');
+  supabase = createClient('https://placeholder.supabase.co', 'placeholder-key');
 } else {
-  export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+  supabase = createClient(supabaseUrl, supabaseAnonKey);
 }
+
+export { supabase };
 
 // Database types
 export interface Database {
