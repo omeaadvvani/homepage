@@ -15,7 +15,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
   const [emailError, setEmailError] = useState('');
   const [pinError, setPinError] = useState('');
   const [showPin, setShowPin] = useState(false);
-  const [loginAttempts, setLoginAttempts] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -92,21 +91,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
     
     // Simulate login process
     setTimeout(() => {
-      // Simulate login failure for demo (you can remove this)
-      const shouldFail = loginAttempts < 1; // Fail first attempt, succeed on second
-      
-      if (shouldFail) {
-        setLoginAttempts(prev => prev + 1);
-        setPinError('Invalid email or PIN. Please try again.');
-        setPin(['', '', '', '']);
-        setIsLoggingIn(false);
-        setTimeout(() => {
-          inputRefs.current[0]?.focus();
-        }, 100);
-      } else {
-        setIsLoggingIn(false);
-        onComplete();
-      }
+      setIsLoggingIn(false);
+      onComplete();
     }, 1500);
   };
 
@@ -124,7 +110,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
     setPin(['', '', '', '']);
     setEmailError('');
     setPinError('');
-    setLoginAttempts(0);
   };
 
   return (
@@ -330,16 +315,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
               </span>
             </button>
           </div>
-
-          {/* Demo Helper Text */}
-          {loginAttempts > 0 && (
-            <div className="bg-blue-50/80 backdrop-blur-sm rounded-xl p-4 border border-blue-200/50">
-              <p className="text-sm text-blue-700 text-center">
-                <strong>Demo Note:</strong> Try logging in again - the second attempt will succeed! 
-                In a real app, this would validate against your actual credentials.
-              </p>
-            </div>
-          )}
         </div>
       </div>
     </div>
