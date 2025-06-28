@@ -10,7 +10,8 @@ import {
   ChevronDown,
   Check,
   Sparkles,
-  ArrowLeft
+  ArrowLeft,
+  ArrowRight
 } from 'lucide-react';
 
 interface OnboardingScreenProps {
@@ -320,10 +321,10 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete, onBack 
                   ? 'bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-amber-500 text-white hover:shadow-xl hover:scale-105 border-2 border-red-800/20'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
-              title={!isFormValid ? "Please complete all required steps" : "Create your account and start your spiritual journey"}
+              title={!isFormValid ? "Please complete all required steps" : "Continue to account creation"}
             >
-              <Sparkles className={`w-5 h-5 transition-transform duration-300 ${isFormValid ? 'group-hover:rotate-12' : ''}`} />
-              <span className="text-lg">Create Account & Get Started</span>
+              <ArrowRight className={`w-5 h-5 transition-transform duration-300 ${isFormValid ? 'group-hover:translate-x-1' : ''}`} />
+              <span className="text-lg">Continue to Sign Up</span>
             </button>
             
             {isFormValid && (
@@ -345,5 +346,3 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete, onBack 
     </div>
   );
 };
-
-export default OnboardingScreen;

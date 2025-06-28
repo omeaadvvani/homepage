@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Globe, LogIn, UserPlus, Headphones, ChevronDown } from 'lucide-react';
 import OnboardingScreen from './components/OnboardingScreen';
 import GuestOnboardingScreen from './components/GuestOnboardingScreen';
+import SignUpScreen from './components/SignUpScreen';
 
 function App() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [showSacredText, setShowSacredText] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState<'home' | 'onboarding' | 'guest-onboarding'>('home');
+  const [currentScreen, setCurrentScreen] = useState<'home' | 'onboarding' | 'guest-onboarding' | 'signup'>('home');
 
   const languages = [
     'English',
@@ -42,10 +43,8 @@ function App() {
   };
 
   const handleOnboardingComplete = () => {
-    // Here you would typically navigate to the main app
-    console.log('Onboarding completed!');
-    // For demo purposes, we'll just show an alert
-    alert('Welcome to VoiceVedic! Your spiritual journey begins now. 🙏');
+    // Move to sign-up screen after onboarding
+    setCurrentScreen('signup');
   };
 
   const handleGuestOnboardingComplete = () => {
@@ -53,6 +52,13 @@ function App() {
     console.log('Guest onboarding completed!');
     // For demo purposes, we'll just show an alert
     alert('Welcome to VoiceVedic! Explore our features as a guest. You can create an account anytime to save your preferences. 🙏');
+  };
+
+  const handleSignUpComplete = () => {
+    // Here you would typically navigate to the main app
+    console.log('Sign-up completed!');
+    // For demo purposes, we'll just show an alert
+    alert('Welcome to VoiceVedic! Your account has been created successfully. Your spiritual journey begins now. 🙏');
   };
 
   const handleTryDemo = () => {
@@ -75,6 +81,10 @@ function App() {
 
   if (currentScreen === 'guest-onboarding') {
     return <GuestOnboardingScreen onComplete={handleGuestOnboardingComplete} onBack={handleBackToHome} />;
+  }
+
+  if (currentScreen === 'signup') {
+    return <SignUpScreen onComplete={handleSignUpComplete} onBack={() => setCurrentScreen('onboarding')} />;
   }
 
   return (
