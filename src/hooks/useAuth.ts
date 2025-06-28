@@ -23,6 +23,20 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check if Supabase is properly configured
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    if (!supabaseUrl || !supabaseAnonKey || 
+        supabaseUrl === 'your_supabase_project_url' || 
+        supabaseAnonKey === 'your_supabase_anon_key' ||
+        supabaseUrl.includes('placeholder') ||
+        supabaseAnonKey.includes('placeholder')) {
+      console.warn('Supabase not properly configured. Please connect to Supabase.');
+      setLoading(false);
+      return;
+    }
+
     // Get initial session
     const getInitialSession = async () => {
       try {
@@ -91,6 +105,12 @@ export const useAuth = () => {
     try {
       setLoading(true);
 
+      // Check if Supabase is properly configured
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl || supabaseUrl === 'your_supabase_project_url' || supabaseUrl.includes('placeholder')) {
+        throw new Error('Supabase is not properly configured. Please connect to Supabase first.');
+      }
+
       // Create auth user with email and PIN as password
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
@@ -132,6 +152,12 @@ export const useAuth = () => {
   const signIn = async (email: string, pin: string) => {
     try {
       setLoading(true);
+
+      // Check if Supabase is properly configured
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl || supabaseUrl === 'your_supabase_project_url' || supabaseUrl.includes('placeholder')) {
+        throw new Error('Supabase is not properly configured. Please connect to Supabase first.');
+      }
 
       // Sign in with email and PIN
       const { data, error } = await supabase.auth.signInWithPassword({
