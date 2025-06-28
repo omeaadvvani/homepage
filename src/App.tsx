@@ -63,7 +63,7 @@ function App() {
               setLocationStatus('error');
             },
             {
-              timeout: 10000,
+              timeout: 30000, // Increased timeout to 30 seconds
               enableHighAccuracy: false,
               maximumAge: 300000 // 5 minutes
             }
