@@ -346,3 +346,5 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete, onBack 
     </div>
   );
 };
+
+export default OnboardingScreen
