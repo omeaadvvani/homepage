@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Globe, LogIn, UserPlus, Headphones, ChevronDown, MapPin } from 'lucide-react';
+import { useAuth } from './hooks/useAuth';
 import OnboardingScreen from './components/OnboardingScreen';
 import GuestOnboardingScreen from './components/GuestOnboardingScreen';
 import SignUpScreen from './components/SignUpScreen';
@@ -13,6 +14,9 @@ function App() {
   const [currentScreen, setCurrentScreen] = useState<'home' | 'onboarding' | 'guest-onboarding' | 'signup' | 'login' | 'demo'>('home');
   const [location, setLocation] = useState<string>('Detecting location...');
   const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [onboardingData, setOnboardingData] = useState<any>(null);
+
+  const { user, userProfile, loading: authLoading } = useAuth();
 
   const languages = [
     'English',
@@ -83,6 +87,14 @@ function App() {
     detectLocation();
   }, []);
 
+  // Redirect authenticated users to dashboard (for now, just show success message)
+  useEffect(() => {
+    if (!authLoading && user && userProfile) {
+      // In a real app, this would redirect to the main dashboard
+      console.log('User authenticated:', user, userProfile);
+    }
+  }, [user, userProfile, authLoading]);
+
   const handleLanguageSelect = (language: string) => {
     setSelectedLanguage(language);
     setIsLanguageDropdownOpen(false);
@@ -102,10 +114,12 @@ function App() {
 
   const handleBackToHome = () => {
     setCurrentScreen('home');
+    setOnboardingData(null);
   };
 
-  const handleOnboardingComplete = () => {
-    // Move to sign-up screen after onboarding
+  const handleOnboardingComplete = (data: any) => {
+    // Store onboarding data and move to sign-up screen
+    setOnboardingData(data);
     setCurrentScreen('signup');
   };
 
@@ -114,6 +128,7 @@ function App() {
     console.log('Guest onboarding completed!');
     // For demo purposes, we'll just show an alert
     alert('Welcome to VoiceVedic! Explore our features as a guest. You can create an account anytime to save your preferences. 🙏');
+    setCurrentScreen('home');
   };
 
   const handleSignUpComplete = () => {
@@ -121,6 +136,7 @@ function App() {
     console.log('Sign-up completed!');
     // For demo purposes, we'll just show an alert
     alert('Welcome to VoiceVedic! Your account has been created successfully. Your spiritual journey begins now. 🙏');
+    setCurrentScreen('home');
   };
 
   const handleLoginComplete = () => {
@@ -128,6 +144,7 @@ function App() {
     console.log('Login completed!');
     // For demo purposes, we'll just show an alert
     alert('Welcome back to VoiceVedic! Your spiritual journey continues. 🙏');
+    setCurrentScreen('home');
   };
 
   const handleTryDemo = () => {
@@ -142,6 +159,37 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Show loading while checking auth state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-spiritual-diagonal flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-spiritual-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-spiritual-700 tracking-spiritual">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is authenticated, show success message (in real app, this would be the dashboard)
+  if (user && userProfile) {
+    return (
+      <div className="min-h-screen bg-spiritual-diagonal flex items-center justify-center">
+        <div className="text-center max-w-md p-8">
+          <h1 className="text-3xl font-bold text-spiritual-900 mb-4 tracking-spiritual">
+            Welcome to VoiceVedic!
+          </h1>
+          <p className="text-spiritual-700 mb-6 tracking-spiritual">
+            You are successfully logged in as {userProfile.email}
+          </p>
+          <p className="text-sm text-spiritual-600 tracking-spiritual">
+            Dashboard and main app features would be implemented here.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (currentScreen === 'onboarding') {
     return <OnboardingScreen onComplete={handleOnboardingComplete} onBack={handleBackToHome} />;
   }
@@ -151,7 +199,7 @@ function App() {
   }
 
   if (currentScreen === 'signup') {
-    return <SignUpScreen onComplete={handleSignUpComplete} onBack={() => setCurrentScreen('onboarding')} />;
+    return <SignUpScreen onComplete={handleSignUpComplete} onBack={() => setCurrentScreen('onboarding')} onboardingData={onboardingData} />;
   }
 
   if (currentScreen === 'login') {

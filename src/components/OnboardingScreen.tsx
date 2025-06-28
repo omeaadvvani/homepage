@@ -15,7 +15,13 @@ import {
 } from 'lucide-react';
 
 interface OnboardingScreenProps {
-  onComplete: () => void;
+  onComplete: (data: {
+    calendar_tradition: string;
+    preferred_language: string;
+    selected_rituals: string[];
+    notification_time: string;
+    location?: string;
+  }) => void;
   onBack?: () => void;
 }
 
@@ -112,6 +118,20 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete, onBack 
   };
 
   const isFormValid = selectedCalendar && selectedLanguage && selectedRituals.length > 0;
+
+  const handleComplete = () => {
+    if (!isFormValid) return;
+    
+    const data = {
+      calendar_tradition: selectedCalendar,
+      preferred_language: selectedLanguage,
+      selected_rituals: selectedRituals,
+      notification_time: notificationTime,
+      location: null // Will be set from location detection
+    };
+    
+    onComplete(data);
+  };
 
   return (
     <div className="min-h-screen bg-spiritual-diagonal relative overflow-hidden font-sans">
@@ -314,7 +334,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete, onBack 
           {/* CTA Button */}
           <div className="pt-6 relative z-10">
             <button
-              onClick={onComplete}
+              onClick={handleComplete}
               disabled={!isFormValid}
               className={`group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 font-semibold rounded-button shadow-spiritual transition-all duration-300 transform tracking-spiritual ${
                 isFormValid
