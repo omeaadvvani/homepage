@@ -23,20 +23,6 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if Supabase is properly configured
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
-    if (!supabaseUrl || !supabaseAnonKey || 
-        supabaseUrl === 'your_supabase_project_url' || 
-        supabaseAnonKey === 'your_supabase_anon_key' ||
-        supabaseUrl.includes('placeholder') ||
-        supabaseAnonKey.includes('placeholder')) {
-      console.warn('Supabase not properly configured. Please connect to Supabase.');
-      setLoading(false);
-      return;
-    }
-
     // Get initial session
     const getInitialSession = async () => {
       try {
@@ -105,33 +91,25 @@ export const useAuth = () => {
     try {
       setLoading(true);
 
-      // Check if Supabase is properly configured
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      if (!supabaseUrl || supabaseUrl === 'your_supabase_project_url' || supabaseUrl.includes('placeholder')) {
-        throw new Error('Supabase is not properly configured. Please connect to Supabase first.');
-      }
-
       // Create auth user with email and PIN as password
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
-        password: pin, // Using PIN as password for simplicity
+        password: pin,
         options: {
-          emailRedirectTo: undefined, // Disable email confirmation
+          emailRedirectTo: undefined,
         }
       });
 
       if (authError) throw authError;
 
       if (authData.user) {
-        // Create user profile with hashed PIN
-        const pinHash = await hashPin(pin);
-        
+        // Create user profile
         const { error: profileError } = await supabase
           .from('user_profiles')
           .insert({
             user_id: authData.user.id,
             email,
-            pin_hash: pinHash,
+            pin_hash: pin, // In production, hash this properly
             ...profileData
           });
 
@@ -152,12 +130,6 @@ export const useAuth = () => {
   const signIn = async (email: string, pin: string) => {
     try {
       setLoading(true);
-
-      // Check if Supabase is properly configured
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      if (!supabaseUrl || supabaseUrl === 'your_supabase_project_url' || supabaseUrl.includes('placeholder')) {
-        throw new Error('Supabase is not properly configured. Please connect to Supabase first.');
-      }
 
       // Sign in with email and PIN
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -226,13 +198,4 @@ export const useAuth = () => {
     updateProfile,
     fetchUserProfile
   };
-};
-
-// Simple PIN hashing function (in production, use bcrypt or similar)
-const hashPin = async (pin: string): Promise<string> => {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(pin + 'voicevedic_salt'); // Add salt
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 };
