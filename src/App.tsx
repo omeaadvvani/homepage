@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, LogIn, UserPlus, Headphones, ChevronDown } from 'lucide-react';
+import { Globe, LogIn, UserPlus, Headphones, ChevronDown, MapPin } from 'lucide-react';
 import OnboardingScreen from './components/OnboardingScreen';
 import GuestOnboardingScreen from './components/GuestOnboardingScreen';
 import SignUpScreen from './components/SignUpScreen';
@@ -10,6 +10,8 @@ function App() {
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [showSacredText, setShowSacredText] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<'home' | 'onboarding' | 'guest-onboarding' | 'signup' | 'login'>('home');
+  const [location, setLocation] = useState<string>('Detecting location...');
+  const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'error'>('loading');
 
   const languages = [
     'English',
@@ -19,6 +21,66 @@ function App() {
     'Malayalam',
     'Kannada'
   ];
+
+  // Auto-detect location on component mount
+  useEffect(() => {
+    const detectLocation = async () => {
+      try {
+        // Try to get user's location using geolocation API
+        if ('geolocation' in navigator) {
+          navigator.geolocation.getCurrentPosition(
+            async (position) => {
+              try {
+                // Use reverse geocoding to get city name
+                const { latitude, longitude } = position.coords;
+                
+                // For demo purposes, we'll simulate the API call
+                // In production, you'd use a service like OpenCage, MapBox, or Google Geocoding
+                setTimeout(() => {
+                  // Simulate different locations based on coordinates
+                  const mockLocations = [
+                    'New Delhi, India',
+                    'Mumbai, India', 
+                    'Bangalore, India',
+                    'Chennai, India',
+                    'Hyderabad, India',
+                    'Kolkata, India'
+                  ];
+                  const randomLocation = mockLocations[Math.floor(Math.random() * mockLocations.length)];
+                  setLocation(randomLocation);
+                  setLocationStatus('success');
+                }, 1500);
+                
+              } catch (error) {
+                console.error('Geocoding error:', error);
+                setLocation('Location unavailable');
+                setLocationStatus('error');
+              }
+            },
+            (error) => {
+              console.error('Geolocation error:', error);
+              setLocation('Location unavailable');
+              setLocationStatus('error');
+            },
+            {
+              timeout: 10000,
+              enableHighAccuracy: false,
+              maximumAge: 300000 // 5 minutes
+            }
+          );
+        } else {
+          setLocation('Location unavailable');
+          setLocationStatus('error');
+        }
+      } catch (error) {
+        console.error('Location detection error:', error);
+        setLocation('Location unavailable');
+        setLocationStatus('error');
+      }
+    };
+
+    detectLocation();
+  }, []);
 
   const handleLanguageSelect = (language: string) => {
     setSelectedLanguage(language);
@@ -112,8 +174,42 @@ function App() {
         </div>
       </div>
 
-      {/* Language Selector */}
-      <div className="absolute top-4 right-4 z-20">
+      {/* Top Right Controls - Language & Location */}
+      <div className="absolute top-4 right-4 z-20 flex items-center gap-3">
+        
+        {/* Location Auto-Detect */}
+        <div className="group relative">
+          <div 
+            className={`flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-orange-200/50 transition-all duration-300 ${
+              locationStatus === 'success' ? 'hover:bg-white hover:shadow-xl' : ''
+            }`}
+            title="Used to calculate accurate ritual timings based on your region"
+          >
+            <MapPin className={`w-4 h-4 transition-colors duration-300 ${
+              locationStatus === 'loading' ? 'text-amber-500 animate-pulse' :
+              locationStatus === 'success' ? 'text-green-600' :
+              'text-gray-400'
+            }`} />
+            <span className={`text-sm font-medium transition-colors duration-300 ${
+              locationStatus === 'loading' ? 'text-amber-700' :
+              locationStatus === 'success' ? 'text-amber-800' :
+              'text-gray-500'
+            }`}>
+              {location}
+            </span>
+            {locationStatus === 'loading' && (
+              <div className="w-3 h-3 border border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+            )}
+          </div>
+          
+          {/* Tooltip */}
+          <div className="absolute top-full right-0 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap z-30">
+            Used to calculate accurate ritual timings based on your region
+            <div className="absolute bottom-full right-4 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
+          </div>
+        </div>
+
+        {/* Language Selector */}
         <div className="relative">
           <button
             onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
