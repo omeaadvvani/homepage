@@ -280,27 +280,40 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
             </p>
           </div>
 
-          {/* Login Button */}
+          {/* Login Button - ENHANCED WITH PROPER INTERACTIONS */}
           <button
             onClick={handleLogin}
             disabled={!isFormValid || isLoggingIn}
-            className={`group flex items-center justify-center gap-3 w-full py-4 px-6 font-semibold rounded-2xl shadow-lg transition-all duration-300 transform ${
+            className={`group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 font-semibold rounded-2xl shadow-lg transition-all duration-300 transform ${
               isFormValid && !isLoggingIn
-                ? 'bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-amber-500 text-white hover:shadow-xl hover:scale-105 border-2 border-red-800/20'
+                ? 'bg-gradient-to-r from-amber-400 to-orange-500 hover:from-orange-500 hover:to-yellow-500 text-white hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] border-2 border-orange-600/30 hover:border-yellow-500/50 focus:outline-none focus:ring-4 focus:ring-orange-200/50'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
             title={!isFormValid ? "Please enter your email and PIN" : "Login to your account"}
           >
-            {isLoggingIn ? (
-              <>
-                <div className="w-5 h-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-lg">Logging in...</span>
-              </>
-            ) : (
-              <>
-                <LogIn className={`w-5 h-5 transition-transform duration-300 ${isFormValid ? 'group-hover:rotate-12' : ''}`} />
-                <span className="text-lg">Login</span>
-              </>
+            {/* Ripple Effect Background */}
+            {isFormValid && !isLoggingIn && (
+              <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-orange-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
+            )}
+            
+            {/* Button Content */}
+            <div className="relative z-10 flex items-center gap-3">
+              {isLoggingIn ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-lg">Logging in...</span>
+                </>
+              ) : (
+                <>
+                  <LogIn className={`w-5 h-5 transition-transform duration-300 ${isFormValid ? 'group-hover:rotate-12 group-active:rotate-6' : ''}`} />
+                  <span className="text-lg">Login</span>
+                </>
+              )}
+            </div>
+            
+            {/* Glow Effect */}
+            {isFormValid && !isLoggingIn && (
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
             )}
           </button>
 
