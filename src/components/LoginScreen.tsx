@@ -113,38 +113,38 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
   };
 
   return (
-    <div className="min-h-screen bg-spiritual-gradient relative overflow-hidden">
-      {/* Subtle overlay for depth */}
-      <div className="absolute inset-0 bg-gradient-to-br from-saffron-400/10 via-transparent to-maroon-900/5"></div>
+    <div className="min-h-screen bg-gradient-to-br from-amber-400 via-orange-200 to-cream-100 relative overflow-hidden">
+      {/* Diagonal gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-orange-300/10 to-red-900/5"></div>
       
       {/* Back Button - Top Left */}
-      <div className="absolute top-6 left-6 z-20">
+      <div className="absolute top-4 left-4 z-20">
         <button
           onClick={onBack}
-          className="group flex items-center gap-3 px-5 py-3 bg-white/95 backdrop-blur-sm rounded-full shadow-lg border border-saffron-200/60 hover:bg-white hover:shadow-xl hover:border-saffron-300 transition-all duration-300 text-maroon-800 font-medium font-soft-sans"
+          className="group flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-orange-200/50 hover:bg-white hover:shadow-xl transition-all duration-300 text-amber-800 font-medium"
           title="Back to Home"
         >
-          <ArrowLeft className="w-4 h-4 text-saffron-600 group-hover:-translate-x-1 transition-transform duration-300" />
-          <span className="text-sm tracking-spiritual">Back</span>
+          <ArrowLeft className="w-4 h-4 text-orange-600 group-hover:-translate-x-1 transition-transform duration-300" />
+          <span className="text-sm">Back</span>
         </button>
       </div>
 
       {/* Clear Form Button - Top Right */}
-      <div className="absolute top-6 right-6 z-20">
+      <div className="absolute top-4 right-4 z-20">
         <button
           onClick={clearForm}
-          className="group flex items-center gap-3 px-5 py-3 bg-white/95 backdrop-blur-sm rounded-full shadow-lg border border-saffron-200/60 hover:bg-white hover:shadow-xl hover:border-saffron-300 transition-all duration-300 text-maroon-800 font-medium font-soft-sans"
+          className="group flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-orange-200/50 hover:bg-white hover:shadow-xl transition-all duration-300 text-amber-800 font-medium"
           title="Clear Form"
         >
-          <RotateCcw className="w-4 h-4 text-saffron-600 group-hover:rotate-180 transition-transform duration-300" />
-          <span className="text-sm tracking-spiritual">Clear</span>
+          <RotateCcw className="w-4 h-4 text-orange-600 group-hover:rotate-180 transition-transform duration-300" />
+          <span className="text-sm">Clear</span>
         </button>
       </div>
       
       {/* Sacred Beginning Text - Bottom Right */}
-      <div className={`absolute bottom-8 right-8 z-10 transition-opacity duration-1000 ${showSacredText ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`absolute bottom-20 right-8 z-10 transition-opacity duration-1000 ${showSacredText ? 'opacity-100' : 'opacity-0'}`}>
         <div className="text-right">
-          <p className="text-3xl md:text-4xl font-spiritual text-maroon-900 tracking-spiritual select-none animate-float animate-glow opacity-30" 
+          <p className="text-2xl md:text-3xl font-serif text-red-900 tracking-wide select-none animate-float animate-glow opacity-30" 
              style={{ fontFamily: '"Noto Serif Devanagari", "Tiro Devanagari", serif' }}>
             शुभ आरंभ।
           </p>
@@ -152,27 +152,27 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-col items-center justify-center min-h-screen px-6 py-12 relative z-10">
+      <div className="flex flex-col items-center justify-center min-h-screen px-4 py-8 relative z-10">
         
-        {/* Header Section - Enhanced Typography */}
-        <div className="text-center mb-12 max-w-2xl" style={{ marginTop: '72px' }}>
-          <h1 className="text-5xl md:text-6xl font-spiritual font-bold text-maroon-900 mb-6 leading-spiritual tracking-spiritual">
+        {/* Header Section */}
+        <div className="text-center mb-8 max-w-lg">
+          <h1 className="text-4xl md:text-5xl font-bold text-amber-900 mb-4 leading-tight">
             Welcome Back
           </h1>
           
-          <p className="text-xl text-maroon-800/80 font-medium font-soft-sans tracking-wide-spiritual leading-relaxed-spiritual">
+          <p className="text-lg text-amber-800/80 font-medium">
             Enter your details to continue your spiritual journey
           </p>
         </div>
 
         {/* Login Form */}
-        <div className="w-full max-w-lg space-y-8">
+        <div className="w-full max-w-md space-y-6">
           
           {/* Email Address Section */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-xl border border-saffron-200/50">
-            <div className="flex items-center gap-4 mb-6">
-              <Mail className="w-6 h-6 text-saffron-600" />
-              <h3 className="text-xl font-semibold font-spiritual text-maroon-900 tracking-spiritual">Email Address</h3>
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-orange-200/50">
+            <div className="flex items-center gap-3 mb-4">
+              <Mail className="w-5 h-5 text-orange-600" />
+              <h3 className="text-lg font-semibold text-amber-900">Email Address</h3>
             </div>
             
             <div className="relative">
@@ -182,18 +182,18 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
                 onChange={(e) => handleEmailChange(e.target.value)}
                 onBlur={handleEmailBlur}
                 placeholder="yourname@example.com"
-                className={`w-full px-6 py-4 border-2 rounded-2xl focus:outline-none focus:ring-4 focus:ring-saffron-200/50 transition-all duration-300 bg-white/80 text-maroon-900 placeholder-maroon-600/50 font-soft-sans text-lg tracking-spiritual ${
+                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-200 transition-all duration-300 bg-white/70 text-amber-900 placeholder-amber-600/50 ${
                   emailError 
                     ? 'border-red-400 focus:border-red-500' 
                     : email && isEmailValid
                       ? 'border-green-400 focus:border-green-500'
-                      : 'border-saffron-200 focus:border-saffron-400 hover:border-saffron-300'
+                      : 'border-orange-200 focus:border-orange-400 hover:border-orange-300'
                 }`}
               />
               
               {email && isEmailValid && (
-                <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                  <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
                     <span className="text-white text-xs font-bold">✓</span>
                   </div>
                 </div>
@@ -201,7 +201,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
             </div>
             
             {emailError && (
-              <p className="text-sm text-red-600 mt-3 flex items-center gap-2 font-soft-sans">
+              <p className="text-sm text-red-600 mt-2 flex items-center gap-1">
                 <span className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
                   <span className="text-white text-xs font-bold">!</span>
                 </span>
@@ -211,23 +211,23 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
           </div>
 
           {/* PIN Entry Section */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-xl border border-saffron-200/50">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-4">
-                <Shield className="w-6 h-6 text-saffron-600" />
-                <h3 className="text-xl font-semibold font-spiritual text-maroon-900 tracking-spiritual">Enter your 4-digit PIN</h3>
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-orange-200/50">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <Shield className="w-5 h-5 text-orange-600" />
+                <h3 className="text-lg font-semibold text-amber-900">Enter your 4-digit PIN</h3>
               </div>
               <button
                 onClick={() => setShowPin(!showPin)}
-                className="p-2 text-maroon-600 hover:text-saffron-600 transition-colors duration-300 rounded-full hover:bg-saffron-50"
+                className="p-1 text-amber-600 hover:text-orange-600 transition-colors duration-300"
                 title={showPin ? "Hide PIN" : "Show PIN"}
               >
-                {showPin ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
             
             {/* PIN Input Fields */}
-            <div className="flex justify-center gap-4 mb-6">
+            <div className="flex justify-center gap-3 mb-4">
               {pin.map((digit, index) => (
                 <input
                   key={index}
@@ -239,10 +239,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
                   onChange={(e) => handlePinChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onPaste={index === 0 ? handlePaste : undefined}
-                  className={`w-14 h-14 text-center text-2xl font-bold border-2 rounded-2xl focus:outline-none focus:ring-4 transition-all duration-300 bg-white/80 text-maroon-900 hover:border-saffron-300 focus:scale-105 font-soft-sans ${
+                  className={`w-12 h-12 text-center text-xl font-bold border-2 rounded-xl focus:outline-none focus:ring-2 transition-all duration-300 bg-white/70 text-amber-900 hover:border-orange-300 focus:scale-105 ${
                     pinError 
-                      ? 'border-red-400 focus:border-red-500 focus:ring-red-200/50' 
-                      : 'border-saffron-200 focus:border-saffron-400 focus:ring-saffron-200/50'
+                      ? 'border-red-400 focus:border-red-500 focus:ring-red-200' 
+                      : 'border-orange-200 focus:border-orange-400 focus:ring-orange-200'
                   }`}
                   placeholder={showPin ? "0" : "•"}
                 />
@@ -250,8 +250,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
             </div>
             
             {pinError && (
-              <div className="text-center mb-6">
-                <p className="text-sm text-red-600 flex items-center justify-center gap-2 font-soft-sans">
+              <div className="text-center mb-4">
+                <p className="text-sm text-red-600 flex items-center justify-center gap-2">
                   <span className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
                     <span className="text-white text-xs font-bold">!</span>
                   </span>
@@ -260,7 +260,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
               </div>
             )}
             
-            <p className="text-sm text-maroon-700/70 text-center font-soft-sans leading-relaxed-spiritual">
+            <p className="text-sm text-amber-700/70 text-center">
               Enter the 4-digit PIN you created when signing up.
             </p>
           </div>
@@ -269,44 +269,49 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
           <button
             onClick={handleLogin}
             disabled={!isFormValid || isLoggingIn}
-            className={`group relative overflow-hidden flex items-center justify-center gap-4 w-full py-5 px-8 font-semibold font-soft-sans rounded-3xl shadow-xl transition-all duration-300 transform ${
+            className={`group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 font-semibold rounded-2xl shadow-lg transition-all duration-300 transform ${
               isFormValid && !isLoggingIn
-                ? 'bg-gradient-to-r from-saffron-400 to-saffron-500 hover:from-saffron-500 hover:to-yellow-500 text-white hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] border-2 border-saffron-600/30 hover:border-yellow-500/50 focus:outline-none focus:ring-4 focus:ring-saffron-200/50 animate-spiritual-pulse'
+                ? 'bg-gradient-to-r from-amber-400 to-orange-500 hover:from-orange-500 hover:to-yellow-500 text-white hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] border-2 border-orange-600/30 hover:border-yellow-500/50 focus:outline-none focus:ring-4 focus:ring-orange-200/50'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
             title={!isFormValid ? "Please enter your email and PIN" : "Login to your account"}
           >
-            {/* Glow Effect */}
+            {/* Ripple Effect Background */}
             {isFormValid && !isLoggingIn && (
-              <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-saffron-400 to-yellow-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-orange-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
             )}
             
             {/* Button Content */}
-            <div className="relative z-10 flex items-center gap-4">
+            <div className="relative z-10 flex items-center gap-3">
               {isLoggingIn ? (
                 <>
-                  <div className="w-6 h-6 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-xl tracking-spiritual">Logging in...</span>
+                  <div className="w-5 h-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-lg">Logging in...</span>
                 </>
               ) : (
                 <>
-                  <LogIn className={`w-6 h-6 transition-transform duration-300 ${isFormValid ? 'group-hover:rotate-12 group-active:rotate-6' : ''}`} />
-                  <span className="text-xl tracking-spiritual">Login</span>
+                  <LogIn className={`w-5 h-5 transition-transform duration-300 ${isFormValid ? 'group-hover:rotate-12 group-active:rotate-6' : ''}`} />
+                  <span className="text-lg">Login</span>
                 </>
               )}
             </div>
+            
+            {/* Glow Effect */}
+            {isFormValid && !isLoggingIn && (
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
+            )}
           </button>
 
           {/* Forgot PIN Link */}
           <div className="text-center">
             <button
               onClick={handleForgotPin}
-              className="group text-maroon-700 hover:text-saffron-600 font-medium font-soft-sans transition-colors duration-300 relative text-lg tracking-spiritual"
+              className="group text-amber-700 hover:text-orange-600 font-medium transition-colors duration-300 relative"
               title="Reset your PIN via email"
             >
               <span className="relative">
                 Forgot your PIN?
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-saffron-400 group-hover:w-full transition-all duration-300"></span>
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-300"></span>
               </span>
             </button>
           </div>

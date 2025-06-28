@@ -82,38 +82,38 @@ const DemoScreen: React.FC<DemoScreenProps> = ({ onBack }) => {
   };
 
   return (
-    <div className="min-h-screen bg-spiritual-gradient relative overflow-hidden">
-      {/* Subtle overlay for depth */}
-      <div className="absolute inset-0 bg-gradient-to-br from-saffron-400/10 via-transparent to-maroon-900/5"></div>
+    <div className="min-h-screen bg-gradient-to-br from-amber-400 via-orange-200 to-cream-100 relative overflow-hidden">
+      {/* Diagonal gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-orange-300/10 to-red-900/5"></div>
       
       {/* Back Button - Top Left */}
-      <div className="absolute top-6 left-6 z-20">
+      <div className="absolute top-4 left-4 z-20">
         <button
           onClick={onBack}
-          className="group flex items-center gap-3 px-5 py-3 bg-white/95 backdrop-blur-sm rounded-full shadow-lg border border-saffron-200/60 hover:bg-white hover:shadow-xl hover:border-saffron-300 transition-all duration-300 text-maroon-800 font-medium font-soft-sans"
+          className="group flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-orange-200/50 hover:bg-white hover:shadow-xl transition-all duration-300 text-amber-800 font-medium"
           title="Back to Home"
         >
-          <ArrowLeft className="w-4 h-4 text-saffron-600 group-hover:-translate-x-1 transition-transform duration-300" />
-          <span className="text-sm tracking-spiritual">Back</span>
+          <ArrowLeft className="w-4 h-4 text-orange-600 group-hover:-translate-x-1 transition-transform duration-300" />
+          <span className="text-sm">Back</span>
         </button>
       </div>
 
       {/* Reset Button - Top Right */}
-      <div className="absolute top-6 right-6 z-20">
+      <div className="absolute top-4 right-4 z-20">
         <button
           onClick={handleReset}
-          className="group flex items-center gap-3 px-5 py-3 bg-white/95 backdrop-blur-sm rounded-full shadow-lg border border-saffron-200/60 hover:bg-white hover:shadow-xl hover:border-saffron-300 transition-all duration-300 text-maroon-800 font-medium font-soft-sans"
+          className="group flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-orange-200/50 hover:bg-white hover:shadow-xl transition-all duration-300 text-amber-800 font-medium"
           title="Reset Demo"
         >
-          <RotateCcw className="w-4 h-4 text-saffron-600 group-hover:rotate-180 transition-transform duration-300" />
-          <span className="text-sm tracking-spiritual">Reset</span>
+          <RotateCcw className="w-4 h-4 text-orange-600 group-hover:rotate-180 transition-transform duration-300" />
+          <span className="text-sm">Reset</span>
         </button>
       </div>
       
       {/* Sacred Beginning Text - Bottom Right */}
-      <div className={`absolute bottom-8 right-8 z-10 transition-opacity duration-1000 ${showSacredText ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`absolute bottom-20 right-8 z-10 transition-opacity duration-1000 ${showSacredText ? 'opacity-100' : 'opacity-0'}`}>
         <div className="text-right">
-          <p className="text-3xl md:text-4xl font-spiritual text-maroon-900 tracking-spiritual select-none animate-float animate-glow opacity-30" 
+          <p className="text-2xl md:text-3xl font-serif text-red-900 tracking-wide select-none animate-float animate-glow opacity-30" 
              style={{ fontFamily: '"Noto Serif Devanagari", "Tiro Devanagari", serif' }}>
             शुभ आरंभ।
           </p>
@@ -121,36 +121,36 @@ const DemoScreen: React.FC<DemoScreenProps> = ({ onBack }) => {
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-col items-center justify-center min-h-screen px-6 py-12 relative z-10">
+      <div className="flex flex-col items-center justify-center min-h-screen px-4 py-8 relative z-10">
         
-        {/* Header Section - Enhanced Typography */}
-        <div className="text-center mb-18 max-w-3xl" style={{ marginTop: '72px' }}>
-          <h1 className="text-5xl md:text-6xl font-spiritual font-bold text-maroon-900 mb-6 leading-spiritual tracking-spiritual">
+        {/* Header Section */}
+        <div className="text-center mb-12 max-w-2xl">
+          <h1 className="text-4xl md:text-5xl font-bold text-amber-900 mb-4 leading-tight">
             Ask VoiceVedic
           </h1>
           
-          <p className="text-2xl text-maroon-800/80 font-medium font-soft-sans mb-4 tracking-wide-spiritual leading-relaxed-spiritual">
-            Try how it works — no login needed
+          <p className="text-xl text-amber-800/80 font-medium mb-2">
+            Try how it works — without signing in
           </p>
           
-          <div className="flex items-center justify-center gap-3 text-maroon-700/70">
-            <Volume2 className="w-6 h-6" />
-            <span className="text-lg font-soft-sans tracking-spiritual">Experience our spiritual AI assistant</span>
+          <div className="flex items-center justify-center gap-2 text-amber-700/70">
+            <Volume2 className="w-5 h-5" />
+            <span className="text-sm">Experience our spiritual AI assistant</span>
           </div>
         </div>
 
         {/* Demo Chat Interface */}
-        <div className="w-full max-w-3xl space-y-8">
+        <div className="w-full max-w-2xl space-y-6">
           
           {/* User Question Bubble */}
           <div className="flex justify-end">
-            <div className="max-w-lg">
-              <div className="bg-gradient-to-r from-saffron-400 to-saffron-500 text-white px-8 py-6 rounded-3xl rounded-tr-lg shadow-xl">
-                <div className="flex items-center gap-3 mb-3">
-                  <MessageCircle className="w-5 h-5" />
-                  <span className="text-sm font-medium font-soft-sans opacity-90 tracking-spiritual">You asked:</span>
+            <div className="max-w-md">
+              <div className="bg-gradient-to-r from-orange-400 to-amber-500 text-white px-6 py-4 rounded-2xl rounded-tr-md shadow-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <MessageCircle className="w-4 h-4" />
+                  <span className="text-sm font-medium opacity-90">You asked:</span>
                 </div>
-                <p className="text-xl font-medium font-soft-sans tracking-spiritual">
+                <p className="text-lg font-medium">
                   {currentDemo.question}
                 </p>
               </div>
@@ -159,17 +159,17 @@ const DemoScreen: React.FC<DemoScreenProps> = ({ onBack }) => {
 
           {/* VoiceVedic Response Bubble */}
           <div className="flex justify-start">
-            <div className="max-w-lg">
+            <div className="max-w-md">
               {/* Typing Indicator */}
               {isTyping && (
-                <div className="bg-white/95 backdrop-blur-sm border border-saffron-200/60 px-8 py-6 rounded-3xl rounded-tl-lg shadow-xl mb-6">
-                  <div className="flex items-center gap-4">
-                    <Sparkles className="w-6 h-6 text-saffron-600 animate-pulse" />
-                    <span className="text-maroon-800 font-medium font-soft-sans text-lg tracking-spiritual">VoiceVedic is thinking...</span>
+                <div className="bg-white/90 backdrop-blur-sm border border-orange-200/50 px-6 py-4 rounded-2xl rounded-tl-md shadow-lg mb-4">
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="w-5 h-5 text-orange-600 animate-pulse" />
+                    <span className="text-amber-800 font-medium">VoiceVedic is thinking...</span>
                     <div className="flex gap-1">
-                      <div className="w-3 h-3 bg-saffron-400 rounded-full animate-bounce"></div>
-                      <div className="w-3 h-3 bg-saffron-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-3 h-3 bg-saffron-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                     </div>
                   </div>
                 </div>
@@ -177,22 +177,22 @@ const DemoScreen: React.FC<DemoScreenProps> = ({ onBack }) => {
 
               {/* Actual Response */}
               {showResponse && (
-                <div className={`bg-white/95 backdrop-blur-sm border border-saffron-200/60 px-8 py-6 rounded-3xl rounded-tl-lg shadow-xl transition-all duration-500 transform ${
+                <div className={`bg-white/90 backdrop-blur-sm border border-orange-200/50 px-6 py-5 rounded-2xl rounded-tl-md shadow-lg transition-all duration-500 transform ${
                   showResponse ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
                 }`}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <Sparkles className="w-6 h-6 text-saffron-600" />
-                    <span className="text-lg font-medium font-soft-sans text-maroon-800 tracking-spiritual">VoiceVedic says:</span>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles className="w-5 h-5 text-orange-600" />
+                    <span className="text-sm font-medium text-amber-800">VoiceVedic says:</span>
                   </div>
                   
-                  <div className="space-y-3">
-                    <p className="text-xl font-semibold font-spiritual text-maroon-900 tracking-spiritual">
+                  <div className="space-y-2">
+                    <p className="text-lg font-semibold text-amber-900">
                       {currentDemo.response.line1}
                     </p>
-                    <p className="text-lg text-maroon-800 font-soft-sans leading-relaxed-spiritual">
+                    <p className="text-base text-amber-800">
                       {currentDemo.response.line2}
                     </p>
-                    <p className="text-lg text-maroon-700/80 font-soft-sans leading-relaxed-spiritual">
+                    <p className="text-base text-amber-700/80">
                       {currentDemo.response.line3}
                     </p>
                   </div>
@@ -203,30 +203,27 @@ const DemoScreen: React.FC<DemoScreenProps> = ({ onBack }) => {
 
           {/* Try Another Button */}
           {showResponse && (
-            <div className="flex justify-center pt-8">
+            <div className="flex justify-center pt-6">
               <button
                 onClick={handleTryAnother}
-                className="group relative overflow-hidden flex items-center justify-center gap-4 px-10 py-5 bg-gradient-to-r from-saffron-400 to-saffron-500 hover:from-saffron-500 hover:to-yellow-500 text-white font-semibold font-soft-sans rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border-2 border-saffron-600/30 hover:border-yellow-500/50 focus:outline-none focus:ring-4 focus:ring-saffron-200/50"
+                className="group flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-orange-500 hover:to-yellow-500 text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-2 border-orange-600/30"
               >
-                {/* Glow Effect */}
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-saffron-400 to-yellow-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
-                
-                <RotateCcw className="w-6 h-6 group-hover:rotate-180 transition-transform duration-300" />
-                <span className="text-xl tracking-spiritual">Try Another Question</span>
+                <RotateCcw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-300" />
+                <span className="text-lg">Try Another Question</span>
               </button>
             </div>
           )}
 
           {/* Demo Progress Indicator */}
-          <div className="flex justify-center pt-6">
-            <div className="flex gap-3">
+          <div className="flex justify-center pt-4">
+            <div className="flex gap-2">
               {demoQuestions.map((_, index) => (
                 <div
                   key={index}
-                  className={`h-3 rounded-full transition-all duration-300 ${
+                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
                     index === currentQuestionIndex
-                      ? 'bg-saffron-500 w-8'
-                      : 'bg-saffron-200 w-3'
+                      ? 'bg-orange-500 w-6'
+                      : 'bg-orange-200'
                   }`}
                 />
               ))}
@@ -235,23 +232,20 @@ const DemoScreen: React.FC<DemoScreenProps> = ({ onBack }) => {
 
           {/* Call to Action */}
           {showResponse && (
-            <div className="text-center pt-12">
-              <div className="bg-gradient-to-r from-cream-50 to-saffron-50 border border-saffron-200/60 rounded-3xl p-8 shadow-lg">
-                <h3 className="text-2xl font-semibold font-spiritual text-maroon-900 mb-4 tracking-spiritual">
+            <div className="text-center pt-8">
+              <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200/50 rounded-2xl p-6">
+                <h3 className="text-xl font-semibold text-amber-900 mb-2">
                   Ready to start your spiritual journey?
                 </h3>
-                <p className="text-maroon-700/80 mb-6 font-soft-sans text-lg leading-relaxed-spiritual tracking-spiritual">
+                <p className="text-amber-700/80 mb-4">
                   Sign up to get personalized daily guidance, ritual reminders, and access to our complete spiritual calendar.
                 </p>
                 <button
                   onClick={onBack}
-                  className="group relative overflow-hidden inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-maroon-500 to-maroon-600 hover:from-maroon-600 hover:to-red-600 text-white font-semibold font-soft-sans rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border-2 border-maroon-700/30 hover:border-red-600/50 focus:outline-none focus:ring-4 focus:ring-maroon-200/50"
+                  className="group inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-rose-600 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105"
                 >
-                  {/* Glow Effect */}
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-maroon-500 to-red-600 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
-                  
-                  <span className="text-lg tracking-spiritual">Get Started</span>
-                  <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
+                  <span>Get Started</span>
+                  <Sparkles className="w-4 h-4 group-hover:rotate-12 transition-transform duration-300" />
                 </button>
               </div>
             </div>
