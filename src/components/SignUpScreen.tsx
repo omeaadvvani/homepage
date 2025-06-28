@@ -190,13 +190,13 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
           <div className="flex items-center justify-center gap-3 mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
             <h1 className="text-3xl md:text-4xl font-bold text-amber-900 leading-tight">
-              {step === 'create' ? 'Just One Step Away 🔐' : 'Confirm Your PIN 🔒'}
+              {step === 'create' ? 'Complete Your Setup' : 'Confirm Your PIN 🔒'}
             </h1>
           </div>
           
           <p className="text-lg text-amber-800/80 font-medium">
             {step === 'create' 
-              ? "Let's save your preferences and complete your setup."
+              ? "Secure your preferences with a quick login method."
               : "Please re-enter your PIN to confirm it's correct."
             }
           </p>
@@ -219,7 +219,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
                   value={email}
                   onChange={(e) => handleEmailChange(e.target.value)}
                   onBlur={handleEmailBlur}
-                  placeholder="Enter your email address"
+                  placeholder="yourname@example.com"
                   className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-200 transition-all duration-300 bg-white/70 text-amber-900 placeholder-amber-600/50 ${
                     emailError 
                       ? 'border-red-400 focus:border-red-500' 
@@ -365,14 +365,14 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
             </div>
           )}
 
-          {/* Continue/Create Account Button */}
-          {step === 'create' && isPinComplete && isEmailValid && (
+          {/* Main CTA Button - Finish Sign Up */}
+          {step === 'create' && isEmailValid && isPinComplete && (
             <button
               onClick={handleContinueToConfirm}
-              className="group flex items-center justify-center gap-3 w-full py-4 px-6 bg-gradient-to-r from-blue-400 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-2 border-blue-800/20"
+              className="group flex items-center justify-center gap-3 w-full py-4 px-6 bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-amber-500 text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-2 border-red-800/20"
             >
-              <Shield className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
-              <span className="text-lg">Continue to Confirm PIN</span>
+              <CheckCircle className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
+              <span className="text-lg">Finish Sign Up</span>
             </button>
           )}
 
