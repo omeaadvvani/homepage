@@ -156,45 +156,45 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
   const isFormValid = isEmailValid && isPinComplete && (step === 'create' || (isConfirmPinComplete && pinsMatch));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-400 via-orange-200 to-cream-100 relative overflow-hidden">
-      {/* Diagonal gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-orange-300/10 to-red-900/5"></div>
+    <div className="min-h-screen bg-spiritual-diagonal relative overflow-hidden font-sans">
+      {/* Spiritual Visual Layer */}
+      <div className="absolute inset-0 bg-gradient-to-br from-spiritual-400/10 via-spiritual-300/5 to-spiritual-900/5"></div>
       
       {/* Back Button - Top Left */}
-      <div className="absolute top-4 left-4 z-20">
+      <div className="absolute top-6 left-6 z-20">
         <button
           onClick={step === 'confirm' ? handleBackToCreate : onBack}
-          className="group flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-orange-200/50 hover:bg-white hover:shadow-xl transition-all duration-300 text-amber-800 font-medium"
+          className="group flex items-center gap-3 px-4 py-3 bg-white/90 backdrop-blur-sm rounded-spiritual shadow-spiritual border border-spiritual-200/50 hover:bg-white hover:shadow-spiritual-lg transition-all duration-300 text-spiritual-800 font-medium tracking-spiritual"
           title={step === 'confirm' ? "Back to PIN Creation" : "Back to Onboarding"}
         >
-          <ArrowLeft className="w-4 h-4 text-orange-600 group-hover:-translate-x-1 transition-transform duration-300" />
+          <ArrowLeft className="w-5 h-5 text-spiritual-600 group-hover:-translate-x-1 transition-transform duration-300" />
           <span className="text-sm">Back</span>
         </button>
       </div>
       
       {/* Sacred Beginning Text - Bottom Right */}
-      <div className={`absolute bottom-20 right-8 z-10 transition-opacity duration-1000 ${showSacredText ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`absolute bottom-24 right-8 z-10 transition-opacity duration-1000 ${showSacredText ? 'opacity-100' : 'opacity-0'}`}>
         <div className="text-right">
-          <p className="text-2xl md:text-3xl font-serif text-red-900 tracking-wide select-none animate-float animate-glow opacity-30" 
-             style={{ fontFamily: '"Noto Serif Devanagari", "Tiro Devanagari", serif' }}>
+          <p className="text-2xl md:text-3xl font-spiritual text-spiritual-900 tracking-spiritual select-none animate-float animate-glow opacity-30" 
+             style={{ lineHeight: '1.3' }}>
             शुभ आरंभ।
           </p>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-col items-center justify-start min-h-screen px-4 py-8 relative z-10">
+      <div className="flex flex-col items-center justify-start min-h-screen px-6 py-8 relative z-10">
         
         {/* Header Section */}
-        <div className="text-center mb-8 max-w-lg mt-12">
+        <div className="text-center mb-12 max-w-lg mt-16 animate-fade-in">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <CheckCircle className="w-8 h-8 text-green-600" />
-            <h1 className="text-3xl md:text-4xl font-bold text-amber-900 leading-tight">
+            <CheckCircle className="w-8 h-8 text-accent-600" />
+            <h1 className="text-3xl md:text-4xl font-bold text-spiritual-900 leading-spiritual tracking-spiritual">
               {step === 'create' ? 'Complete Your Setup' : 'Confirm Your PIN 🔒'}
             </h1>
           </div>
           
-          <p className="text-lg text-amber-800/80 font-medium">
+          <p className="text-lg text-spiritual-800/80 font-medium tracking-spiritual line-height-spiritual-relaxed">
             {step === 'create' 
               ? "Secure your preferences with a quick login method."
               : "Please re-enter your PIN to confirm it's correct."
@@ -203,14 +203,14 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
         </div>
 
         {/* Sign-Up Form */}
-        <div className="w-full max-w-md space-y-6">
+        <div className="w-full max-w-md space-y-6 animate-slide-up">
           
           {/* Email Address Section - Only show in create step */}
           {step === 'create' && (
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-orange-200/50">
+            <div className="bg-white/90 backdrop-blur-sm rounded-card p-6 shadow-spiritual border border-spiritual-200/50">
               <div className="flex items-center gap-3 mb-4">
-                <Mail className="w-5 h-5 text-orange-600" />
-                <h3 className="text-lg font-semibold text-amber-900">Email Address</h3>
+                <Mail className="w-5 h-5 text-spiritual-600" />
+                <h3 className="text-lg font-semibold text-spiritual-900 tracking-spiritual">Email Address</h3>
               </div>
               
               <div className="relative">
@@ -220,19 +220,19 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
                   onChange={(e) => handleEmailChange(e.target.value)}
                   onBlur={handleEmailBlur}
                   placeholder="yourname@example.com"
-                  className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-200 transition-all duration-300 bg-white/70 text-amber-900 placeholder-amber-600/50 ${
+                  className={`w-full px-4 py-3 border-2 rounded-spiritual focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 transition-all duration-300 bg-white/70 text-spiritual-900 placeholder-spiritual-600/50 tracking-spiritual ${
                     emailError 
                       ? 'border-red-400 focus:border-red-500' 
                       : email && isEmailValid
-                        ? 'border-green-400 focus:border-green-500'
-                        : 'border-orange-200 focus:border-orange-400 hover:border-orange-300'
+                        ? 'border-accent-400 focus:border-accent-500'
+                        : 'border-spiritual-200 focus:border-spiritual-400 hover:border-spiritual-300'
                   }`}
                 />
                 
                 {email && (
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                     {isEmailValid ? (
-                      <CheckCircle className="w-5 h-5 text-green-500" />
+                      <CheckCircle className="w-5 h-5 text-accent-500" />
                     ) : emailError ? (
                       <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
                         <span className="text-white text-xs font-bold">!</span>
@@ -243,7 +243,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
               </div>
               
               {emailError && (
-                <p className="text-sm text-red-600 mt-2 flex items-center gap-1">
+                <p className="text-sm text-red-600 mt-2 flex items-center gap-1 tracking-spiritual">
                   <span className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
                     <span className="text-white text-xs font-bold">!</span>
                   </span>
@@ -255,12 +255,12 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
 
           {/* Email Summary - Show in confirm step */}
           {step === 'confirm' && (
-            <div className="bg-green-50/80 backdrop-blur-sm rounded-2xl p-4 border border-green-200/50">
+            <div className="bg-accent-50/80 backdrop-blur-sm rounded-card p-4 border border-accent-200/50">
               <div className="flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-green-600" />
+                <CheckCircle className="w-5 h-5 text-accent-600" />
                 <div>
-                  <p className="text-sm font-medium text-green-800">Email Address</p>
-                  <p className="text-green-700">{email}</p>
+                  <p className="text-sm font-medium text-accent-800 tracking-spiritual">Email Address</p>
+                  <p className="text-accent-700 tracking-spiritual">{email}</p>
                 </div>
               </div>
             </div>
@@ -268,15 +268,15 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
 
           {/* Create PIN Section */}
           {step === 'create' && (
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-orange-200/50">
+            <div className="bg-white/90 backdrop-blur-sm rounded-card p-6 shadow-spiritual border border-spiritual-200/50">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <Shield className="w-5 h-5 text-orange-600" />
-                  <h3 className="text-lg font-semibold text-amber-900">Create a 4-digit PIN</h3>
+                  <Shield className="w-5 h-5 text-spiritual-600" />
+                  <h3 className="text-lg font-semibold text-spiritual-900 tracking-spiritual">Create a 4-digit PIN</h3>
                 </div>
                 <button
                   onClick={() => setShowPin(!showPin)}
-                  className="p-1 text-amber-600 hover:text-orange-600 transition-colors duration-300"
+                  className="p-1 text-spiritual-600 hover:text-spiritual-700 transition-colors duration-300"
                   title={showPin ? "Hide PIN" : "Show PIN"}
                 >
                   {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -296,13 +296,13 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
                     onChange={(e) => handlePinChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     onPaste={index === 0 ? (e) => handlePaste(e) : undefined}
-                    className="w-12 h-12 text-center text-xl font-bold border-2 border-orange-200 rounded-xl focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200 transition-all duration-300 bg-white/70 text-amber-900 hover:border-orange-300 focus:scale-105"
+                    className="w-12 h-12 text-center text-xl font-bold border-2 border-spiritual-200 rounded-spiritual focus:border-spiritual-400 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 transition-all duration-300 bg-white/70 text-spiritual-900 hover:border-spiritual-300 focus:scale-105"
                     placeholder={showPin ? "0" : "•"}
                   />
                 ))}
               </div>
               
-              <p className="text-sm text-amber-700/70 text-center">
+              <p className="text-sm text-spiritual-700/70 text-center tracking-spiritual">
                 This PIN helps you quickly access your account across devices.
               </p>
             </div>
@@ -310,15 +310,15 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
 
           {/* Confirm PIN Section */}
           {step === 'confirm' && (
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-orange-200/50">
+            <div className="bg-white/90 backdrop-blur-sm rounded-card p-6 shadow-spiritual border border-spiritual-200/50">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <Lock className="w-5 h-5 text-orange-600" />
-                  <h3 className="text-lg font-semibold text-amber-900">Confirm your PIN</h3>
+                  <Lock className="w-5 h-5 text-spiritual-600" />
+                  <h3 className="text-lg font-semibold text-spiritual-900 tracking-spiritual">Confirm your PIN</h3>
                 </div>
                 <button
                   onClick={() => setShowConfirmPin(!showConfirmPin)}
-                  className="p-1 text-amber-600 hover:text-orange-600 transition-colors duration-300"
+                  className="p-1 text-spiritual-600 hover:text-spiritual-700 transition-colors duration-300"
                   title={showConfirmPin ? "Hide PIN" : "Show PIN"}
                 >
                   {showConfirmPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -338,10 +338,10 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
                     onChange={(e) => handlePinChange(index, e.target.value, true)}
                     onKeyDown={(e) => handleKeyDown(index, e, true)}
                     onPaste={index === 0 ? (e) => handlePaste(e, true) : undefined}
-                    className={`w-12 h-12 text-center text-xl font-bold border-2 rounded-xl focus:outline-none focus:ring-2 transition-all duration-300 bg-white/70 text-amber-900 hover:border-orange-300 focus:scale-105 ${
+                    className={`w-12 h-12 text-center text-xl font-bold border-2 rounded-spiritual focus:outline-none focus:ring-4 transition-all duration-300 bg-white/70 text-spiritual-900 hover:border-spiritual-300 focus:scale-105 ${
                       pinError 
                         ? 'border-red-400 focus:border-red-500 focus:ring-red-200' 
-                        : 'border-orange-200 focus:border-orange-400 focus:ring-orange-200'
+                        : 'border-spiritual-200 focus:border-spiritual-400 focus:ring-spiritual-200/50'
                     }`}
                     placeholder={showConfirmPin ? "0" : "•"}
                   />
@@ -350,7 +350,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
               
               {pinError && (
                 <div className="text-center mb-4">
-                  <p className="text-sm text-red-600 flex items-center justify-center gap-2">
+                  <p className="text-sm text-red-600 flex items-center justify-center gap-2 tracking-spiritual">
                     <span className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
                       <span className="text-white text-xs font-bold">!</span>
                     </span>
@@ -359,7 +359,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
                 </div>
               )}
               
-              <p className="text-sm text-amber-700/70 text-center">
+              <p className="text-sm text-spiritual-700/70 text-center tracking-spiritual">
                 Re-enter the same 4-digit PIN you created above.
               </p>
             </div>
@@ -369,9 +369,12 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
           {step === 'create' && isEmailValid && isPinComplete && (
             <button
               onClick={handleContinueToConfirm}
-              className="group flex items-center justify-center gap-3 w-full py-4 px-6 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-rose-600 text-white font-semibold rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-2 border-red-800/20"
+              className="group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 bg-gradient-to-r from-spiritual-900 to-red-600 hover:from-red-600 hover:to-rose-600 text-white font-semibold rounded-button shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border-2 border-spiritual-900/30 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 tracking-spiritual"
             >
-              <Lock className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
+              {/* Glow Effect */}
+              <div className="absolute inset-0 rounded-button bg-gradient-to-r from-spiritual-900 to-red-600 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
+              
+              <Lock className="w-5 h-5 group-hover:rotate-12 group-active:rotate-6 transition-transform duration-300" />
               <span className="text-lg">Confirm PIN</span>
             </button>
           )}
@@ -381,12 +384,17 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
             <button
               onClick={handleConfirmPin}
               disabled={isCreatingAccount}
-              className={`group flex items-center justify-center gap-3 w-full py-4 px-6 font-semibold rounded-2xl shadow-lg transition-all duration-300 transform ${
+              className={`group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 font-semibold rounded-button shadow-spiritual transition-all duration-300 transform tracking-spiritual ${
                 isCreatingAccount
                   ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-orange-400 to-orange-500 hover:from-orange-500 hover:to-amber-500 text-white hover:shadow-xl hover:scale-105 border-2 border-red-800/20'
+                  : 'bg-gradient-to-r from-spiritual-400 to-spiritual-500 hover:from-spiritual-500 hover:to-spiritual-600 text-white hover:shadow-spiritual-lg hover:scale-[1.02] active:scale-[0.98] border-2 border-spiritual-600/30 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50'
               }`}
             >
+              {/* Glow Effect */}
+              {!isCreatingAccount && (
+                <div className="absolute inset-0 rounded-button bg-gradient-to-r from-spiritual-400 to-spiritual-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
+              )}
+              
               {isCreatingAccount ? (
                 <>
                   <div className="w-5 h-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
@@ -394,7 +402,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
                 </>
               ) : (
                 <>
-                  <CheckCircle className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" />
+                  <CheckCircle className="w-5 h-5 group-hover:rotate-12 group-active:rotate-6 transition-transform duration-300" />
                   <span className="text-lg">Finish Sign Up</span>
                 </>
               )}
@@ -407,10 +415,10 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
               {/* OR Divider */}
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-orange-200/60"></div>
+                  <div className="w-full border-t border-spiritual-200/60"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-gradient-to-br from-amber-400 via-orange-200 to-cream-100 text-amber-700 font-medium">
+                  <span className="px-4 bg-spiritual-diagonal text-spiritual-700 font-medium tracking-spiritual">
                     or
                   </span>
                 </div>
@@ -419,7 +427,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
               {/* Google Sign-Up Button */}
               <button
                 onClick={handleGoogleSignUp}
-                className="group flex items-center justify-center gap-4 w-full py-4 px-6 bg-white border-2 border-gray-200 hover:border-gray-300 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 font-medium text-gray-700 hover:text-gray-900"
+                className="group flex items-center justify-center gap-4 w-full py-4 px-6 bg-white border-2 border-gray-200 hover:border-gray-300 rounded-button shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] font-medium text-gray-700 hover:text-gray-900 tracking-spiritual focus:outline-none focus:ring-4 focus:ring-gray-200/50"
               >
                 {/* Google G Logo */}
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -433,9 +441,9 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
 
               {/* Terms & Privacy */}
               <div className="text-center">
-                <p className="text-sm text-amber-700/70">
+                <p className="text-sm text-spiritual-700/70 tracking-spiritual">
                   By signing up, you agree to our{' '}
-                  <button className="text-orange-600 hover:text-orange-700 underline hover:no-underline transition-all duration-300">
+                  <button className="text-spiritual-600 hover:text-spiritual-700 underline hover:no-underline transition-all duration-300">
                     Terms & Privacy Policy
                   </button>
                   .

@@ -113,66 +113,66 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-400 via-orange-200 to-cream-100 relative overflow-hidden">
-      {/* Diagonal gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-orange-300/10 to-red-900/5"></div>
+    <div className="min-h-screen bg-spiritual-diagonal relative overflow-hidden font-sans">
+      {/* Spiritual Visual Layer */}
+      <div className="absolute inset-0 bg-gradient-to-br from-spiritual-400/10 via-spiritual-300/5 to-spiritual-900/5"></div>
       
       {/* Back Button - Top Left */}
-      <div className="absolute top-4 left-4 z-20">
+      <div className="absolute top-6 left-6 z-20">
         <button
           onClick={onBack}
-          className="group flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-orange-200/50 hover:bg-white hover:shadow-xl transition-all duration-300 text-amber-800 font-medium"
+          className="group flex items-center gap-3 px-4 py-3 bg-white/90 backdrop-blur-sm rounded-spiritual shadow-spiritual border border-spiritual-200/50 hover:bg-white hover:shadow-spiritual-lg transition-all duration-300 text-spiritual-800 font-medium tracking-spiritual"
           title="Back to Home"
         >
-          <ArrowLeft className="w-4 h-4 text-orange-600 group-hover:-translate-x-1 transition-transform duration-300" />
+          <ArrowLeft className="w-5 h-5 text-spiritual-600 group-hover:-translate-x-1 transition-transform duration-300" />
           <span className="text-sm">Back</span>
         </button>
       </div>
 
       {/* Clear Form Button - Top Right */}
-      <div className="absolute top-4 right-4 z-20">
+      <div className="absolute top-6 right-6 z-20">
         <button
           onClick={clearForm}
-          className="group flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-orange-200/50 hover:bg-white hover:shadow-xl transition-all duration-300 text-amber-800 font-medium"
+          className="group flex items-center gap-3 px-4 py-3 bg-white/90 backdrop-blur-sm rounded-spiritual shadow-spiritual border border-spiritual-200/50 hover:bg-white hover:shadow-spiritual-lg transition-all duration-300 text-spiritual-800 font-medium tracking-spiritual"
           title="Clear Form"
         >
-          <RotateCcw className="w-4 h-4 text-orange-600 group-hover:rotate-180 transition-transform duration-300" />
+          <RotateCcw className="w-5 h-5 text-spiritual-600 group-hover:rotate-180 transition-transform duration-300" />
           <span className="text-sm">Clear</span>
         </button>
       </div>
       
       {/* Sacred Beginning Text - Bottom Right */}
-      <div className={`absolute bottom-20 right-8 z-10 transition-opacity duration-1000 ${showSacredText ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`absolute bottom-24 right-8 z-10 transition-opacity duration-1000 ${showSacredText ? 'opacity-100' : 'opacity-0'}`}>
         <div className="text-right">
-          <p className="text-2xl md:text-3xl font-serif text-red-900 tracking-wide select-none animate-float animate-glow opacity-30" 
-             style={{ fontFamily: '"Noto Serif Devanagari", "Tiro Devanagari", serif' }}>
+          <p className="text-2xl md:text-3xl font-spiritual text-spiritual-900 tracking-spiritual select-none animate-float animate-glow opacity-30" 
+             style={{ lineHeight: '1.3' }}>
             शुभ आरंभ।
           </p>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-col items-center justify-center min-h-screen px-4 py-8 relative z-10">
+      <div className="flex flex-col items-center justify-center min-h-screen px-6 py-8 relative z-10">
         
         {/* Header Section */}
-        <div className="text-center mb-8 max-w-lg">
-          <h1 className="text-4xl md:text-5xl font-bold text-amber-900 mb-4 leading-tight">
+        <div className="text-center mb-12 max-w-lg animate-fade-in">
+          <h1 className="text-4xl md:text-5xl font-bold text-spiritual-900 mb-6 leading-spiritual tracking-spiritual">
             Welcome Back
           </h1>
           
-          <p className="text-lg text-amber-800/80 font-medium">
+          <p className="text-lg text-spiritual-800/80 font-medium tracking-spiritual line-height-spiritual-relaxed">
             Enter your details to continue your spiritual journey
           </p>
         </div>
 
         {/* Login Form */}
-        <div className="w-full max-w-md space-y-6">
+        <div className="w-full max-w-md space-y-6 animate-slide-up">
           
           {/* Email Address Section */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-orange-200/50">
+          <div className="bg-white/90 backdrop-blur-sm rounded-card p-6 shadow-spiritual border border-spiritual-200/50">
             <div className="flex items-center gap-3 mb-4">
-              <Mail className="w-5 h-5 text-orange-600" />
-              <h3 className="text-lg font-semibold text-amber-900">Email Address</h3>
+              <Mail className="w-5 h-5 text-spiritual-600" />
+              <h3 className="text-lg font-semibold text-spiritual-900 tracking-spiritual">Email Address</h3>
             </div>
             
             <div className="relative">
@@ -182,18 +182,18 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
                 onChange={(e) => handleEmailChange(e.target.value)}
                 onBlur={handleEmailBlur}
                 placeholder="yourname@example.com"
-                className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-200 transition-all duration-300 bg-white/70 text-amber-900 placeholder-amber-600/50 ${
+                className={`w-full px-4 py-3 border-2 rounded-spiritual focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 transition-all duration-300 bg-white/70 text-spiritual-900 placeholder-spiritual-600/50 tracking-spiritual ${
                   emailError 
                     ? 'border-red-400 focus:border-red-500' 
                     : email && isEmailValid
-                      ? 'border-green-400 focus:border-green-500'
-                      : 'border-orange-200 focus:border-orange-400 hover:border-orange-300'
+                      ? 'border-accent-400 focus:border-accent-500'
+                      : 'border-spiritual-200 focus:border-spiritual-400 hover:border-spiritual-300'
                 }`}
               />
               
               {email && isEmailValid && (
                 <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                  <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                  <div className="w-5 h-5 rounded-full bg-accent-500 flex items-center justify-center">
                     <span className="text-white text-xs font-bold">✓</span>
                   </div>
                 </div>
@@ -201,7 +201,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
             </div>
             
             {emailError && (
-              <p className="text-sm text-red-600 mt-2 flex items-center gap-1">
+              <p className="text-sm text-red-600 mt-2 flex items-center gap-1 tracking-spiritual">
                 <span className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
                   <span className="text-white text-xs font-bold">!</span>
                 </span>
@@ -211,15 +211,15 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
           </div>
 
           {/* PIN Entry Section */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-orange-200/50">
+          <div className="bg-white/90 backdrop-blur-sm rounded-card p-6 shadow-spiritual border border-spiritual-200/50">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <Shield className="w-5 h-5 text-orange-600" />
-                <h3 className="text-lg font-semibold text-amber-900">Enter your 4-digit PIN</h3>
+                <Shield className="w-5 h-5 text-spiritual-600" />
+                <h3 className="text-lg font-semibold text-spiritual-900 tracking-spiritual">Enter your 4-digit PIN</h3>
               </div>
               <button
                 onClick={() => setShowPin(!showPin)}
-                className="p-1 text-amber-600 hover:text-orange-600 transition-colors duration-300"
+                className="p-1 text-spiritual-600 hover:text-spiritual-700 transition-colors duration-300"
                 title={showPin ? "Hide PIN" : "Show PIN"}
               >
                 {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -239,10 +239,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
                   onChange={(e) => handlePinChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onPaste={index === 0 ? handlePaste : undefined}
-                  className={`w-12 h-12 text-center text-xl font-bold border-2 rounded-xl focus:outline-none focus:ring-2 transition-all duration-300 bg-white/70 text-amber-900 hover:border-orange-300 focus:scale-105 ${
+                  className={`w-12 h-12 text-center text-xl font-bold border-2 rounded-spiritual focus:outline-none focus:ring-4 transition-all duration-300 bg-white/70 text-spiritual-900 hover:border-spiritual-300 focus:scale-105 ${
                     pinError 
                       ? 'border-red-400 focus:border-red-500 focus:ring-red-200' 
-                      : 'border-orange-200 focus:border-orange-400 focus:ring-orange-200'
+                      : 'border-spiritual-200 focus:border-spiritual-400 focus:ring-spiritual-200/50'
                   }`}
                   placeholder={showPin ? "0" : "•"}
                 />
@@ -251,7 +251,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
             
             {pinError && (
               <div className="text-center mb-4">
-                <p className="text-sm text-red-600 flex items-center justify-center gap-2">
+                <p className="text-sm text-red-600 flex items-center justify-center gap-2 tracking-spiritual">
                   <span className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
                     <span className="text-white text-xs font-bold">!</span>
                   </span>
@@ -260,7 +260,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
               </div>
             )}
             
-            <p className="text-sm text-amber-700/70 text-center">
+            <p className="text-sm text-spiritual-700/70 text-center tracking-spiritual">
               Enter the 4-digit PIN you created when signing up.
             </p>
           </div>
@@ -269,16 +269,16 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
           <button
             onClick={handleLogin}
             disabled={!isFormValid || isLoggingIn}
-            className={`group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 font-semibold rounded-2xl shadow-lg transition-all duration-300 transform ${
+            className={`group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 font-semibold rounded-button shadow-spiritual transition-all duration-300 transform tracking-spiritual ${
               isFormValid && !isLoggingIn
-                ? 'bg-gradient-to-r from-amber-400 to-orange-500 hover:from-orange-500 hover:to-yellow-500 text-white hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] border-2 border-orange-600/30 hover:border-yellow-500/50 focus:outline-none focus:ring-4 focus:ring-orange-200/50'
+                ? 'bg-gradient-to-r from-spiritual-400 to-spiritual-500 hover:from-spiritual-500 hover:to-spiritual-600 text-white hover:shadow-spiritual-lg hover:scale-[1.02] active:scale-[0.98] border-2 border-spiritual-600/30 hover:border-spiritual-500/50 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
             title={!isFormValid ? "Please enter your email and PIN" : "Login to your account"}
           >
             {/* Ripple Effect Background */}
             {isFormValid && !isLoggingIn && (
-              <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-orange-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-spiritual-300/20 to-spiritual-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-button"></div>
             )}
             
             {/* Button Content */}
@@ -298,7 +298,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
             
             {/* Glow Effect */}
             {isFormValid && !isLoggingIn && (
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
+              <div className="absolute inset-0 rounded-button bg-gradient-to-r from-spiritual-400 to-spiritual-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
             )}
           </button>
 
@@ -306,12 +306,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
           <div className="text-center">
             <button
               onClick={handleForgotPin}
-              className="group text-amber-700 hover:text-orange-600 font-medium transition-colors duration-300 relative"
+              className="group text-spiritual-700 hover:text-spiritual-600 font-medium transition-colors duration-300 relative tracking-spiritual"
               title="Reset your PIN via email"
             >
               <span className="relative">
                 Forgot your PIN?
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-orange-400 group-hover:w-full transition-all duration-300"></span>
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-spiritual-400 group-hover:w-full transition-all duration-300"></span>
               </span>
             </button>
           </div>
