@@ -4,12 +4,13 @@ import OnboardingScreen from './components/OnboardingScreen';
 import GuestOnboardingScreen from './components/GuestOnboardingScreen';
 import SignUpScreen from './components/SignUpScreen';
 import LoginScreen from './components/LoginScreen';
+import DemoScreen from './components/DemoScreen';
 
 function App() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [showSacredText, setShowSacredText] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState<'home' | 'onboarding' | 'guest-onboarding' | 'signup' | 'login'>('home');
+  const [currentScreen, setCurrentScreen] = useState<'home' | 'onboarding' | 'guest-onboarding' | 'signup' | 'login' | 'demo'>('home');
   const [location, setLocation] = useState<string>('Detecting location...');
   const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'error'>('loading');
 
@@ -130,9 +131,7 @@ function App() {
   };
 
   const handleTryDemo = () => {
-    // For now, just show an alert for demo
-    // In a real app, this would show a demo/tutorial
-    alert('Demo functionality will be implemented here. This would typically show an interactive tutorial of the app features.');
+    setCurrentScreen('demo');
   };
 
   // Fade in the sacred text after component mounts
@@ -157,6 +156,10 @@ function App() {
 
   if (currentScreen === 'login') {
     return <LoginScreen onComplete={handleLoginComplete} onBack={handleBackToHome} />;
+  }
+
+  if (currentScreen === 'demo') {
+    return <DemoScreen onBack={handleBackToHome} />;
   }
 
   return (
