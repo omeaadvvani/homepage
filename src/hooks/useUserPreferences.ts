@@ -5,6 +5,7 @@ import { useAuth } from './useAuth';
 export interface UserPreferences {
   id: string;
   user_id: string;
+  email: string;
   language: string;
   calendar_type: string;
   location: string | null;
@@ -60,10 +61,17 @@ export const useUserPreferences = () => {
       setLoading(true);
       setError(null);
 
+      // Get user email from auth session
+      const userEmail = user.email;
+      if (!userEmail) {
+        throw new Error('User email not found in session');
+      }
+
       const { data, error: upsertError } = await supabase
         .from('user_preferences')
         .upsert({
           user_id: user.id,
+          email: userEmail,
           ...newPreferences
         }, {
           onConflict: 'user_id'
@@ -102,9 +110,18 @@ export const useUserPreferences = () => {
       setLoading(true);
       setError(null);
 
+      // Include email in updates to ensure it's always current
+      const userEmail = user.email;
+      if (!userEmail) {
+        throw new Error('User email not found in session');
+      }
+
       const { data, error: updateError } = await supabase
         .from('user_preferences')
-        .update(updates)
+        .update({
+          email: userEmail,
+          ...updates
+        })
         .eq('user_id', user.id)
         .select()
         .single();
