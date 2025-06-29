@@ -283,7 +283,7 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
           </div>
 
           {/* Step 2: Language Selection */}
-          <div className={`bg-white/90 backdrop-blur-sm rounded-card p-6 shadow-spiritual border border-spiritual-200/50 relative ${isLanguageDropdownOpen ? 'z-[100]' : 'z-10'}`}>
+          <div className="bg-white/90 backdrop-blur-sm rounded-card p-6 shadow-spiritual border border-spiritual-200/50 relative z-50">
             <div className="flex items-center gap-4 mb-6">
               <div className="w-8 h-8 bg-spiritual-500 text-white rounded-full flex items-center justify-center font-bold text-sm">2</div>
               <h3 className="text-xl font-semibold text-spiritual-900 tracking-spiritual">Select Your Preferred Language</h3>
@@ -302,7 +302,7 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
               </button>
               
               {isLanguageDropdownOpen && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-card shadow-spiritual-lg border border-spiritual-100 overflow-hidden z-[101] max-h-60 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-card shadow-spiritual-lg border border-spiritual-100 overflow-hidden z-[9999] max-h-60 overflow-y-auto">
                   {languages.map((lang) => (
                     <button
                       key={lang}
@@ -458,7 +458,7 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
       {/* Click outside to close dropdowns */}
       {(isLanguageDropdownOpen || isCalendarDropdownOpen) && (
         <div 
-          className="fixed inset-0 z-[80]" 
+          className="fixed inset-0 z-[9998]" 
           onClick={() => {
             setIsLanguageDropdownOpen(false);
             setIsCalendarDropdownOpen(false);
