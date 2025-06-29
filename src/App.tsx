@@ -6,17 +6,17 @@ import GuestOnboardingScreen from './components/GuestOnboardingScreen';
 import SignUpScreen from './components/SignUpScreen';
 import LoginScreen from './components/LoginScreen';
 import DemoScreen from './components/DemoScreen';
-import PreferencesDemo from './components/PreferencesDemo';
+import PreferencesScreen from './components/PreferencesScreen';
 
 function App() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [showSacredText, setShowSacredText] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState<'home' | 'onboarding' | 'guest-onboarding' | 'signup' | 'login' | 'demo' | 'preferences'>('home');
+  const [currentScreen, setCurrentScreen] = useState<'home' | 'signup' | 'preferences' | 'guest-onboarding' | 'login' | 'demo'>('home');
   const [location, setLocation] = useState<string>('Detecting location...');
   const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [onboardingData, setOnboardingData] = useState<any>(null);
   const [supabaseError, setSupabaseError] = useState<string>('');
+  const [newUserNeedsPreferences, setNewUserNeedsPreferences] = useState(false);
 
   const { user, userProfile, loading: authLoading } = useAuth();
 
@@ -103,13 +103,21 @@ function App() {
     detectLocation();
   }, []);
 
-  // Redirect authenticated users to dashboard (for now, just show success message)
+  // Handle user authentication state changes
   useEffect(() => {
-    if (!authLoading && user && userProfile) {
-      // In a real app, this would redirect to the main dashboard
-      console.log('User authenticated:', user, userProfile);
+    if (!authLoading && user) {
+      // If user just signed up and needs to set preferences
+      if (newUserNeedsPreferences) {
+        setCurrentScreen('preferences');
+        setNewUserNeedsPreferences(false);
+      }
+      // If user already has profile, they're fully set up
+      else if (userProfile) {
+        console.log('User authenticated with profile:', user, userProfile);
+        // In a real app, this would redirect to the main dashboard
+      }
     }
-  }, [user, userProfile, authLoading]);
+  }, [user, userProfile, authLoading, newUserNeedsPreferences]);
 
   const handleLanguageSelect = (language: string) => {
     setSelectedLanguage(language);
@@ -129,7 +137,7 @@ function App() {
       alert(supabaseError);
       return;
     }
-    setCurrentScreen('onboarding');
+    setCurrentScreen('signup');
   };
 
   const handleContinueAsGuest = () => {
@@ -138,13 +146,20 @@ function App() {
 
   const handleBackToHome = () => {
     setCurrentScreen('home');
-    setOnboardingData(null);
+    setNewUserNeedsPreferences(false);
   };
 
-  const handleOnboardingComplete = (data: any) => {
-    // Store onboarding data and move to sign-up screen
-    setOnboardingData(data);
-    setCurrentScreen('signup');
+  const handleSignUpComplete = () => {
+    // After successful sign-up, move to preferences screen
+    setNewUserNeedsPreferences(true);
+    // The useEffect will handle moving to preferences screen
+  };
+
+  const handlePreferencesComplete = () => {
+    // Preferences saved successfully
+    console.log('Preferences saved! User setup complete.');
+    alert('Welcome to VoiceVedic! Your account and preferences have been set up successfully. Your spiritual journey begins now. 🙏');
+    setCurrentScreen('home');
   };
 
   const handleGuestOnboardingComplete = () => {
@@ -152,14 +167,6 @@ function App() {
     console.log('Guest onboarding completed!');
     // For demo purposes, we'll just show an alert
     alert('Welcome to VoiceVedic! Explore our features as a guest. You can create an account anytime to save your preferences. 🙏');
-    setCurrentScreen('home');
-  };
-
-  const handleSignUpComplete = () => {
-    // Here you would typically navigate to the main app
-    console.log('Sign-up completed!');
-    // For demo purposes, we'll just show an alert
-    alert('Welcome to VoiceVedic! Your account has been created successfully. Your spiritual journey begins now. 🙏');
     setCurrentScreen('home');
   };
 
@@ -199,8 +206,8 @@ function App() {
     );
   }
 
-  // If user is authenticated, show success message (in real app, this would be the dashboard)
-  if (user && userProfile) {
+  // If user is authenticated and has profile, show success message (in real app, this would be the dashboard)
+  if (user && userProfile && !newUserNeedsPreferences) {
     return (
       <div className="min-h-screen bg-spiritual-diagonal flex items-center justify-center">
         <div className="text-center max-w-md p-8">
@@ -227,16 +234,16 @@ function App() {
     );
   }
 
-  if (currentScreen === 'onboarding') {
-    return <OnboardingScreen onComplete={handleOnboardingComplete} onBack={handleBackToHome} />;
+  if (currentScreen === 'signup') {
+    return <SignUpScreen onComplete={handleSignUpComplete} onBack={handleBackToHome} />;
+  }
+
+  if (currentScreen === 'preferences') {
+    return <PreferencesScreen onComplete={handlePreferencesComplete} onBack={handleBackToHome} detectedLocation={location} />;
   }
 
   if (currentScreen === 'guest-onboarding') {
     return <GuestOnboardingScreen onComplete={handleGuestOnboardingComplete} onBack={handleBackToHome} />;
-  }
-
-  if (currentScreen === 'signup') {
-    return <SignUpScreen onComplete={handleSignUpComplete} onBack={() => setCurrentScreen('onboarding')} onboardingData={onboardingData} />;
   }
 
   if (currentScreen === 'login') {
@@ -245,24 +252,6 @@ function App() {
 
   if (currentScreen === 'demo') {
     return <DemoScreen onBack={handleBackToHome} />;
-  }
-
-  if (currentScreen === 'preferences') {
-    return (
-      <div className="min-h-screen bg-spiritual-diagonal p-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-6">
-            <button
-              onClick={handleBackToHome}
-              className="flex items-center gap-2 px-4 py-2 text-spiritual-700 hover:text-spiritual-600 font-medium transition-colors duration-300"
-            >
-              ← Back to Home
-            </button>
-          </div>
-          <PreferencesDemo />
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -388,7 +377,7 @@ function App() {
             <span className="text-lg tracking-spiritual">Login</span>
           </button>
 
-          {/* Sign Up Button - Goes to Onboarding */}
+          {/* Sign Up Button - Direct to Sign Up */}
           <button 
             onClick={handleSignUp}
             className="group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 bg-gradient-to-r from-spiritual-900 to-red-600 hover:from-red-600 hover:to-rose-600 text-white font-semibold rounded-button shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border-2 border-spiritual-900/30 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50"

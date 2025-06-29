@@ -5,16 +5,9 @@ import { useAuth } from '../hooks/useAuth';
 interface SignUpScreenProps {
   onComplete: () => void;
   onBack?: () => void;
-  onboardingData?: {
-    calendar_tradition: string;
-    preferred_language: string;
-    selected_rituals: string[];
-    notification_time: string;
-    location?: string;
-  };
 }
 
-const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboardingData }) => {
+const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
   const [email, setEmail] = useState('');
   const [pin, setPin] = useState(['', '', '', '', '', '']);
   const [confirmPin, setConfirmPin] = useState(['', '', '', '', '', '']);
@@ -150,16 +143,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
 
     const pinString = pin.join('');
     
-    // Use onboarding data or defaults
-    const profileData = onboardingData || {
-      calendar_tradition: 'north-indian',
-      preferred_language: 'English',
-      selected_rituals: ['ekadashi'],
-      notification_time: '07:00',
-      location: null
-    };
-
-    const { data, error } = await signUp(email, pinString, profileData);
+    const { data, error } = await signUp(email, pinString);
 
     if (error) {
       console.error('Sign up error:', error);
@@ -207,8 +191,6 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
     setStep('create');
   };
 
-  const isFormValid = isEmailValid && isPinComplete && (step === 'create' || (isConfirmPinComplete && pinsMatch));
-
   return (
     <div className="min-h-screen bg-spiritual-diagonal relative overflow-hidden font-sans">
       {/* Spiritual Visual Layer */}
@@ -219,7 +201,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
         <button
           onClick={step === 'confirm' ? handleBackToCreate : onBack}
           className="group flex items-center gap-3 px-4 py-3 bg-white/90 backdrop-blur-sm rounded-spiritual shadow-spiritual border border-spiritual-200/50 hover:bg-white hover:shadow-spiritual-lg transition-all duration-300 text-spiritual-800 font-medium tracking-spiritual"
-          title={step === 'confirm' ? "Back to PIN Creation" : "Back to Onboarding"}
+          title={step === 'confirm' ? "Back to PIN Creation" : "Back to Home"}
         >
           <ArrowLeft className="w-5 h-5 text-spiritual-600 group-hover:-translate-x-1 transition-transform duration-300" />
           <span className="text-sm">Back</span>
@@ -256,13 +238,13 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
           <div className="flex items-center justify-center gap-3 mb-4">
             <CheckCircle className="w-8 h-8 text-accent-600" />
             <h1 className="text-3xl md:text-4xl font-bold text-spiritual-900 leading-spiritual tracking-spiritual">
-              {step === 'create' ? 'Complete Your Setup' : 'Confirm Your PIN 🔒'}
+              {step === 'create' ? 'Create Your Account' : 'Confirm Your PIN 🔒'}
             </h1>
           </div>
           
           <p className="text-lg text-spiritual-800/80 font-medium tracking-spiritual line-height-spiritual-relaxed">
             {step === 'create' 
-              ? "Secure your preferences with a quick login method."
+              ? "Join VoiceVedic with your email and secure 6-digit PIN."
               : "Please re-enter your PIN to confirm it's correct."
             }
           </p>
@@ -307,15 +289,11 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
                   }`}
                 />
                 
-                {email && (
+                {email && isEmailValid && (
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    {isEmailValid ? (
-                      <CheckCircle className="w-5 h-5 text-accent-500" />
-                    ) : emailError ? (
-                      <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">!</span>
-                      </div>
-                    ) : null}
+                    <div className="w-5 h-5 rounded-full bg-accent-500 flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">✓</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -443,7 +421,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
             </div>
           )}
 
-          {/* 1. CONFIRM PIN BUTTON - Show in create step when PIN is complete */}
+          {/* CONFIRM PIN BUTTON - Show in create step when PIN is complete */}
           {step === 'create' && isEmailValid && isPinComplete && (
             <button
               onClick={handleContinueToConfirm}
@@ -458,7 +436,7 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
             </button>
           )}
 
-          {/* 2. FINISH SIGN UP BUTTON - Show in confirm step when confirm PIN is complete */}
+          {/* CREATE ACCOUNT BUTTON - Show in confirm step when confirm PIN is complete */}
           {step === 'confirm' && isConfirmPinComplete && (
             <button
               onClick={handleConfirmPin}
@@ -482,13 +460,13 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack, onboard
               ) : (
                 <>
                   <CheckCircle className="w-5 h-5 group-hover:rotate-12 group-active:rotate-6 transition-transform duration-300" />
-                  <span className="text-lg">Finish Sign Up</span>
+                  <span className="text-lg">Create Account</span>
                 </>
               )}
             </button>
           )}
 
-          {/* 3. SIGN UP WITH GOOGLE - Only show in create step */}
+          {/* SIGN UP WITH GOOGLE - Only show in create step */}
           {step === 'create' && (
             <>
               {/* OR Divider */}
