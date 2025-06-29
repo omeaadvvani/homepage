@@ -54,6 +54,35 @@ export interface Database {
           updated_at?: string;
         };
       };
+      user_preferences: {
+        Row: {
+          id: string;
+          user_id: string;
+          language: string;
+          calendar_type: string;
+          location: string | null;
+          notification_time: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          language: string;
+          calendar_type: string;
+          location?: string | null;
+          notification_time?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          language?: string;
+          calendar_type?: string;
+          location?: string | null;
+          notification_time?: string | null;
+          created_at?: string;
+        };
+      };
     };
   };
 }
