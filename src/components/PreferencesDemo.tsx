@@ -196,6 +196,7 @@ const PreferencesDemo: React.FC = () => {
           <div className="bg-spiritual-50 p-4 rounded-spiritual">
             <h3 className="font-medium text-spiritual-800 mb-2">Current Saved Preferences:</h3>
             <div className="text-sm text-spiritual-600 space-y-1">
+              <p><strong>Email:</strong> {preferences.email}</p>
               <p><strong>Language:</strong> {preferences.language}</p>
               <p><strong>Calendar:</strong> {preferences.calendar_type}</p>
               <p><strong>Location:</strong> {preferences.location || 'Not set'}</p>

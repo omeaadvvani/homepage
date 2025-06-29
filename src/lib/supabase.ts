@@ -58,6 +58,7 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
+          email: string;
           language: string;
           calendar_type: string;
           location: string | null;
@@ -67,6 +68,7 @@ export interface Database {
         Insert: {
           id?: string;
           user_id: string;
+          email: string;
           language: string;
           calendar_type: string;
           location?: string | null;
@@ -76,6 +78,7 @@ export interface Database {
         Update: {
           id?: string;
           user_id?: string;
+          email?: string;
           language?: string;
           calendar_type?: string;
           location?: string | null;
