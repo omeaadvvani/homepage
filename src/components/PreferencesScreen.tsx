@@ -302,7 +302,7 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
               </button>
               
               {isLanguageDropdownOpen && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-card shadow-spiritual-lg border border-spiritual-100 overflow-hidden z-[9999] max-h-60 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-card shadow-spiritual-lg border border-spiritual-100 overflow-hidden z-[60] max-h-60 overflow-y-auto">
                   {languages.map((lang) => (
                     <button
                       key={lang}
@@ -454,17 +454,6 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Click outside to close dropdowns */}
-      {(isLanguageDropdownOpen || isCalendarDropdownOpen) && (
-        <div 
-          className="fixed inset-0 z-[9998]" 
-          onClick={() => {
-            setIsLanguageDropdownOpen(false);
-            setIsCalendarDropdownOpen(false);
-          }}
-        ></div>
-      )}
     </div>
   );
 };

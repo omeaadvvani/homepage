@@ -228,7 +228,7 @@ const GuestOnboardingScreen: React.FC<GuestOnboardingScreenProps> = ({ onComplet
               </button>
               
               {isLanguageDropdownOpen && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-card shadow-spiritual-lg border border-spiritual-100 overflow-hidden z-[9999] max-h-60 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-card shadow-spiritual-lg border border-spiritual-100 overflow-hidden z-[60] max-h-60 overflow-y-auto">
                   {languages.map((language) => (
                     <button
                       key={language}
@@ -326,14 +326,6 @@ const GuestOnboardingScreen: React.FC<GuestOnboardingScreenProps> = ({ onComplet
           </div>
         </div>
       </div>
-
-      {/* Click outside to close dropdown */}
-      {isLanguageDropdownOpen && (
-        <div 
-          className="fixed inset-0 z-[9998]" 
-          onClick={() => setIsLanguageDropdownOpen(false)}
-        ></div>
-      )}
     </div>
   );
 };
