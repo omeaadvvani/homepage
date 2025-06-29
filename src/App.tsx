@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, LogIn, UserPlus, Headphones, ChevronDown, MapPin, AlertCircle } from 'lucide-react';
+import { Globe, LogIn, UserPlus, Headphones, ChevronDown, MapPin, AlertCircle, Settings } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import OnboardingScreen from './components/OnboardingScreen';
 import GuestOnboardingScreen from './components/GuestOnboardingScreen';
 import SignUpScreen from './components/SignUpScreen';
 import LoginScreen from './components/LoginScreen';
 import DemoScreen from './components/DemoScreen';
+import PreferencesDemo from './components/PreferencesDemo';
 
 function App() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [showSacredText, setShowSacredText] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState<'home' | 'onboarding' | 'guest-onboarding' | 'signup' | 'login' | 'demo'>('home');
+  const [currentScreen, setCurrentScreen] = useState<'home' | 'onboarding' | 'guest-onboarding' | 'signup' | 'login' | 'demo' | 'preferences'>('home');
   const [location, setLocation] = useState<string>('Detecting location...');
   const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [onboardingData, setOnboardingData] = useState<any>(null);
@@ -174,6 +175,10 @@ function App() {
     setCurrentScreen('demo');
   };
 
+  const handleShowPreferences = () => {
+    setCurrentScreen('preferences');
+  };
+
   // Fade in the sacred text after component mounts
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -205,9 +210,18 @@ function App() {
           <p className="text-spiritual-700 mb-6 tracking-spiritual">
             You are successfully logged in as {userProfile.email}
           </p>
-          <p className="text-sm text-spiritual-600 tracking-spiritual">
-            Dashboard and main app features would be implemented here.
-          </p>
+          <div className="space-y-4">
+            <button
+              onClick={handleShowPreferences}
+              className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-gradient-to-r from-spiritual-400 to-spiritual-500 hover:from-spiritual-500 hover:to-spiritual-600 text-white font-semibold rounded-spiritual shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300"
+            >
+              <Settings className="w-5 h-5" />
+              Manage Preferences
+            </button>
+            <p className="text-sm text-spiritual-600 tracking-spiritual">
+              Dashboard and main app features would be implemented here.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -231,6 +245,24 @@ function App() {
 
   if (currentScreen === 'demo') {
     return <DemoScreen onBack={handleBackToHome} />;
+  }
+
+  if (currentScreen === 'preferences') {
+    return (
+      <div className="min-h-screen bg-spiritual-diagonal p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-6">
+            <button
+              onClick={handleBackToHome}
+              className="flex items-center gap-2 px-4 py-2 text-spiritual-700 hover:text-spiritual-600 font-medium transition-colors duration-300"
+            >
+              ← Back to Home
+            </button>
+          </div>
+          <PreferencesDemo />
+        </div>
+      </div>
+    );
   }
 
   return (
