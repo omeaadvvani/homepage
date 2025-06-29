@@ -30,9 +30,9 @@ export const useUserPreferences = () => {
         .from('user_preferences')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (fetchError && fetchError.code !== 'PGRST116') {
+      if (fetchError) {
         throw fetchError;
       }
 
@@ -150,7 +150,6 @@ export const useUserPreferences = () => {
       console.error('Error deleting preferences:', err);
       const errorMessage = err.message || 'Failed to delete preferences';
       setError(errorMessage);
-      return { error: errorMessage };
     } finally {
       setLoading(false);
     }
