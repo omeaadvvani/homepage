@@ -81,13 +81,7 @@ export const useAuth = () => {
     }
   };
 
-  const signUp = async (email: string, pin: string, profileData: {
-    calendar_tradition: string;
-    preferred_language: string;
-    selected_rituals: string[];
-    notification_time: string;
-    location?: string;
-  }) => {
+  const signUp = async (email: string, pin: string) => {
     try {
       setLoading(true);
 
@@ -102,21 +96,8 @@ export const useAuth = () => {
 
       if (authError) throw authError;
 
-      if (authData.user) {
-        // Create user profile
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .insert({
-            user_id: authData.user.id,
-            email,
-            pin_hash: pin, // In production, hash this properly
-            ...profileData
-          });
-
-        if (profileError) throw profileError;
-
-        await fetchUserProfile(authData.user.id);
-      }
+      // Note: We don't create user_profiles here anymore
+      // The preferences will be saved separately after sign-up
 
       return { data: authData, error: null };
     } catch (error) {
