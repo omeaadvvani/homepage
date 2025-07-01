@@ -7,12 +7,13 @@ import SignUpScreen from './components/SignUpScreen';
 import LoginScreen from './components/LoginScreen';
 import DemoScreen from './components/DemoScreen';
 import PreferencesScreen from './components/PreferencesScreen';
+import ResetPinScreen from './components/ResetPinScreen';
 
 function App() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [showSacredText, setShowSacredText] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState<'home' | 'signup' | 'preferences' | 'guest-onboarding' | 'login' | 'demo'>('home');
+  const [currentScreen, setCurrentScreen] = useState<'home' | 'signup' | 'preferences' | 'guest-onboarding' | 'login' | 'demo' | 'reset-pin'>('home');
   const [location, setLocation] = useState<string>('Detecting location...');
   const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [supabaseError, setSupabaseError] = useState<string>('');
@@ -28,6 +29,14 @@ function App() {
     'Malayalam',
     'Kannada'
   ];
+
+  // Check for reset-pin route on mount
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === '/reset-pin') {
+      setCurrentScreen('reset-pin');
+    }
+  }, []);
 
   // Check Supabase configuration on mount
   useEffect(() => {
@@ -147,6 +156,10 @@ function App() {
   const handleBackToHome = () => {
     setCurrentScreen('home');
     setNewUserNeedsPreferences(false);
+    // Clear URL if we're on reset-pin route
+    if (window.location.pathname === '/reset-pin') {
+      window.history.pushState({}, '', '/');
+    }
   };
 
   const handleSignUpComplete = () => {
@@ -186,6 +199,14 @@ function App() {
     setCurrentScreen('preferences');
   };
 
+  const handleResetPinComplete = () => {
+    // PIN reset completed, redirect to login
+    alert('Your PIN has been reset successfully! Please log in with your new PIN.');
+    setCurrentScreen('login');
+    // Clear URL
+    window.history.pushState({}, '', '/');
+  };
+
   // Fade in the sacred text after component mounts
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -204,6 +225,11 @@ function App() {
         </div>
       </div>
     );
+  }
+
+  // Show Reset PIN screen if on that route
+  if (currentScreen === 'reset-pin') {
+    return <ResetPinScreen onComplete={handleResetPinComplete} onBack={handleBackToHome} />;
   }
 
   // If user is authenticated and has profile, show success message (in real app, this would be the dashboard)
