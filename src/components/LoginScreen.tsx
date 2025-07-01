@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Shield, ArrowLeft, Mail, Eye, EyeOff, LogIn, RotateCcw, AlertCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import ForgotPinScreen from './ForgotPinScreen';
 
 interface LoginScreenProps {
   onComplete: () => void;
   onBack?: () => void;
-  onForgotPin?: () => void;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotPin }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack }) => {
   const [email, setEmail] = useState('');
   const [pin, setPin] = useState(['', '', '', '', '', '']);
   const [showSacredText, setShowSacredText] = useState(false);
@@ -16,6 +16,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
   const [pinError, setPinError] = useState('');
   const [authError, setAuthError] = useState('');
   const [showPin, setShowPin] = useState(false);
+  const [showForgotPin, setShowForgotPin] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const { signIn, loading } = useAuth();
@@ -117,12 +118,19 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
   };
 
   const handleForgotPin = () => {
-    if (onForgotPin) {
-      onForgotPin();
-    } else {
-      // Default behavior - show alert
-      alert('Forgot PIN functionality would redirect to PIN reset flow. This typically involves email verification and PIN reset.');
-    }
+    setShowForgotPin(true);
+  };
+
+  const handleForgotPinComplete = () => {
+    setShowForgotPin(false);
+    // Optionally show a success message or redirect to login
+    setAuthError('');
+    setEmail('');
+    setPin(['', '', '', '', '', '']);
+  };
+
+  const handleForgotPinBack = () => {
+    setShowForgotPin(false);
   };
 
   const clearForm = () => {
@@ -132,6 +140,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack, onForgotP
     setPinError('');
     setAuthError('');
   };
+
+  // Show Forgot PIN screen if requested
+  if (showForgotPin) {
+    return <ForgotPinScreen onBack={handleForgotPinBack} onComplete={handleForgotPinComplete} />;
+  }
 
   return (
     <div className="min-h-screen bg-spiritual-diagonal relative overflow-hidden font-sans">
