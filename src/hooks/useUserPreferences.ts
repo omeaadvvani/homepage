@@ -10,7 +10,12 @@ export interface UserPreferences {
   calendar_type: string;
   location: string | null;
   notification_time: string | null;
+  timezone: string | null;
+  device_type: string | null;
+  is_active: boolean;
+  updated_by_admin: boolean;
   created_at: string;
+  updated_at: string;
 }
 
 export const useUserPreferences = () => {
@@ -18,6 +23,27 @@ export const useUserPreferences = () => {
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Detect device type
+  const getDeviceType = (): string => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+    const isTablet = /ipad|android(?!.*mobile)/i.test(userAgent);
+    
+    if (isTablet) return 'Tablet';
+    if (isMobile) return 'Mobile';
+    return 'Desktop';
+  };
+
+  // Detect timezone
+  const getTimezone = (): string => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch (error) {
+      console.warn('Could not detect timezone:', error);
+      return 'UTC';
+    }
+  };
 
   // Fetch user preferences
   const fetchPreferences = async () => {
@@ -31,6 +57,7 @@ export const useUserPreferences = () => {
         .from('user_preferences')
         .select('*')
         .eq('user_id', user.id)
+        .eq('is_active', true) // Only fetch active preferences
         .maybeSingle();
 
       if (fetchError) {
@@ -67,11 +94,19 @@ export const useUserPreferences = () => {
         throw new Error('User email not found in session');
       }
 
+      // Auto-detect device and timezone
+      const deviceType = getDeviceType();
+      const timezone = getTimezone();
+
       const { data, error: upsertError } = await supabase
         .from('user_preferences')
         .upsert({
           user_id: user.id,
           email: userEmail,
+          device_type: deviceType,
+          timezone: timezone,
+          is_active: true,
+          updated_by_admin: false,
           ...newPreferences
         }, {
           onConflict: 'user_id'
@@ -101,6 +136,8 @@ export const useUserPreferences = () => {
     calendar_type: string;
     location: string | null;
     notification_time: string | null;
+    timezone: string | null;
+    device_type: string | null;
   }>) => {
     if (!user || !preferences) {
       throw new Error('User must be logged in and have existing preferences');
@@ -116,13 +153,20 @@ export const useUserPreferences = () => {
         throw new Error('User email not found in session');
       }
 
+      // Auto-update device type and timezone if not explicitly provided
+      const finalUpdates = {
+        email: userEmail,
+        device_type: updates.device_type || getDeviceType(),
+        timezone: updates.timezone || getTimezone(),
+        updated_by_admin: false, // Always false for user updates
+        ...updates
+      };
+
       const { data, error: updateError } = await supabase
         .from('user_preferences')
-        .update({
-          email: userEmail,
-          ...updates
-        })
+        .update(finalUpdates)
         .eq('user_id', user.id)
+        .eq('is_active', true) // Only update active preferences
         .select()
         .single();
 
@@ -142,7 +186,41 @@ export const useUserPreferences = () => {
     }
   };
 
-  // Delete user preferences
+  // Soft delete user preferences (set is_active to false)
+  const deactivatePreferences = async () => {
+    if (!user) {
+      throw new Error('User must be logged in to deactivate preferences');
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { error: updateError } = await supabase
+        .from('user_preferences')
+        .update({ 
+          is_active: false,
+          updated_by_admin: false
+        })
+        .eq('user_id', user.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      setPreferences(null);
+      return { error: null };
+    } catch (err: any) {
+      console.error('Error deactivating preferences:', err);
+      const errorMessage = err.message || 'Failed to deactivate preferences';
+      setError(errorMessage);
+      return { error: errorMessage };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Hard delete user preferences (permanent deletion)
   const deletePreferences = async () => {
     if (!user) {
       throw new Error('User must be logged in to delete preferences');
@@ -167,6 +245,7 @@ export const useUserPreferences = () => {
       console.error('Error deleting preferences:', err);
       const errorMessage = err.message || 'Failed to delete preferences';
       setError(errorMessage);
+      return { error: errorMessage };
     } finally {
       setLoading(false);
     }
@@ -189,6 +268,7 @@ export const useUserPreferences = () => {
     fetchPreferences,
     upsertPreferences,
     updatePreferences,
+    deactivatePreferences,
     deletePreferences
   };
 };
