@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Settings, Save, RefreshCw, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Settings, Save, RefreshCw, Trash2, CheckCircle, AlertCircle, Monitor, Smartphone, Tablet, Globe, Clock, Shield } from 'lucide-react';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useAuth } from '../hooks/useAuth';
 
 const PreferencesDemo: React.FC = () => {
   const { user } = useAuth();
-  const { preferences, loading, error, upsertPreferences, updatePreferences, deletePreferences } = useUserPreferences();
+  const { preferences, loading, error, upsertPreferences, updatePreferences, deletePreferences, deactivatePreferences } = useUserPreferences();
   
   const [formData, setFormData] = useState({
     language: preferences?.language || 'English',
@@ -54,8 +54,36 @@ const PreferencesDemo: React.FC = () => {
     }
   };
 
+  const handleDeactivate = async () => {
+    if (!confirm('Are you sure you want to deactivate your preferences? You can reactivate them later.')) return;
+
+    try {
+      setSaveLoading(true);
+      setSaveMessage(null);
+
+      const { error } = await deactivatePreferences();
+
+      if (error) {
+        setSaveMessage({ type: 'error', text: error });
+      } else {
+        setSaveMessage({ type: 'success', text: 'Preferences deactivated successfully!' });
+        setFormData({
+          language: 'English',
+          calendar_type: 'Drik Panchang',
+          location: '',
+          notification_time: '07:00'
+        });
+        setTimeout(() => setSaveMessage(null), 3000);
+      }
+    } catch (err: any) {
+      setSaveMessage({ type: 'error', text: err.message || 'Failed to deactivate preferences' });
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete your preferences?')) return;
+    if (!confirm('Are you sure you want to permanently delete your preferences? This action cannot be undone.')) return;
 
     try {
       setSaveLoading(true);
@@ -79,6 +107,15 @@ const PreferencesDemo: React.FC = () => {
       setSaveMessage({ type: 'error', text: err.message || 'Failed to delete preferences' });
     } finally {
       setSaveLoading(false);
+    }
+  };
+
+  const getDeviceIcon = (deviceType: string | null) => {
+    switch (deviceType) {
+      case 'Mobile': return <Smartphone className="w-4 h-4" />;
+      case 'Tablet': return <Tablet className="w-4 h-4" />;
+      case 'Desktop': return <Monitor className="w-4 h-4" />;
+      default: return <Monitor className="w-4 h-4" />;
     }
   };
 
@@ -194,14 +231,45 @@ const PreferencesDemo: React.FC = () => {
         {/* Current Preferences Display */}
         {preferences && (
           <div className="bg-spiritual-50 p-4 rounded-spiritual">
-            <h3 className="font-medium text-spiritual-800 mb-2">Current Saved Preferences:</h3>
-            <div className="text-sm text-spiritual-600 space-y-1">
-              <p><strong>Email:</strong> {preferences.email}</p>
-              <p><strong>Language:</strong> {preferences.language}</p>
-              <p><strong>Calendar:</strong> {preferences.calendar_type}</p>
-              <p><strong>Location:</strong> {preferences.location || 'Not set'}</p>
-              <p><strong>Notification Time:</strong> {preferences.notification_time || 'Not set'}</p>
-              <p><strong>Created:</strong> {new Date(preferences.created_at).toLocaleDateString()}</p>
+            <h3 className="font-medium text-spiritual-800 mb-3 flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              Current Saved Preferences:
+            </h3>
+            <div className="text-sm text-spiritual-600 space-y-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p><strong>Email:</strong> {preferences.email}</p>
+                  <p><strong>Language:</strong> {preferences.language}</p>
+                  <p><strong>Calendar:</strong> {preferences.calendar_type}</p>
+                  <p><strong>Location:</strong> {preferences.location || 'Not set'}</p>
+                </div>
+                <div>
+                  <p><strong>Notification Time:</strong> {preferences.notification_time || 'Not set'}</p>
+                  <p className="flex items-center gap-1">
+                    <strong>Device:</strong> 
+                    {getDeviceIcon(preferences.device_type)}
+                    {preferences.device_type || 'Unknown'}
+                  </p>
+                  <p className="flex items-center gap-1">
+                    <Globe className="w-4 h-4" />
+                    <strong>Timezone:</strong> {preferences.timezone || 'Not set'}
+                  </p>
+                  <p className="flex items-center gap-1">
+                    <Clock className="w-4 h-4" />
+                    <strong>Status:</strong> 
+                    <span className={`px-2 py-1 rounded text-xs ${preferences.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {preferences.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <div className="pt-2 border-t border-spiritual-200">
+                <p><strong>Created:</strong> {new Date(preferences.created_at).toLocaleDateString()}</p>
+                <p><strong>Last Updated:</strong> {new Date(preferences.updated_at).toLocaleDateString()}</p>
+                {preferences.updated_by_admin && (
+                  <p className="text-orange-600"><strong>⚠️ Last update was made by admin</strong></p>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -220,6 +288,17 @@ const PreferencesDemo: React.FC = () => {
             )}
             {saveLoading ? 'Saving...' : 'Save Preferences'}
           </button>
+
+          {preferences && preferences.is_active && (
+            <button
+              onClick={handleDeactivate}
+              disabled={saveLoading || loading}
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-spiritual shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Shield className="w-4 h-4" />
+              Deactivate
+            </button>
+          )}
 
           {preferences && (
             <button

@@ -63,7 +63,12 @@ export interface Database {
           calendar_type: string;
           location: string | null;
           notification_time: string | null;
+          timezone: string | null;
+          device_type: string | null;
+          is_active: boolean;
+          updated_by_admin: boolean;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -73,7 +78,12 @@ export interface Database {
           calendar_type: string;
           location?: string | null;
           notification_time?: string | null;
+          timezone?: string | null;
+          device_type?: string | null;
+          is_active?: boolean;
+          updated_by_admin?: boolean;
           created_at?: string;
+          updated_at?: string;
         };
         Update: {
           id?: string;
@@ -83,7 +93,12 @@ export interface Database {
           calendar_type?: string;
           location?: string | null;
           notification_time?: string | null;
+          timezone?: string | null;
+          device_type?: string | null;
+          is_active?: boolean;
+          updated_by_admin?: boolean;
           created_at?: string;
+          updated_at?: string;
         };
       };
     };
