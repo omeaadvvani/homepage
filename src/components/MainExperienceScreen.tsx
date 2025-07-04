@@ -273,7 +273,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
       if (!SpeechRecognition) {
-        alert("Voice input is not supported on this browser. Please try Chrome or Safari.");
+        alert("Mic input is not supported on this browser.");
         return;
       }
 
@@ -281,31 +281,31 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       recognition.lang = "en-IN";
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
-      recognition.continuous = true;
+      recognition.continuous = false;
 
       setIsListening(true);
 
       recognition.onstart = () => {
-        console.log("🎙️ Listening...");
+        console.log("🎙️ VoiceVedic is listening...");
       };
 
       recognition.onresult = (event) => {
         const spokenText = event.results[0][0].transcript;
-        console.log("Heard:", spokenText);
+        console.log("✅ Heard:", spokenText);
         
         // Stop listening immediately after getting result
         recognition.stop();
         
-        // Fill the input field with spoken text
+        // Step 1: Set the input field with spoken text
         setQuestion(spokenText);
         setIsListening(false);
         
-        // Auto-trigger the ask function after a short delay
+        // Step 2: Wait for state to update → then trigger Ask logic
         setTimeout(() => {
           if (spokenText.trim()) {
             handleAskQuestion();
           }
-        }, 500);
+        }, 150); // Slight delay ensures input update is complete
       };
 
       recognition.onerror = (event) => {
@@ -315,10 +315,10 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
         if (event.error === 'not-allowed') {
           alert("Microphone access denied. Please allow microphone permissions and try again.");
         } else if (event.error === 'no-speech') {
-          // More gentle handling for no-speech - just reset without alert
-          console.log("No speech detected, resetting...");
+          // Gentle handling for no-speech - just reset without alert
+          console.log("🔇 No speech detected, resetting...");
         } else {
-          alert("Voice recognition error. Please try again.");
+          console.warn("❌ Voice recognition error:", event.error);
         }
       };
 
@@ -328,9 +328,8 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
 
       recognition.start();
     } catch (err) {
-      console.error("Mic capture failed:", err);
+      console.error("Voice capture failed:", err);
       setIsListening(false);
-      alert("Voice input failed. Please try typing your question instead.");
     }
   };
   const formatTime = (timeString: string) => {
