@@ -8,18 +8,20 @@ import LoginScreen from './components/LoginScreen';
 import DemoScreen from './components/DemoScreen';
 import PreferencesScreen from './components/PreferencesScreen';
 import ResetPinScreen from './components/ResetPinScreen';
+import MainExperienceScreen from './components/MainExperienceScreen';
 
 function App() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [showSacredText, setShowSacredText] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState<'home' | 'signup' | 'preferences' | 'guest-onboarding' | 'login' | 'demo' | 'reset-pin'>('home');
+  const [currentScreen, setCurrentScreen] = useState<'home' | 'signup' | 'preferences' | 'guest-onboarding' | 'login' | 'demo' | 'reset-pin' | 'main-experience'>('home');
   const [location, setLocation] = useState<string>('Detecting location...');
   const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [supabaseError, setSupabaseError] = useState<string>('');
   const [newUserNeedsPreferences, setNewUserNeedsPreferences] = useState(false);
+  const [guestMode, setGuestMode] = useState(false);
 
-  const { user, userProfile, loading: authLoading } = useAuth();
+  const { user, userProfile, loading: authLoading, signOut } = useAuth();
 
   const languages = [
     'English',
@@ -120,13 +122,12 @@ function App() {
         setCurrentScreen('preferences');
         setNewUserNeedsPreferences(false);
       }
-      // If user already has profile, they're fully set up
-      else if (userProfile) {
-        console.log('User authenticated with profile:', user, userProfile);
-        // In a real app, this would redirect to the main dashboard
+      // If user already has profile or preferences, show main experience
+      else if (userProfile || guestMode) {
+        setCurrentScreen('main-experience');
       }
     }
-  }, [user, userProfile, authLoading, newUserNeedsPreferences]);
+  }, [user, userProfile, authLoading, newUserNeedsPreferences, guestMode]);
 
   const handleLanguageSelect = (language: string) => {
     setSelectedLanguage(language);
@@ -156,6 +157,7 @@ function App() {
   const handleBackToHome = () => {
     setCurrentScreen('home');
     setNewUserNeedsPreferences(false);
+    setGuestMode(false);
     // Clear URL if we're on reset-pin route
     if (window.location.pathname === '/reset-pin') {
       window.history.pushState({}, '', '/');
@@ -169,26 +171,19 @@ function App() {
   };
 
   const handlePreferencesComplete = () => {
-    // Preferences saved successfully
-    console.log('Preferences saved! User setup complete.');
-    alert('Welcome to VoiceVedic! Your account and preferences have been set up successfully. Your spiritual journey begins now. 🙏');
-    setCurrentScreen('home');
+    // Preferences saved successfully - move to main experience
+    setCurrentScreen('main-experience');
   };
 
   const handleGuestOnboardingComplete = () => {
-    // Here you would typically navigate to the main app in guest mode
-    console.log('Guest onboarding completed!');
-    // For demo purposes, we'll just show an alert
-    alert('Welcome to VoiceVedic! Explore our features as a guest. You can create an account anytime to save your preferences. 🙏');
-    setCurrentScreen('home');
+    // Guest onboarding completed - move to main experience in guest mode
+    setGuestMode(true);
+    setCurrentScreen('main-experience');
   };
 
   const handleLoginComplete = () => {
-    // Here you would typically navigate to the main app
-    console.log('Login completed!');
-    // For demo purposes, we'll just show an alert
-    alert('Welcome back to VoiceVedic! Your spiritual journey continues. 🙏');
-    setCurrentScreen('home');
+    // Login completed - move to main experience
+    setCurrentScreen('main-experience');
   };
 
   const handleTryDemo = () => {
@@ -205,6 +200,16 @@ function App() {
     setCurrentScreen('login');
     // Clear URL
     window.history.pushState({}, '', '/');
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setGuestMode(false);
+      setCurrentScreen('home');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   // Fade in the sacred text after component mounts
@@ -232,31 +237,13 @@ function App() {
     return <ResetPinScreen onComplete={handleResetPinComplete} onBack={handleBackToHome} />;
   }
 
-  // If user is authenticated and has profile, show success message (in real app, this would be the dashboard)
-  if (user && userProfile && !newUserNeedsPreferences) {
+  // Show Main Experience if user is authenticated or in guest mode
+  if (currentScreen === 'main-experience') {
     return (
-      <div className="min-h-screen bg-spiritual-diagonal flex items-center justify-center">
-        <div className="text-center max-w-md p-8">
-          <h1 className="text-3xl font-bold text-spiritual-900 mb-4 tracking-spiritual">
-            Welcome to VoiceVedic!
-          </h1>
-          <p className="text-spiritual-700 mb-6 tracking-spiritual">
-            You are successfully logged in as {userProfile.email}
-          </p>
-          <div className="space-y-4">
-            <button
-              onClick={handleShowPreferences}
-              className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-gradient-to-r from-spiritual-400 to-spiritual-500 hover:from-spiritual-500 hover:to-spiritual-600 text-white font-semibold rounded-spiritual shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300"
-            >
-              <Settings className="w-5 h-5" />
-              Manage Preferences
-            </button>
-            <p className="text-sm text-spiritual-600 tracking-spiritual">
-              Dashboard and main app features would be implemented here.
-            </p>
-          </div>
-        </div>
-      </div>
+      <MainExperienceScreen 
+        onChangePreferences={handleShowPreferences}
+        onLogout={guestMode ? handleBackToHome : handleLogout}
+      />
     );
   }
 
