@@ -10,12 +10,14 @@ import PreferencesScreen from './components/PreferencesScreen';
 import ResetPinScreen from './components/ResetPinScreen';
 import MainExperienceScreen from './components/MainExperienceScreen';
 import SettingsScreen from './components/SettingsScreen';
+import AskVoiceVedicExperience from './components/AskVoiceVedicExperience';
 
 function App() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [showSacredText, setShowSacredText] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<'home' | 'signup' | 'preferences' | 'guest-onboarding' | 'login' | 'demo' | 'reset-pin' | 'main-experience' | 'settings'>('home');
+  const [showAskExperience, setShowAskExperience] = useState(false);
   const [location, setLocation] = useState<string>('Detecting location...');
   const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [supabaseError, setSupabaseError] = useState<string>('');
@@ -326,10 +328,19 @@ function App() {
 
   // Show Main Experience if user is authenticated or in guest mode
   if (currentScreen === 'main-experience') {
+    if (showAskExperience) {
+      return (
+        <AskVoiceVedicExperience 
+          onBack={() => setShowAskExperience(false)}
+        />
+      );
+    }
+    
     return (
       <MainExperienceScreen 
         onChangePreferences={handleShowPreferences}
         onShowSettings={handleShowSettings}
+        onShowAskExperience={() => setShowAskExperience(true)}
         onLogout={guestMode ? handleBackToHome : handleLogout}
       />
     );
