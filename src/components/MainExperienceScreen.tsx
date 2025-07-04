@@ -439,8 +439,6 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
         {/* Header Section */}
         <div className="text-center mb-8 max-w-4xl mt-8 animate-fade-in">
           <h1 className="text-3xl md:text-4xl font-bold text-spiritual-900 mb-4 leading-spiritual tracking-spiritual">
-            {getGreeting()}
-            <br />
             <span className="bg-gradient-to-r from-spiritual-600 to-spiritual-900 bg-clip-text text-transparent">
               VoiceVedic
             </span>
@@ -449,7 +447,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
           {/* Daily Spiritual Greeting - Replaces welcome text */}
           {dailyGreeting && (
             <div className={`mb-6 transition-all duration-1000 ${showGreeting ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-              <p className="text-lg text-spiritual-800/80 font-medium tracking-spiritual line-height-spiritual-relaxed">
+              <p className="text-3xl md:text-4xl font-bold text-spiritual-900 leading-spiritual tracking-spiritual">
                 {dailyGreeting}
               </p>
             </div>
