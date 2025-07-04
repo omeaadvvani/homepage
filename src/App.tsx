@@ -41,7 +41,7 @@ function App() {
     if (path === '/reset-pin') {
       setCurrentScreen('reset-pin');
     }
-    // Mark initial load as complete after checking route
+    // Mark initial load as complete immediately
     setInitialLoadComplete(true);
   }, []);
 
@@ -86,7 +86,7 @@ function App() {
                   const randomLocation = mockLocations[Math.floor(Math.random() * mockLocations.length)];
                   setLocation(randomLocation);
                   setLocationStatus('success');
-                }, 1500);
+                }, 1000); // Reduced timeout
                 
               } catch (error) {
                 console.error('Geocoding error:', error);
@@ -100,7 +100,7 @@ function App() {
               setLocationStatus('error');
             },
             {
-              timeout: 30000, // Increased timeout to 30 seconds
+              timeout: 10000, // Reduced timeout to 10 seconds
               enableHighAccuracy: false,
               maximumAge: 300000 // 5 minutes
             }
@@ -119,11 +119,12 @@ function App() {
     detectLocation();
   }, []);
 
-  // Handle user authentication state changes
+  // Handle user authentication state changes - SIMPLIFIED
   useEffect(() => {
-    // Only proceed if initial load is complete and auth loading is done
-    if (!initialLoadComplete || authLoading) return;
+    // Only proceed if initial load is complete
+    if (!initialLoadComplete) return;
 
+    // Don't wait for auth loading to complete - proceed immediately
     if (user) {
       // If user just signed up and needs to set preferences
       if (newUserNeedsPreferences) {
@@ -141,7 +142,7 @@ function App() {
     else if (!guestMode && !['home', 'signup', 'login', 'demo', 'reset-pin', 'guest-onboarding'].includes(currentScreen)) {
       setCurrentScreen('home');
     }
-  }, [user, userProfile, authLoading, newUserNeedsPreferences, guestMode, initialLoadComplete, currentScreen]);
+  }, [user, userProfile, newUserNeedsPreferences, guestMode, initialLoadComplete, currentScreen]);
 
   const handleLanguageSelect = (language: string) => {
     setSelectedLanguage(language);
@@ -261,8 +262,8 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Show loading while checking auth state - but only if initial load is not complete
-  if (!initialLoadComplete || authLoading) {
+  // Show loading ONLY if initial load is not complete AND auth is still loading
+  if (!initialLoadComplete && authLoading) {
     return (
       <div className="min-h-screen bg-spiritual-diagonal flex items-center justify-center">
         <div className="text-center">
