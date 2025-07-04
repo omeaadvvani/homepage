@@ -17,9 +17,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack }) => {
   const [authError, setAuthError] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [showForgotPin, setShowForgotPin] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  const { signIn, loading } = useAuth();
+  const { signIn, loading: authLoading } = useAuth();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -86,34 +87,48 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack }) => {
     inputRefs.current[nextIndex]?.focus();
   };
 
+  // Validation checks
   const isPinComplete = pin.every(digit => digit !== '');
   const isEmailValid = email && validateEmail(email);
   const isFormValid = isEmailValid && isPinComplete;
+  const isLoading = isLoggingIn || authLoading;
 
   const handleLogin = async () => {
-    if (!isFormValid) return;
+    if (!isFormValid || isLoading) return;
 
-    const pinString = pin.join('');
-    const { data, error } = await signIn(email, pinString);
+    setIsLoggingIn(true);
+    setAuthError('');
+    setPinError('');
+    setEmailError('');
 
-    if (error) {
-      console.error('Login error:', error);
-      
-      // Handle specific error types
-      if (error.message?.includes('Invalid login credentials')) {
-        setAuthError('Invalid email or PIN. Please check your credentials and try again.');
-      } else if (error.message?.includes('Email not confirmed')) {
-        setAuthError('Please confirm your email address before logging in.');
-      } else if (error.message?.includes('Too many requests')) {
-        setAuthError('Too many login attempts. Please wait a moment and try again.');
-      } else {
-        setAuthError('Login failed. Please check your credentials and try again.');
+    try {
+      const pinString = pin.join('');
+      const { data, error } = await signIn(email, pinString);
+
+      if (error) {
+        console.error('Login error:', error);
+        
+        // Handle specific error types
+        if (error.message?.includes('Invalid login credentials')) {
+          setAuthError('Invalid email or PIN. Please check your credentials and try again.');
+        } else if (error.message?.includes('Email not confirmed')) {
+          setAuthError('Please confirm your email address before logging in.');
+        } else if (error.message?.includes('Too many requests')) {
+          setAuthError('Too many login attempts. Please wait a moment and try again.');
+        } else {
+          setAuthError('Login failed. Please check your credentials and try again.');
+        }
+        return;
       }
-      return;
-    }
 
-    if (data?.user) {
-      onComplete();
+      if (data?.user) {
+        onComplete();
+      }
+    } catch (error: any) {
+      console.error('Unexpected login error:', error);
+      setAuthError('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -139,6 +154,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack }) => {
     setEmailError('');
     setPinError('');
     setAuthError('');
+    setIsLoggingIn(false);
   };
 
   // Show Forgot PIN screen if requested
@@ -228,7 +244,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack }) => {
                 onChange={(e) => handleEmailChange(e.target.value)}
                 onBlur={handleEmailBlur}
                 placeholder="yourname@example.com"
-                className={`w-full px-4 py-3 border-2 rounded-spiritual focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 transition-all duration-300 bg-white/70 text-spiritual-900 placeholder-spiritual-600/50 tracking-spiritual ${
+                disabled={isLoading}
+                className={`w-full px-4 py-3 border-2 rounded-spiritual focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 transition-all duration-300 bg-white/70 text-spiritual-900 placeholder-spiritual-600/50 tracking-spiritual disabled:opacity-50 disabled:cursor-not-allowed ${
                   emailError 
                     ? 'border-red-400 focus:border-red-500' 
                     : email && isEmailValid
@@ -267,6 +284,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack }) => {
                 onClick={() => setShowPin(!showPin)}
                 className="p-1 text-spiritual-600 hover:text-spiritual-700 transition-colors duration-300"
                 title={showPin ? "Hide PIN" : "Show PIN"}
+                disabled={isLoading}
               >
                 {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -285,7 +303,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack }) => {
                   onChange={(e) => handlePinChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onPaste={index === 0 ? handlePaste : undefined}
-                  className={`w-10 h-10 text-center text-lg font-bold border-2 rounded-spiritual focus:outline-none focus:ring-4 transition-all duration-300 bg-white/70 text-spiritual-900 hover:border-spiritual-300 focus:scale-105 ${
+                  disabled={isLoading}
+                  className={`w-10 h-10 text-center text-lg font-bold border-2 rounded-spiritual focus:outline-none focus:ring-4 transition-all duration-300 bg-white/70 text-spiritual-900 hover:border-spiritual-300 focus:scale-105 disabled:opacity-50 disabled:cursor-not-allowed ${
                     pinError 
                       ? 'border-red-400 focus:border-red-500 focus:ring-red-200' 
                       : 'border-spiritual-200 focus:border-spiritual-400 focus:ring-spiritual-200/50'
@@ -314,22 +333,22 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack }) => {
           {/* Login Button */}
           <button
             onClick={handleLogin}
-            disabled={!isFormValid || loading}
+            disabled={!isFormValid || isLoading}
             className={`group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 font-semibold rounded-button shadow-spiritual transition-all duration-300 transform tracking-spiritual ${
-              isFormValid && !loading
+              isFormValid && !isLoading
                 ? 'bg-gradient-to-r from-spiritual-400 to-spiritual-500 hover:from-spiritual-500 hover:to-spiritual-600 text-white hover:shadow-spiritual-lg hover:scale-[1.02] active:scale-[0.98] border-2 border-spiritual-600/30 hover:border-spiritual-500/50 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
             title={!isFormValid ? "Please enter your email and PIN" : "Login to your account"}
           >
             {/* Ripple Effect Background */}
-            {isFormValid && !loading && (
+            {isFormValid && !isLoading && (
               <div className="absolute inset-0 bg-gradient-to-r from-spiritual-300/20 to-spiritual-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-button"></div>
             )}
             
             {/* Button Content */}
             <div className="relative z-10 flex items-center gap-3">
-              {loading ? (
+              {isLoading ? (
                 <>
                   <div className="w-5 h-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
                   <span className="text-lg">Logging in...</span>
@@ -343,7 +362,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack }) => {
             </div>
             
             {/* Glow Effect */}
-            {isFormValid && !loading && (
+            {isFormValid && !isLoading && (
               <div className="absolute inset-0 rounded-button bg-gradient-to-r from-spiritual-400 to-spiritual-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
             )}
           </button>
@@ -352,7 +371,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack }) => {
           <div className="text-center">
             <button
               onClick={handleForgotPin}
-              className="group text-spiritual-700 hover:text-spiritual-600 font-medium transition-colors duration-300 relative tracking-spiritual"
+              disabled={isLoading}
+              className="group text-spiritual-700 hover:text-spiritual-600 font-medium transition-colors duration-300 relative tracking-spiritual disabled:opacity-50 disabled:cursor-not-allowed"
               title="Reset your PIN via email"
             >
               <span className="relative">
