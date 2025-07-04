@@ -281,7 +281,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       recognition.lang = "en-IN";
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
-      recognition.continuous = false;
+      recognition.continuous = true;
 
       setIsListening(true);
 
@@ -292,6 +292,9 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       recognition.onresult = (event) => {
         const spokenText = event.results[0][0].transcript;
         console.log("Heard:", spokenText);
+        
+        // Stop listening immediately after getting result
+        recognition.stop();
         
         // Fill the input field with spoken text
         setQuestion(spokenText);
@@ -312,7 +315,8 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
         if (event.error === 'not-allowed') {
           alert("Microphone access denied. Please allow microphone permissions and try again.");
         } else if (event.error === 'no-speech') {
-          alert("No speech detected. Please try speaking again.");
+          // More gentle handling for no-speech - just reset without alert
+          console.log("No speech detected, resetting...");
         } else {
           alert("Voice recognition error. Please try again.");
         }
