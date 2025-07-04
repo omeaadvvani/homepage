@@ -120,7 +120,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
     setUpcomingEvents(sampleUpcoming);
   }, [preferences]);
 
-  // Enhanced Text-to-Speech function with Google UK English Female voice
+  // Enhanced Text-to-Speech function with soothing female voice
   const speak = (text: string) => {
     try {
       const synth = window.speechSynthesis;
@@ -130,12 +130,37 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       
       const utterance = new SpeechSynthesisUtterance(text);
 
-      const voices = synth.getVoices();
-      utterance.voice = voices.find(v => v.name === "Google UK English Female") || null;
+      const setVoice = () => {
+        const voices = synth.getVoices();
 
-      utterance.rate = 0.85;
-      utterance.pitch = 1.1;
-      synth.speak(utterance);
+        // Try to select a soft, feminine Indian English voice
+        const preferredVoice = voices.find(
+          (v) =>
+            v.lang.includes("en-IN") &&
+            (
+              v.name.toLowerCase().includes("female") ||
+              v.name.toLowerCase().includes("karen") ||
+              v.name.toLowerCase().includes("samantha") ||
+              v.name.toLowerCase().includes("zira") ||
+              v.name.toLowerCase().includes("google")
+            )
+        );
+
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+        }
+
+        utterance.rate = 0.85; // slower, calm pace
+        utterance.pitch = 1.1; // slightly sweeter tone
+        synth.speak(utterance);
+      };
+
+      // Handle voice loading on some browsers
+      if (synth.getVoices().length === 0) {
+        synth.onvoiceschanged = () => setVoice();
+      } else {
+        setVoice();
+      }
     } catch (error) {
       console.warn('Text-to-speech not supported or failed:', error);
       // Silently fail gracefully
