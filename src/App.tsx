@@ -22,7 +22,6 @@ function App() {
   const [newUserNeedsPreferences, setNewUserNeedsPreferences] = useState(false);
   const [guestMode, setGuestMode] = useState(false);
   const [previousScreen, setPreviousScreen] = useState<string>('home');
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   const { user, userProfile, loading: authLoading, signOut } = useAuth();
 
@@ -41,8 +40,6 @@ function App() {
     if (path === '/reset-pin') {
       setCurrentScreen('reset-pin');
     }
-    // Mark initial load as complete immediately
-    setInitialLoadComplete(true);
   }, []);
 
   // Check Supabase configuration on mount
@@ -86,7 +83,7 @@ function App() {
                   const randomLocation = mockLocations[Math.floor(Math.random() * mockLocations.length)];
                   setLocation(randomLocation);
                   setLocationStatus('success');
-                }, 800); // Reduced timeout
+                }, 1500);
                 
               } catch (error) {
                 console.error('Geocoding error:', error);
@@ -100,7 +97,7 @@ function App() {
               setLocationStatus('error');
             },
             {
-              timeout: 8000, // Reduced timeout to 8 seconds
+              timeout: 30000, // Increased timeout to 30 seconds
               enableHighAccuracy: false,
               maximumAge: 300000 // 5 minutes
             }
@@ -119,13 +116,9 @@ function App() {
     detectLocation();
   }, []);
 
-  // Handle user authentication state changes - SIMPLIFIED
+  // Handle user authentication state changes
   useEffect(() => {
-    // Only proceed if initial load is complete
-    if (!initialLoadComplete) return;
-
-    // Don't wait for auth loading to complete - proceed immediately
-    if (user) {
+    if (!authLoading && user) {
       // If user just signed up and needs to set preferences
       if (newUserNeedsPreferences) {
         setCurrentScreen('preferences');
@@ -135,14 +128,8 @@ function App() {
       else if (userProfile || guestMode) {
         setCurrentScreen('main-experience');
       }
-      // If user is logged in but no profile and not in guest mode, stay on current screen
-      // This prevents infinite redirects
     }
-    // If no user and not in guest mode, ensure we're on an appropriate screen
-    else if (!guestMode && !['home', 'signup', 'login', 'demo', 'reset-pin', 'guest-onboarding'].includes(currentScreen)) {
-      setCurrentScreen('home');
-    }
-  }, [user, userProfile, newUserNeedsPreferences, guestMode, initialLoadComplete, currentScreen]);
+  }, [user, userProfile, authLoading, newUserNeedsPreferences, guestMode]);
 
   const handleLanguageSelect = (language: string) => {
     setSelectedLanguage(language);
@@ -262,8 +249,8 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Show loading ONLY if initial load is not complete AND auth is still loading
-  if (!initialLoadComplete && authLoading) {
+  // Show loading while checking auth state
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-spiritual-diagonal flex items-center justify-center">
         <div className="text-center">
@@ -337,7 +324,7 @@ function App() {
       
       {/* Supabase Error Banner */}
       {supabaseError && (
-        <div className="absolute top-0 left-0 right-0 bg-red-50 border-b border-red-200 p-3 z-50">
+        <div className="absolute top-0 left-0 right-0 bg-red-50 border-b border-red-200 p-3 z-30">
           <div className="flex items-center justify-center gap-3 text-red-700">
             <AlertCircle className="w-5 h-5 flex-shrink-0" />
             <p className="text-sm font-medium tracking-spiritual">{supabaseError}</p>
@@ -356,7 +343,7 @@ function App() {
       </div>
 
       {/* Top Right Controls - Language & Location */}
-      <div className={`absolute ${supabaseError ? 'top-20' : 'top-6'} right-6 z-40 flex items-center gap-4`}>
+      <div className={`absolute ${supabaseError ? 'top-20' : 'top-6'} right-6 z-20 flex items-center gap-4`}>
         
         {/* Location Auto-Detect */}
         <div className="group relative">
@@ -384,7 +371,7 @@ function App() {
           </div>
           
           {/* Tooltip */}
-          <div className="absolute top-full right-0 mt-3 px-4 py-3 bg-spiritual-900 text-white text-xs rounded-spiritual opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap z-50 shadow-spiritual-lg">
+          <div className="absolute top-full right-0 mt-3 px-4 py-3 bg-spiritual-900 text-white text-xs rounded-spiritual opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap z-30 shadow-spiritual-lg">
             Used to calculate accurate ritual timings based on your region
             <div className="absolute bottom-full right-4 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-spiritual-900"></div>
           </div>
@@ -402,7 +389,7 @@ function App() {
           </button>
           
           {isLanguageDropdownOpen && (
-            <div className="absolute top-full right-0 mt-2 bg-white rounded-card shadow-spiritual-lg border border-spiritual-100 overflow-hidden min-w-32 z-50">
+            <div className="absolute top-full right-0 mt-2 bg-white rounded-card shadow-spiritual-lg border border-spiritual-100 overflow-hidden min-w-32 z-30">
               {languages.map((language) => (
                 <button
                   key={language}
@@ -518,7 +505,7 @@ function App() {
       {/* Click outside to close dropdown */}
       {isLanguageDropdownOpen && (
         <div 
-          className="fixed inset-0 z-30" 
+          className="fixed inset-0 z-10" 
           onClick={() => setIsLanguageDropdownOpen(false)}
         ></div>
       )}
