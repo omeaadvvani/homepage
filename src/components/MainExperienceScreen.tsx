@@ -64,6 +64,8 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isListening, setIsListening] = useState(false);
   const [micSupported, setMicSupported] = useState(false);
+  const [dailyGreeting, setDailyGreeting] = useState('');
+  const [showGreeting, setShowGreeting] = useState(false);
 
   // Sample spiritual events data (in production, this would come from your database)
   const sampleEvents: SpiritualEvent[] = [
@@ -121,6 +123,73 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     setMicSupported(!!SpeechRecognition);
+  }, []);
+
+  // Set daily greeting on mount
+  useEffect(() => {
+    const day = new Date().toLocaleDateString("en-IN", { weekday: 'long' });
+    
+    let greeting = "";
+    
+    switch (day) {
+      case "Monday":
+        greeting = "🕉 Om Namah Shivaya – It's Monday";
+        break;
+      case "Tuesday":
+        greeting = "🔥 Jai Hanuman – Tuesday brings strength and focus";
+        break;
+      case "Wednesday":
+        greeting = "🌿 Chant Ram Naam – Stay balanced this Wednesday";
+        break;
+      case "Thursday":
+        greeting = "🙏 Hari Om – Thursday is a day of learning and Vishnu bhakti";
+        break;
+      case "Friday":
+        greeting = "🌸 Jai Maa Lakshmi – Invite abundance this Friday";
+        break;
+      case "Saturday":
+        greeting = "🔱 Shani Dev's day – Reflect, stay disciplined";
+        break;
+      case "Sunday":
+        greeting = "🌞 Surya Arghya – Offer light to your soul today";
+        break;
+      default:
+        greeting = "🧘 Welcome to VoiceVedic";
+    }
+    
+    setDailyGreeting(greeting);
+    
+    // Show greeting with fade-in after a short delay
+    setTimeout(() => {
+      setShowGreeting(true);
+    }, 1200);
+    
+    // Optional: Soft voice output after greeting appears
+    setTimeout(() => {
+      try {
+        if (typeof window !== "undefined" && "speechSynthesis" in window) {
+          const utterance = new SpeechSynthesisUtterance(greeting);
+          utterance.lang = "en-IN";
+          utterance.rate = 0.9;
+          utterance.pitch = 1.05;
+          utterance.volume = 0.7; // Softer volume
+          
+          // Use a gentle voice if available
+          const voices = speechSynthesis.getVoices();
+          const gentleVoice = voices.find(voice => 
+            voice.name.toLowerCase().includes('female') || 
+            voice.name.toLowerCase().includes('google')
+          );
+          if (gentleVoice) {
+            utterance.voice = gentleVoice;
+          }
+          
+          speechSynthesis.speak(utterance);
+        }
+      } catch (e) {
+        console.warn("TTS failed for greeting:", e);
+      }
+    }, 2000); // Speak after 2 seconds
   }, []);
 
   // Load today's event
@@ -420,6 +489,19 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Daily Spiritual Greeting */}
+        {dailyGreeting && (
+          <div className={`w-full max-w-4xl mb-6 transition-all duration-1000 ${showGreeting ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+            <div className="flex justify-center">
+              <div className="bg-gradient-to-r from-orange-50 to-spiritual-50 border border-orange-200/50 rounded-spiritual px-6 py-3 shadow-spiritual backdrop-blur-sm">
+                <p className="text-orange-700 font-semibold tracking-spiritual text-center text-sm md:text-base">
+                  {dailyGreeting}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Main Dashboard Content */}
         <div className="w-full max-w-4xl space-y-8 animate-slide-up">
