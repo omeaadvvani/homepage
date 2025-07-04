@@ -59,12 +59,16 @@ function App() {
 
   // Auto-detect location on component mount
   useEffect(() => {
+    let isMounted = true;
+    
     const detectLocation = async () => {
       try {
         // Try to get user's location using geolocation API
         if ('geolocation' in navigator) {
           navigator.geolocation.getCurrentPosition(
             async (position) => {
+              if (!isMounted) return;
+              
               try {
                 // Use reverse geocoding to get city name
                 const { latitude, longitude } = position.coords;
@@ -72,6 +76,8 @@ function App() {
                 // For demo purposes, we'll simulate the API call
                 // In production, you'd use a service like OpenCage, MapBox, or Google Geocoding
                 setTimeout(() => {
+                  if (!isMounted) return;
+                  
                   // Simulate different locations based on coordinates
                   const mockLocations = [
                     'New Delhi, India',
@@ -87,12 +93,14 @@ function App() {
                 }, 1500);
                 
               } catch (error) {
+                if (!isMounted) return;
                 console.error('Geocoding error:', error);
                 setLocation('Location unavailable');
                 setLocationStatus('error');
               }
             },
             (error) => {
+              if (!isMounted) return;
               console.error('Geolocation error:', error);
               setLocation('Location unavailable');
               setLocationStatus('error');
@@ -104,10 +112,12 @@ function App() {
             }
           );
         } else {
+          if (!isMounted) return;
           setLocation('Location unavailable');
           setLocationStatus('error');
         }
       } catch (error) {
+        if (!isMounted) return;
         console.error('Location detection error:', error);
         setLocation('Location unavailable');
         setLocationStatus('error');
@@ -115,11 +125,18 @@ function App() {
     };
 
     detectLocation();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Handle user authentication state changes
+  // Handle user authentication state changes with proper dependency management
   useEffect(() => {
-    if (!authLoading && user) {
+    // Only proceed if auth is not loading
+    if (authLoading) return;
+    
+    if (user) {
       // If user just signed up and needs to set preferences
       if (newUserNeedsPreferences) {
         setCurrentScreen('preferences');
@@ -146,7 +163,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('login');
       setIsNavigating(false);
-    }, 150);
+    }, 200);
   };
 
   const handleSignUp = () => {
@@ -158,7 +175,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('signup');
       setIsNavigating(false);
-    }, 150);
+    }, 200);
   };
 
   const handleContinueAsGuest = () => {
@@ -166,7 +183,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('guest-onboarding');
       setIsNavigating(false);
-    }, 150);
+    }, 200);
   };
 
   const handleBackToHome = () => {
@@ -181,7 +198,7 @@ function App() {
       if (window.location.pathname === '/reset-pin') {
         window.history.pushState({}, '', '/');
       }
-    }, 150);
+    }, 200);
   };
 
   const handleBackToMainExperience = () => {
@@ -189,7 +206,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('main-experience');
       setIsNavigating(false);
-    }, 150);
+    }, 200);
   };
 
   const handleSignUpComplete = () => {
@@ -204,7 +221,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('main-experience');
       setIsNavigating(false);
-    }, 150);
+    }, 200);
   };
 
   const handleGuestOnboardingComplete = () => {
@@ -214,7 +231,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('main-experience');
       setIsNavigating(false);
-    }, 150);
+    }, 200);
   };
 
   const handleLoginComplete = () => {
@@ -223,7 +240,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('main-experience');
       setIsNavigating(false);
-    }, 150);
+    }, 200);
   };
 
   const handleTryDemo = () => {
@@ -231,7 +248,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('demo');
       setIsNavigating(false);
-    }, 150);
+    }, 200);
   };
 
   const handleShowPreferences = () => {
@@ -241,7 +258,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('preferences');
       setIsNavigating(false);
-    }, 150);
+    }, 200);
   };
 
   const handleShowSettings = () => {
@@ -251,7 +268,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('settings');
       setIsNavigating(false);
-    }, 150);
+    }, 200);
   };
 
   const handleResetPinComplete = () => {
@@ -263,7 +280,7 @@ function App() {
       setIsNavigating(false);
       // Clear URL
       window.history.pushState({}, '', '/');
-    }, 150);
+    }, 200);
   };
 
   const handleLogout = async () => {
@@ -310,7 +327,7 @@ function App() {
     return (
       <div className="min-h-screen bg-spiritual-diagonal flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-spiritual-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+          <div className="w-16 h-16 border-4 border-spiritual-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
           <p className="text-spiritual-700 tracking-spiritual text-lg font-medium">
             {authLoading ? 'Loading your spiritual journey...' : 'Navigating...'}
           </p>
