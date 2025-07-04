@@ -221,9 +221,8 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       const responseText = data.answer || 'Sorry, I couldn\'t provide a response at this time.';
       setResponse(responseText);
 
-      // Trigger enhanced text-to-speech ONLY when answer exists and is valid
+      // Trigger text-to-speech safely
       if (responseText && responseText.trim() !== "") {
-        // Small delay to ensure response is rendered before speaking
         setTimeout(() => {
           speak(responseText);
         }, 300);
@@ -237,12 +236,6 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       const fallbackResponse = 'I\'m unable to respond right now. Please try again in a moment. Your spiritual journey continues with patience and devotion.';
       setResponse(fallbackResponse);
       
-      // Speak fallback response safely
-      if (fallbackResponse && fallbackResponse.trim() !== "") {
-        setTimeout(() => {
-          speak(fallbackResponse);
-        }, 300);
-      }
     } finally {
       setIsAsking(false);
     }
@@ -540,7 +533,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
               >
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                 <span>Logout</span>
-            </button>
+              </button>
             )}
           </div>
         </div>
