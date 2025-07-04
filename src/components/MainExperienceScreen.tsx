@@ -122,6 +122,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     setMicSupported(!!SpeechRecognition);
   }, []);
+
   // Load today's event
   useEffect(() => {
     // In production, fetch from Supabase based on user's calendar type and location
@@ -332,44 +333,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       setIsListening(false);
     }
   };
-        recognition.stop();
-        
-        // Step 1: Set the input field with spoken text
-        setQuestion(spokenText);
-        setIsListening(false);
-        
-        // Step 2: Wait for state to update → then trigger Ask logic
-        setTimeout(() => {
-          if (spokenText.trim()) {
-            handleAskQuestion();
-          }
-        }, 150); // Slight delay ensures input update is complete
-      };
 
-      recognition.onerror = (event) => {
-        console.error("Mic Error:", event.error);
-        setIsListening(false);
-        
-        if (event.error === 'not-allowed') {
-          alert("Microphone access denied. Please allow microphone permissions and try again.");
-        } else if (event.error === 'no-speech') {
-          // Gentle handling for no-speech - just reset without alert
-          console.log("🔇 No speech detected, resetting...");
-        } else {
-          console.warn("❌ Voice recognition error:", event.error);
-        }
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      recognition.start();
-    } catch (err) {
-      console.error("Voice capture failed:", err);
-      setIsListening(false);
-    }
-  };
   const formatTime = (timeString: string) => {
     const [hours, minutes] = timeString.split(':');
     const hour = parseInt(hours);
