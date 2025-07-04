@@ -136,14 +136,29 @@ export const useAuth = () => {
   const signOut = async () => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
       
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Supabase signOut error:', error);
+        // Don't throw error - still proceed with local cleanup
+      }
+      
+      // Clear local state regardless of Supabase response
       setUser(null);
       setSession(null);
       setUserProfile(null);
+      
+      return { error: null };
     } catch (error) {
       console.error('Sign out error:', error);
+      
+      // Even if there's an error, clear local state for UX
+      setUser(null);
+      setSession(null);
+      setUserProfile(null);
+      
+      return { error };
     } finally {
       setLoading(false);
     }
