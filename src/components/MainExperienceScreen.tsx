@@ -281,7 +281,6 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       recognition.lang = "en-IN";
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
-      recognition.continuous = false;
 
       setIsListening(true);
 
@@ -293,7 +292,46 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
         const spokenText = event.results[0][0].transcript;
         console.log("✅ Heard:", spokenText);
         
-        // Stop listening immediately after getting result
+        // Step 1: Clear previous answer before anything else
+        setResponse("");
+        setApiError("");
+        
+        // Step 2: Set input value
+        setQuestion(spokenText);
+        setIsListening(false);
+        
+        // Step 3: Delay Ask trigger to ensure input + UI updated
+        setTimeout(() => {
+          if (spokenText.trim()) {
+            handleAskQuestion();
+          }
+        }, 150);
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Mic Error:", event.error);
+        setIsListening(false);
+        
+        if (event.error === 'not-allowed') {
+          alert("Microphone access denied. Please allow microphone permissions and try again.");
+        } else if (event.error === 'no-speech') {
+          // Gentle handling for no-speech - just reset without alert
+          console.log("🔇 No speech detected, resetting...");
+        } else {
+          console.warn("❌ Voice recognition error:", event.error);
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (err) {
+      console.error("Voice capture failed:", err);
+      setIsListening(false);
+    }
+  };
         recognition.stop();
         
         // Step 1: Set the input field with spoken text
