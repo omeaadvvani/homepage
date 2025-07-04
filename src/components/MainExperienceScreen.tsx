@@ -120,17 +120,47 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
     setUpcomingEvents(sampleUpcoming);
   }, [preferences]);
 
-  // Text-to-Speech function
+  // Enhanced Text-to-Speech function with soothing female voice
   const speak = (text: string) => {
     try {
+      const synth = window.speechSynthesis;
+      
       // Stop any currently speaking utterance
-      speechSynthesis.cancel();
+      synth.cancel();
       
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "en-IN"; // Indian English tone
-      utterance.rate = 0.92;     // Calm pace
-      utterance.pitch = 1;
-      speechSynthesis.speak(utterance);
+
+      const setVoice = () => {
+        const voices = synth.getVoices();
+
+        // Try to select a soft, feminine Indian English voice
+        const preferredVoice = voices.find(
+          (v) =>
+            v.lang.includes("en-IN") &&
+            (
+              v.name.toLowerCase().includes("female") ||
+              v.name.toLowerCase().includes("karen") ||
+              v.name.toLowerCase().includes("samantha") ||
+              v.name.toLowerCase().includes("zira") ||
+              v.name.toLowerCase().includes("google")
+            )
+        );
+
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+        }
+
+        utterance.rate = 0.85; // slower, calm pace
+        utterance.pitch = 1.1; // slightly sweeter tone
+        synth.speak(utterance);
+      };
+
+      // Handle voice loading on some browsers
+      if (synth.getVoices().length === 0) {
+        synth.onvoiceschanged = () => setVoice();
+      } else {
+        setVoice();
+      }
     } catch (error) {
       console.warn('Text-to-speech not supported or failed:', error);
       // Silently fail gracefully
@@ -188,7 +218,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       const responseText = data.answer || 'Sorry, I couldn\'t provide a response at this time.';
       setResponse(responseText);
 
-      // Trigger text-to-speech after response is received
+      // Trigger enhanced text-to-speech after response is received
       if (responseText) {
         speak(responseText);
       }
@@ -213,7 +243,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
     setResponse('');
     setApiError('');
     // Stop any currently speaking utterance
-    speechSynthesis.cancel();
+    window.speechSynthesis.cancel();
   };
 
   const handleReplayAudio = () => {
