@@ -253,12 +253,18 @@ export const useUserPreferences = () => {
 
   // Auto-fetch preferences when user changes
   useEffect(() => {
-    if (user) {
+    let isMounted = true;
+
+    if (user && isMounted) {
       fetchPreferences();
-    } else {
+    } else if (isMounted) {
       setPreferences(null);
       setError(null);
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   return {
