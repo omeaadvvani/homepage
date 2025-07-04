@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   MapPin, 
   Calendar, 
@@ -19,7 +20,6 @@ import { useUserPreferences } from '../hooks/useUserPreferences';
 interface MainExperienceScreenProps {
   onChangePreferences: () => void;
   onShowSettings: () => void;
-  onShowAskExperience: () => void;
   onLogout?: () => void;
 }
 
@@ -44,11 +44,11 @@ interface UpcomingEvent {
 const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({ 
   onChangePreferences, 
   onShowSettings,
-  onShowAskExperience,
   onLogout 
 }) => {
   const { user, userProfile } = useAuth();
   const { preferences } = useUserPreferences();
+  const navigate = useNavigate();
   
   const [showSacredText, setShowSacredText] = useState(false);
   const [todayEvent, setTodayEvent] = useState<SpiritualEvent | null>(null);
@@ -289,7 +289,6 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
           )}
 
           {/* Ask VoiceVedic Block */}
-          {/* Ask VoiceVedic CTA Block */}
           <div className="bg-white/90 backdrop-blur-sm rounded-card p-6 shadow-spiritual border border-spiritual-200/50 text-center">
             <div className="flex items-center justify-center gap-3 mb-4">
               <Sparkles className="w-6 h-6 text-spiritual-600" />
@@ -301,7 +300,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
             </p>
             
             <button
-              onClick={handleShowAskExperience}
+              onClick={() => navigate('/ask')}
               className="group relative overflow-hidden flex items-center justify-center gap-3 w-full max-w-md mx-auto py-4 px-6 bg-gradient-to-r from-spiritual-600 to-spiritual-700 hover:from-spiritual-700 hover:to-spiritual-800 text-white font-semibold rounded-button shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border-2 border-spiritual-800/30 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 tracking-spiritual"
             >
               {/* Glow Effect */}
