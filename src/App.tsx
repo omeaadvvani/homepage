@@ -26,6 +26,18 @@ function App() {
 
   const { user, userProfile, loading: authLoading, signOut } = useAuth();
 
+  // Debug logging for auth state
+  useEffect(() => {
+    console.log("🔍 Auth State Debug:", {
+      user: user ? { id: user.id, email: user.email } : null,
+      userProfile: userProfile ? { id: userProfile.id, email: userProfile.email, calendar: userProfile.calendar_tradition } : null,
+      authLoading,
+      currentScreen,
+      newUserNeedsPreferences,
+      guestMode
+    });
+  }, [user, userProfile, authLoading, currentScreen, newUserNeedsPreferences, guestMode]);
+
   const languages = [
     'English',
     'Hindi',
@@ -38,6 +50,7 @@ function App() {
   // Check for reset-pin route on mount
   useEffect(() => {
     const path = window.location.pathname;
+    console.log("🌐 Route Check:", path);
     if (path === '/reset-pin') {
       setCurrentScreen('reset-pin');
     }
@@ -47,6 +60,13 @@ function App() {
   useEffect(() => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    
+    console.log("🔧 Supabase Config Check:", {
+      hasUrl: !!supabaseUrl,
+      hasKey: !!supabaseAnonKey,
+      urlValid: supabaseUrl && !supabaseUrl.includes('placeholder'),
+      keyValid: supabaseAnonKey && !supabaseAnonKey.includes('placeholder')
+    });
     
     if (!supabaseUrl || !supabaseAnonKey || 
         supabaseUrl === 'your_supabase_project_url' || 
@@ -62,12 +82,21 @@ function App() {
     let isMounted = true;
     
     const detectLocation = async () => {
+      console.log("📍 Starting location detection...");
       try {
         // Try to get user's location using geolocation API
         if ('geolocation' in navigator) {
           navigator.geolocation.getCurrentPosition(
             async (position) => {
-              if (!isMounted) return;
+              if (!isMounted) {
+                console.log("📍 Location detection cancelled - component unmounted");
+                return;
+              }
+              
+              console.log("📍 Location coordinates received:", {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+              });
               
               try {
                 // Use reverse geocoding to get city name
@@ -88,20 +117,21 @@ function App() {
                     'Kolkata, India'
                   ];
                   const randomLocation = mockLocations[Math.floor(Math.random() * mockLocations.length)];
+                  console.log("📍 Location detected:", randomLocation);
                   setLocation(randomLocation);
                   setLocationStatus('success');
                 }, 1500);
                 
               } catch (error) {
                 if (!isMounted) return;
-                console.error('Geocoding error:', error);
+                console.error('📍 Geocoding error:', error);
                 setLocation('Location unavailable');
                 setLocationStatus('error');
               }
             },
             (error) => {
               if (!isMounted) return;
-              console.error('Geolocation error:', error);
+              console.error('📍 Geolocation error:', error);
               setLocation('Location unavailable');
               setLocationStatus('error');
             },
@@ -113,12 +143,13 @@ function App() {
           );
         } else {
           if (!isMounted) return;
+          console.log("📍 Geolocation not supported");
           setLocation('Location unavailable');
           setLocationStatus('error');
         }
       } catch (error) {
         if (!isMounted) return;
-        console.error('Location detection error:', error);
+        console.error('📍 Location detection error:', error);
         setLocation('Location unavailable');
         setLocationStatus('error');
       }
@@ -128,67 +159,98 @@ function App() {
     
     return () => {
       isMounted = false;
+      console.log("📍 Location detection cleanup");
     };
   }, []);
 
   // Handle user authentication state changes with proper dependency management
   useEffect(() => {
+    console.log("🔄 Auth State Change Effect:", {
+      authLoading,
+      hasUser: !!user,
+      hasProfile: !!userProfile,
+      newUserNeedsPreferences,
+      guestMode,
+      currentScreen
+    });
+
     // Only proceed if auth is not loading
-    if (authLoading) return;
+    if (authLoading) {
+      console.log("⏳ Auth still loading, waiting...");
+      return;
+    }
     
     if (user) {
+      console.log("👤 User authenticated, checking next steps...");
       // If user just signed up and needs to set preferences
       if (newUserNeedsPreferences) {
+        console.log("⚙️ New user needs preferences, navigating to preferences screen");
         setCurrentScreen('preferences');
         setNewUserNeedsPreferences(false);
       }
       // If user already has profile or preferences, show main experience
       else if (userProfile || guestMode) {
+        console.log("🏠 User has profile or in guest mode, showing main experience");
         setCurrentScreen('main-experience');
+      } else {
+        console.log("❓ User authenticated but no profile found, staying on current screen");
       }
+    } else {
+      console.log("🚫 No user authenticated");
     }
   }, [user, userProfile, authLoading, newUserNeedsPreferences, guestMode]);
 
   const handleLanguageSelect = (language: string) => {
+    console.log("🌐 Language selected:", language);
     setSelectedLanguage(language);
     setIsLanguageDropdownOpen(false);
   };
 
   const handleLogin = () => {
+    console.log("🔑 Login button clicked");
     if (supabaseError) {
+      console.log("❌ Supabase error present, showing alert");
       alert(supabaseError);
       return;
     }
     setIsNavigating(true);
     setTimeout(() => {
+      console.log("🔑 Navigating to login screen");
       setCurrentScreen('login');
       setIsNavigating(false);
     }, 200);
   };
 
   const handleSignUp = () => {
+    console.log("📝 Sign up button clicked");
     if (supabaseError) {
+      console.log("❌ Supabase error present, showing alert");
       alert(supabaseError);
       return;
     }
     setIsNavigating(true);
     setTimeout(() => {
+      console.log("📝 Navigating to signup screen");
       setCurrentScreen('signup');
       setIsNavigating(false);
     }, 200);
   };
 
   const handleContinueAsGuest = () => {
+    console.log("👤 Continue as guest clicked");
     setIsNavigating(true);
     setTimeout(() => {
+      console.log("👤 Navigating to guest onboarding");
       setCurrentScreen('guest-onboarding');
       setIsNavigating(false);
     }, 200);
   };
 
   const handleBackToHome = () => {
+    console.log("🏠 Back to home clicked");
     setIsNavigating(true);
     setTimeout(() => {
+      console.log("🏠 Navigating to home screen");
       setCurrentScreen('home');
       setNewUserNeedsPreferences(false);
       setGuestMode(false);
@@ -202,20 +264,24 @@ function App() {
   };
 
   const handleBackToMainExperience = () => {
+    console.log("🏠 Back to main experience clicked");
     setIsNavigating(true);
     setTimeout(() => {
+      console.log("🏠 Navigating to main experience");
       setCurrentScreen('main-experience');
       setIsNavigating(false);
     }, 200);
   };
 
   const handleSignUpComplete = () => {
+    console.log("✅ Sign up completed, setting preferences needed flag");
     // After successful sign-up, move to preferences screen
     setNewUserNeedsPreferences(true);
     // The useEffect will handle moving to preferences screen
   };
 
   const handlePreferencesComplete = () => {
+    console.log("✅ Preferences completed, navigating to main experience");
     // Preferences saved successfully - move to main experience
     setIsNavigating(true);
     setTimeout(() => {
@@ -225,6 +291,7 @@ function App() {
   };
 
   const handleGuestOnboardingComplete = () => {
+    console.log("✅ Guest onboarding completed, enabling guest mode");
     // Guest onboarding completed - move to main experience in guest mode
     setGuestMode(true);
     setIsNavigating(true);
@@ -235,6 +302,7 @@ function App() {
   };
 
   const handleLoginComplete = () => {
+    console.log("✅ Login completed, navigating to main experience");
     // Login completed - move to main experience
     setIsNavigating(true);
     setTimeout(() => {
@@ -244,6 +312,7 @@ function App() {
   };
 
   const handleTryDemo = () => {
+    console.log("🎮 Try demo clicked");
     setIsNavigating(true);
     setTimeout(() => {
       setCurrentScreen('demo');
@@ -252,6 +321,7 @@ function App() {
   };
 
   const handleShowPreferences = () => {
+    console.log("⚙️ Show preferences clicked, previous screen:", currentScreen);
     // Store current screen as previous for proper back navigation
     setPreviousScreen(currentScreen);
     setIsNavigating(true);
@@ -262,6 +332,7 @@ function App() {
   };
 
   const handleShowSettings = () => {
+    console.log("⚙️ Show settings clicked, previous screen:", currentScreen);
     // Store current screen as previous for proper back navigation
     setPreviousScreen(currentScreen);
     setIsNavigating(true);
@@ -272,6 +343,7 @@ function App() {
   };
 
   const handleResetPinComplete = () => {
+    console.log("✅ PIN reset completed, redirecting to login");
     // PIN reset completed, redirect to login
     alert('Your PIN has been reset successfully! Please log in with your new PIN.');
     setIsNavigating(true);
@@ -284,30 +356,35 @@ function App() {
   };
 
   const handleLogout = async () => {
+    console.log("🚪 Logout initiated");
     try {
       setIsNavigating(true);
       
       // Call Supabase signOut
+      console.log("🚪 Calling Supabase signOut");
       await signOut();
       
       // Reset all state
+      console.log("🚪 Resetting app state");
       setGuestMode(false);
       setNewUserNeedsPreferences(false);
       setPreviousScreen('home');
       
       // Navigate to home screen with delay to prevent loading screen flash
       setTimeout(() => {
+        console.log("🚪 Logout complete, navigating to home");
         setCurrentScreen('home');
         setIsNavigating(false);
       }, 300);
       
       // Optional: Show logout success message
-      console.log('Logged out successfully');
+      console.log('✅ Logged out successfully');
       
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('❌ Logout error:', error);
       // Even if logout fails, still redirect to home for UX
       setTimeout(() => {
+        console.log("🚪 Logout error recovery, navigating to home anyway");
         setCurrentScreen('home');
         setIsNavigating(false);
       }, 300);
@@ -324,6 +401,7 @@ function App() {
 
   // Show loading while checking auth state or navigating
   if (authLoading || isNavigating) {
+    console.log("⏳ Showing loading screen:", { authLoading, isNavigating });
     return (
       <div className="min-h-screen bg-spiritual-diagonal flex items-center justify-center">
         <div className="text-center">
@@ -338,11 +416,13 @@ function App() {
 
   // Show Reset PIN screen if on that route
   if (currentScreen === 'reset-pin') {
+    console.log("🔒 Showing reset PIN screen");
     return <ResetPinScreen onComplete={handleResetPinComplete} onBack={handleBackToHome} />;
   }
 
   // Show Main Experience if user is authenticated or in guest mode
   if (currentScreen === 'main-experience') {
+    console.log("🏠 Showing main experience screen");
     return (
       <MainExperienceScreen 
         onChangePreferences={handleShowPreferences}
@@ -353,10 +433,12 @@ function App() {
   }
 
   if (currentScreen === 'signup') {
+    console.log("📝 Showing signup screen");
     return <SignUpScreen onComplete={handleSignUpComplete} onBack={handleBackToHome} />;
   }
 
   if (currentScreen === 'preferences') {
+    console.log("⚙️ Showing preferences screen, previous:", previousScreen);
     // Determine the correct back handler based on previous screen
     const backHandler = previousScreen === 'main-experience' ? handleBackToMainExperience : handleBackToHome;
     return (
@@ -369,6 +451,7 @@ function App() {
   }
 
   if (currentScreen === 'settings') {
+    console.log("⚙️ Showing settings screen, previous:", previousScreen);
     // Determine the correct back handler based on previous screen
     const backHandler = previousScreen === 'main-experience' ? handleBackToMainExperience : handleBackToHome;
     return (
@@ -381,17 +464,21 @@ function App() {
   }
 
   if (currentScreen === 'guest-onboarding') {
+    console.log("👤 Showing guest onboarding screen");
     return <GuestOnboardingScreen onComplete={handleGuestOnboardingComplete} onBack={handleBackToHome} />;
   }
 
   if (currentScreen === 'login') {
+    console.log("🔑 Showing login screen");
     return <LoginScreen onComplete={handleLoginComplete} onBack={handleBackToHome} />;
   }
 
   if (currentScreen === 'demo') {
+    console.log("🎮 Showing demo screen");
     return <DemoScreen onBack={handleBackToHome} />;
   }
 
+  console.log("🏠 Showing home screen");
   return (
     <div className="min-h-screen bg-spiritual-diagonal relative overflow-hidden font-sans">
       {/* Spiritual Visual Layer */}

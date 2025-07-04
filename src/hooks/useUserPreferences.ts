@@ -24,6 +24,16 @@ export const useUserPreferences = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Debug logging for preferences state
+  useEffect(() => {
+    console.log("🔍 useUserPreferences State:", {
+      user: user ? { id: user.id, email: user.email } : null,
+      preferences: preferences ? { id: preferences.id, language: preferences.language, calendar: preferences.calendar_type } : null,
+      loading,
+      error
+    });
+  }, [user, preferences, loading, error]);
+
   // Detect device type
   const getDeviceType = (): string => {
     const userAgent = navigator.userAgent.toLowerCase();
@@ -40,16 +50,20 @@ export const useUserPreferences = () => {
     try {
       return Intl.DateTimeFormat().resolvedOptions().timeZone;
     } catch (error) {
-      console.warn('Could not detect timezone:', error);
+      console.warn('⚠️ Could not detect timezone:', error);
       return 'UTC';
     }
   };
 
   // Fetch user preferences
   const fetchPreferences = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log("🚫 No user for preferences fetch");
+      return;
+    }
 
     try {
+      console.log("📋 Fetching user preferences for:", user.id);
       setLoading(true);
       setError(null);
 
@@ -61,12 +75,14 @@ export const useUserPreferences = () => {
         .maybeSingle();
 
       if (fetchError) {
+        console.error("❌ Preferences fetch error:", fetchError);
         throw fetchError;
       }
 
+      console.log("📋 Preferences fetched:", data ? "Found" : "Not found");
       setPreferences(data);
     } catch (err: any) {
-      console.error('Error fetching preferences:', err);
+      console.error('❌ Error fetching preferences:', err);
       setError(err.message || 'Failed to fetch preferences');
     } finally {
       setLoading(false);
@@ -85,6 +101,7 @@ export const useUserPreferences = () => {
     }
 
     try {
+      console.log("💾 Upserting preferences:", newPreferences);
       setLoading(true);
       setError(null);
 
@@ -97,6 +114,8 @@ export const useUserPreferences = () => {
       // Auto-detect device and timezone
       const deviceType = getDeviceType();
       const timezone = getTimezone();
+
+      console.log("🔧 Auto-detected:", { deviceType, timezone });
 
       const { data, error: upsertError } = await supabase
         .from('user_preferences')
@@ -115,13 +134,15 @@ export const useUserPreferences = () => {
         .single();
 
       if (upsertError) {
+        console.error("❌ Preferences upsert error:", upsertError);
         throw upsertError;
       }
 
+      console.log("✅ Preferences upserted successfully");
       setPreferences(data);
       return { data, error: null };
     } catch (err: any) {
-      console.error('Error saving preferences:', err);
+      console.error('❌ Error saving preferences:', err);
       const errorMessage = err.message || 'Failed to save preferences';
       setError(errorMessage);
       return { data: null, error: errorMessage };
@@ -144,6 +165,7 @@ export const useUserPreferences = () => {
     }
 
     try {
+      console.log("📝 Updating preferences:", updates);
       setLoading(true);
       setError(null);
 
@@ -171,13 +193,15 @@ export const useUserPreferences = () => {
         .single();
 
       if (updateError) {
+        console.error("❌ Preferences update error:", updateError);
         throw updateError;
       }
 
+      console.log("✅ Preferences updated successfully");
       setPreferences(data);
       return { data, error: null };
     } catch (err: any) {
-      console.error('Error updating preferences:', err);
+      console.error('❌ Error updating preferences:', err);
       const errorMessage = err.message || 'Failed to update preferences';
       setError(errorMessage);
       return { data: null, error: errorMessage };
@@ -193,6 +217,7 @@ export const useUserPreferences = () => {
     }
 
     try {
+      console.log("🔒 Deactivating preferences for:", user.id);
       setLoading(true);
       setError(null);
 
@@ -205,13 +230,15 @@ export const useUserPreferences = () => {
         .eq('user_id', user.id);
 
       if (updateError) {
+        console.error("❌ Preferences deactivation error:", updateError);
         throw updateError;
       }
 
+      console.log("✅ Preferences deactivated successfully");
       setPreferences(null);
       return { error: null };
     } catch (err: any) {
-      console.error('Error deactivating preferences:', err);
+      console.error('❌ Error deactivating preferences:', err);
       const errorMessage = err.message || 'Failed to deactivate preferences';
       setError(errorMessage);
       return { error: errorMessage };
@@ -227,6 +254,7 @@ export const useUserPreferences = () => {
     }
 
     try {
+      console.log("🗑️ Deleting preferences for:", user.id);
       setLoading(true);
       setError(null);
 
@@ -236,13 +264,15 @@ export const useUserPreferences = () => {
         .eq('user_id', user.id);
 
       if (deleteError) {
+        console.error("❌ Preferences deletion error:", deleteError);
         throw deleteError;
       }
 
+      console.log("✅ Preferences deleted successfully");
       setPreferences(null);
       return { error: null };
     } catch (err: any) {
-      console.error('Error deleting preferences:', err);
+      console.error('❌ Error deleting preferences:', err);
       const errorMessage = err.message || 'Failed to delete preferences';
       setError(errorMessage);
       return { error: errorMessage };
@@ -256,14 +286,17 @@ export const useUserPreferences = () => {
     let isMounted = true;
 
     if (user && isMounted) {
+      console.log("👤 User changed, fetching preferences");
       fetchPreferences();
     } else if (isMounted) {
+      console.log("🚫 No user, clearing preferences");
       setPreferences(null);
       setError(null);
     }
 
     return () => {
       isMounted = false;
+      console.log("🧹 useUserPreferences cleanup");
     };
   }, [user]);
 

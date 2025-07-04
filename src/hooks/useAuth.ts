@@ -30,26 +30,30 @@ export const useAuth = () => {
       try {
         if (!isMounted) return;
         
+        console.log("🔐 Getting initial auth session...");
         setLoading(true);
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
-          console.error('Error getting initial session:', error);
+          console.error('❌ Error getting initial session:', error);
           return;
         }
 
         if (!isMounted) return;
 
+        console.log("🔐 Initial session:", session ? "Found" : "None");
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
+          console.log("👤 User found, fetching profile...");
           await fetchUserProfile(session.user.id);
         }
       } catch (error) {
-        console.error('Error getting initial session:', error);
+        console.error('❌ Error getting initial session:', error);
       } finally {
         if (isMounted) {
+          console.log("🔐 Auth initialization complete");
           setLoading(false);
         }
       }
@@ -62,31 +66,35 @@ export const useAuth = () => {
       async (event, session) => {
         if (!isMounted) return;
 
-        console.log('Auth state changed:', event, session);
+        console.log('🔄 Auth state changed:', event, session ? "Session exists" : "No session");
         
         try {
           setSession(session);
           setUser(session?.user ?? null);
           
           if (session?.user) {
+            console.log("👤 User authenticated, fetching profile...");
             await fetchUserProfile(session.user.id);
           } else {
+            console.log("🚫 No user, clearing profile");
             setUserProfile(null);
           }
         } catch (error) {
-          console.error('Error handling auth state change:', error);
+          console.error('❌ Error handling auth state change:', error);
         }
       }
     );
 
     return () => {
       isMounted = false;
+      console.log("🔐 Auth hook cleanup");
       subscription.unsubscribe();
     };
   }, []);
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      console.log("📋 Fetching user profile for:", userId);
       const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
@@ -94,18 +102,20 @@ export const useAuth = () => {
         .maybeSingle();
 
       if (error) {
-        console.error('Error fetching user profile:', error);
+        console.error('❌ Error fetching user profile:', error);
         return;
       }
 
+      console.log("📋 User profile:", data ? "Found" : "Not found");
       setUserProfile(data);
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('❌ Error fetching user profile:', error);
     }
   };
 
   const signUp = async (email: string, pin: string) => {
     try {
+      console.log("📝 Starting sign up for:", email);
       setLoading(true);
 
       // Create auth user with email and PIN as password
@@ -117,14 +127,18 @@ export const useAuth = () => {
         }
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        console.error("❌ Sign up auth error:", authError);
+        throw authError;
+      }
 
+      console.log("✅ Sign up successful:", authData.user ? "User created" : "No user");
       // Note: We don't create user_profiles here anymore
       // The preferences will be saved separately after sign-up
 
       return { data: authData, error: null };
     } catch (error) {
-      console.error('Sign up error:', error);
+      console.error('❌ Sign up error:', error);
       return { data: null, error };
     } finally {
       setLoading(false);
@@ -133,6 +147,7 @@ export const useAuth = () => {
 
   const signIn = async (email: string, pin: string) => {
     try {
+      console.log("🔑 Starting sign in for:", email);
       setLoading(true);
 
       // Sign in with email and PIN
@@ -141,15 +156,19 @@ export const useAuth = () => {
         password: pin
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Sign in error:", error);
+        throw error;
+      }
 
+      console.log("✅ Sign in successful");
       if (data.user) {
         await fetchUserProfile(data.user.id);
       }
 
       return { data, error: null };
     } catch (error) {
-      console.error('Sign in error:', error);
+      console.error('❌ Sign in error:', error);
       return { data: null, error };
     } finally {
       setLoading(false);
@@ -158,25 +177,29 @@ export const useAuth = () => {
 
   const signOut = async () => {
     try {
+      console.log("🚪 Starting sign out...");
       setLoading(true);
       
       // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error('Supabase signOut error:', error);
+        console.error('❌ Supabase signOut error:', error);
         // Don't throw error - still proceed with local cleanup
       }
       
       // Clear local state regardless of Supabase response
+      console.log("🧹 Clearing local auth state");
       setUser(null);
       setSession(null);
       setUserProfile(null);
       
+      console.log("✅ Sign out complete");
       return { error: null };
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('❌ Sign out error:', error);
       
       // Even if there's an error, clear local state for UX
+      console.log("🧹 Error recovery: clearing local state anyway");
       setUser(null);
       setSession(null);
       setUserProfile(null);
@@ -188,23 +211,41 @@ export const useAuth = () => {
   };
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
-    if (!user) return { error: 'No user logged in' };
+    if (!user) {
+      console.log("❌ No user logged in for profile update");
+      return { error: 'No user logged in' };
+    }
 
     try {
+      console.log("📝 Updating user profile:", updates);
       const { error } = await supabase
         .from('user_profiles')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('user_id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Profile update error:", error);
+        throw error;
+      }
 
+      console.log("✅ Profile updated successfully");
       await fetchUserProfile(user.id);
       return { error: null };
     } catch (error) {
-      console.error('Update profile error:', error);
+      console.error('❌ Update profile error:', error);
       return { error };
     }
   };
+
+  // Debug logging for auth state
+  useEffect(() => {
+    console.log("🔍 useAuth State:", {
+      user: user ? { id: user.id, email: user.email } : null,
+      userProfile: userProfile ? { id: userProfile.id, email: userProfile.email } : null,
+      loading,
+      hasSession: !!session
+    });
+  }, [user, userProfile, loading, session]);
 
   return {
     user,
