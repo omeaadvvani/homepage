@@ -326,6 +326,14 @@ const GuestOnboardingScreen: React.FC<GuestOnboardingScreenProps> = ({ onComplet
           </div>
         </div>
       </div>
+
+      {/* Click outside to close dropdown */}
+      {isLanguageDropdownOpen && (
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={() => setIsLanguageDropdownOpen(false)}
+        ></div>
+      )}
     </div>
   );
 };
