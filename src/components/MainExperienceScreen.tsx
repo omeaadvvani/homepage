@@ -14,7 +14,8 @@ import {
   ArrowRight,
   MessageCircle,
   ChevronRight,
-  Scroll
+  Scroll,
+  Volume2
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useUserPreferences } from '../hooks/useUserPreferences';
@@ -119,6 +120,23 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
     setUpcomingEvents(sampleUpcoming);
   }, [preferences]);
 
+  // Text-to-Speech function
+  const speak = (text: string) => {
+    try {
+      // Stop any currently speaking utterance
+      speechSynthesis.cancel();
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "en-IN"; // Indian English tone
+      utterance.rate = 0.92;     // Calm pace
+      utterance.pitch = 1;
+      speechSynthesis.speak(utterance);
+    } catch (error) {
+      console.warn('Text-to-speech not supported or failed:', error);
+      // Silently fail gracefully
+    }
+  };
+
   const handleAskQuestion = async () => {
     if (!question.trim()) return;
 
@@ -167,14 +185,24 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
         throw new Error(data.error);
       }
 
-      setResponse(data.answer || 'Sorry, I couldn\'t provide a response at this time.');
+      const responseText = data.answer || 'Sorry, I couldn\'t provide a response at this time.';
+      setResponse(responseText);
+
+      // Trigger text-to-speech after response is received
+      if (responseText) {
+        speak(responseText);
+      }
 
     } catch (error: any) {
       console.error('Ask VoiceVedic error:', error);
       setApiError(error.message || 'Failed to get response');
       
       // Fallback response for better UX
-      setResponse('I\'m unable to respond right now. Please try again in a moment. Your spiritual journey continues with patience and devotion.');
+      const fallbackResponse = 'I\'m unable to respond right now. Please try again in a moment. Your spiritual journey continues with patience and devotion.';
+      setResponse(fallbackResponse);
+      
+      // Speak fallback response
+      speak(fallbackResponse);
     } finally {
       setIsAsking(false);
     }
@@ -184,6 +212,14 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
     setQuestion('');
     setResponse('');
     setApiError('');
+    // Stop any currently speaking utterance
+    speechSynthesis.cancel();
+  };
+
+  const handleReplayAudio = () => {
+    if (response) {
+      speak(response);
+    }
   };
 
   const formatTime = (timeString: string) => {
@@ -389,13 +425,26 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
                       <div className="text-spiritual-800 leading-relaxed tracking-spiritual mb-4 whitespace-pre-line">
                         {response}
                       </div>
-                      <button
-                        onClick={handleTryAnother}
-                        className="group flex items-center gap-2 text-spiritual-600 hover:text-spiritual-700 font-medium transition-colors duration-300 tracking-spiritual"
-                      >
-                        <RotateCcw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-300" />
-                        <span>Ask Another Question</span>
-                      </button>
+                      <div className="flex items-center gap-4">
+                        <button
+                          onClick={handleTryAnother}
+                          className="group flex items-center gap-2 text-spiritual-600 hover:text-spiritual-700 font-medium transition-colors duration-300 tracking-spiritual"
+                        >
+                          <RotateCcw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-300" />
+                          <span>Ask Another Question</span>
+                        </button>
+                        
+                        {/* Speaker Icon for Voice Replay */}
+                        <button
+                          onClick={handleReplayAudio}
+                          className="group flex items-center gap-2 text-spiritual-600 hover:text-spiritual-700 font-medium transition-all duration-300 tracking-spiritual opacity-0 animate-fade-in"
+                          style={{ animationDelay: '0.3s', animationFillMode: 'forwards' }}
+                          title="Replay audio"
+                        >
+                          <Volume2 className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
+                          <span className="text-sm">Replay</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
