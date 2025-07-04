@@ -20,6 +20,7 @@ import { useUserPreferences } from '../hooks/useUserPreferences';
 
 interface MainExperienceScreenProps {
   onChangePreferences: () => void;
+  onShowSettings: () => void;
   onLogout?: () => void;
 }
 
@@ -43,6 +44,7 @@ interface UpcomingEvent {
 
 const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({ 
   onChangePreferences, 
+  onShowSettings,
   onLogout 
 }) => {
   const { user, userProfile } = useAuth();
@@ -186,9 +188,9 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       {/* Settings Button - Top Right */}
       <div className="absolute top-6 right-6 z-20">
         <button
-          onClick={onChangePreferences}
+          onClick={onShowSettings}
           className="group flex items-center gap-3 px-4 py-3 bg-white/90 backdrop-blur-sm rounded-spiritual shadow-spiritual border border-spiritual-200/50 hover:bg-white hover:shadow-spiritual-lg transition-all duration-300 text-spiritual-800 font-medium tracking-spiritual"
-          title="Change Preferences"
+          title="App Settings"
         >
           <Settings className="w-5 h-5 text-spiritual-600 group-hover:rotate-90 transition-transform duration-300" />
           <span className="text-sm">Settings</span>
