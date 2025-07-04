@@ -146,7 +146,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('login');
       setIsNavigating(false);
-    }, 100);
+    }, 150);
   };
 
   const handleSignUp = () => {
@@ -158,7 +158,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('signup');
       setIsNavigating(false);
-    }, 100);
+    }, 150);
   };
 
   const handleContinueAsGuest = () => {
@@ -166,7 +166,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('guest-onboarding');
       setIsNavigating(false);
-    }, 100);
+    }, 150);
   };
 
   const handleBackToHome = () => {
@@ -181,7 +181,7 @@ function App() {
       if (window.location.pathname === '/reset-pin') {
         window.history.pushState({}, '', '/');
       }
-    }, 100);
+    }, 150);
   };
 
   const handleBackToMainExperience = () => {
@@ -189,7 +189,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('main-experience');
       setIsNavigating(false);
-    }, 100);
+    }, 150);
   };
 
   const handleSignUpComplete = () => {
@@ -204,7 +204,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('main-experience');
       setIsNavigating(false);
-    }, 100);
+    }, 150);
   };
 
   const handleGuestOnboardingComplete = () => {
@@ -214,7 +214,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('main-experience');
       setIsNavigating(false);
-    }, 100);
+    }, 150);
   };
 
   const handleLoginComplete = () => {
@@ -223,7 +223,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('main-experience');
       setIsNavigating(false);
-    }, 100);
+    }, 150);
   };
 
   const handleTryDemo = () => {
@@ -231,7 +231,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('demo');
       setIsNavigating(false);
-    }, 100);
+    }, 150);
   };
 
   const handleShowPreferences = () => {
@@ -241,7 +241,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('preferences');
       setIsNavigating(false);
-    }, 100);
+    }, 150);
   };
 
   const handleShowSettings = () => {
@@ -251,7 +251,7 @@ function App() {
     setTimeout(() => {
       setCurrentScreen('settings');
       setIsNavigating(false);
-    }, 100);
+    }, 150);
   };
 
   const handleResetPinComplete = () => {
@@ -263,7 +263,7 @@ function App() {
       setIsNavigating(false);
       // Clear URL
       window.history.pushState({}, '', '/');
-    }, 100);
+    }, 150);
   };
 
   const handleLogout = async () => {
@@ -310,9 +310,9 @@ function App() {
     return (
       <div className="min-h-screen bg-spiritual-diagonal flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-2 border-spiritual-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-spiritual-700 tracking-spiritual">
-            {authLoading ? 'Loading...' : 'Navigating...'}
+          <div className="w-12 h-12 border-4 border-spiritual-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+          <p className="text-spiritual-700 tracking-spiritual text-lg font-medium">
+            {authLoading ? 'Loading your spiritual journey...' : 'Navigating...'}
           </p>
         </div>
       </div>
