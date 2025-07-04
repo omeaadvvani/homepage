@@ -20,6 +20,7 @@ function App() {
   const [supabaseError, setSupabaseError] = useState<string>('');
   const [newUserNeedsPreferences, setNewUserNeedsPreferences] = useState(false);
   const [guestMode, setGuestMode] = useState(false);
+  const [previousScreen, setPreviousScreen] = useState<string>('home');
 
   const { user, userProfile, loading: authLoading, signOut } = useAuth();
 
@@ -158,10 +159,15 @@ function App() {
     setCurrentScreen('home');
     setNewUserNeedsPreferences(false);
     setGuestMode(false);
+    setPreviousScreen('home');
     // Clear URL if we're on reset-pin route
     if (window.location.pathname === '/reset-pin') {
       window.history.pushState({}, '', '/');
     }
+  };
+
+  const handleBackToMainExperience = () => {
+    setCurrentScreen('main-experience');
   };
 
   const handleSignUpComplete = () => {
@@ -191,6 +197,8 @@ function App() {
   };
 
   const handleShowPreferences = () => {
+    // Store current screen as previous for proper back navigation
+    setPreviousScreen(currentScreen);
     setCurrentScreen('preferences');
   };
 
@@ -204,11 +212,25 @@ function App() {
 
   const handleLogout = async () => {
     try {
+      // Call Supabase signOut
       await signOut();
+      
+      // Reset all state
       setGuestMode(false);
+      setNewUserNeedsPreferences(false);
+      setPreviousScreen('home');
+      
+      // Navigate to home screen
       setCurrentScreen('home');
+      
+      // Optional: Show logout success message
+      // You could implement a toast notification here
+      console.log('Logged out successfully');
+      
     } catch (error) {
       console.error('Logout error:', error);
+      // Even if logout fails, still redirect to home for UX
+      setCurrentScreen('home');
     }
   };
 
@@ -252,7 +274,15 @@ function App() {
   }
 
   if (currentScreen === 'preferences') {
-    return <PreferencesScreen onComplete={handlePreferencesComplete} onBack={handleBackToHome} detectedLocation={location} />;
+    // Determine the correct back handler based on previous screen
+    const backHandler = previousScreen === 'main-experience' ? handleBackToMainExperience : handleBackToHome;
+    return (
+      <PreferencesScreen 
+        onComplete={handlePreferencesComplete} 
+        onBack={backHandler} 
+        detectedLocation={location} 
+      />
+    );
   }
 
   if (currentScreen === 'guest-onboarding') {
