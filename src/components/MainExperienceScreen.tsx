@@ -133,28 +133,28 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
     
     switch (day) {
       case "Monday":
-        greeting = "🕉 Om Namah Shivaya – It's Monday";
+        greeting = "Om Namah Shivaya – It's Monday";
         break;
       case "Tuesday":
-        greeting = "🔥 Jai Hanuman – Tuesday brings strength and focus";
+        greeting = "Jai Hanuman – Tuesday brings strength and focus";
         break;
       case "Wednesday":
-        greeting = "🌿 Chant Ram Naam – Stay balanced this Wednesday";
+        greeting = "Chant Ram Naam – Stay balanced this Wednesday";
         break;
       case "Thursday":
-        greeting = "🙏 Hari Om – Thursday is a day of learning and Vishnu bhakti";
+        greeting = "Hari Om – Thursday is a day of Vishnu worship and knowledge";
         break;
       case "Friday":
-        greeting = "🌸 Jai Maa Lakshmi – Invite abundance this Friday";
+        greeting = "Jai Maa Lakshmi – Invite abundance this Friday";
         break;
       case "Saturday":
-        greeting = "🔱 Shani Dev's day – Reflect, stay disciplined";
+        greeting = "Shani Dev's day – Reflect and stay disciplined";
         break;
       case "Sunday":
-        greeting = "🌞 Surya Arghya – Offer light to your soul today";
+        greeting = "Surya Arghya – Offer sunlight to your soul today";
         break;
       default:
-        greeting = "🧘 Welcome to VoiceVedic";
+        greeting = "Welcome to VoiceVedic";
     }
     
     setDailyGreeting(greeting);
@@ -164,30 +164,22 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       setShowGreeting(true);
     }, 1200);
     
-    // Optional: Soft voice output after greeting appears
+    // SPEAK IT using Google UK English Female
     setTimeout(() => {
       try {
-        if (typeof window !== "undefined" && "speechSynthesis" in window) {
-          const utterance = new SpeechSynthesisUtterance(greeting);
-          utterance.lang = "en-IN";
-          utterance.rate = 0.9;
-          utterance.pitch = 1.05;
-          utterance.volume = 0.7; // Softer volume
-          
-          // Use a gentle voice if available
-          const voices = speechSynthesis.getVoices();
-          const gentleVoice = voices.find(voice => 
-            voice.name.toLowerCase().includes('female') || 
-            voice.name.toLowerCase().includes('google')
-          );
-          if (gentleVoice) {
-            utterance.voice = gentleVoice;
-          }
-          
-          speechSynthesis.speak(utterance);
-        }
+        const synth = window.speechSynthesis;
+        const voices = synth.getVoices();
+        const femaleVoice = voices.find(v => v.name === "Google UK English Female");
+
+        const utterance = new SpeechSynthesisUtterance(greeting);
+        utterance.lang = "en-IN";
+        utterance.voice = femaleVoice || null; // fallback if not found
+        utterance.rate = 0.9;
+        utterance.pitch = 1.05;
+
+        synth.speak(utterance);
       } catch (e) {
-        console.warn("TTS failed for greeting:", e);
+        console.warn("TTS greeting error:", e);
       }
     }, 2000); // Speak after 2 seconds
   }, []);
