@@ -22,6 +22,7 @@ function App() {
   const [newUserNeedsPreferences, setNewUserNeedsPreferences] = useState(false);
   const [guestMode, setGuestMode] = useState(false);
   const [previousScreen, setPreviousScreen] = useState<string>('home');
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   const { user, userProfile, loading: authLoading, signOut } = useAuth();
 
@@ -40,6 +41,8 @@ function App() {
     if (path === '/reset-pin') {
       setCurrentScreen('reset-pin');
     }
+    // Mark initial load as complete after checking route
+    setInitialLoadComplete(true);
   }, []);
 
   // Check Supabase configuration on mount
@@ -118,7 +121,10 @@ function App() {
 
   // Handle user authentication state changes
   useEffect(() => {
-    if (!authLoading && user) {
+    // Only proceed if initial load is complete and auth loading is done
+    if (!initialLoadComplete || authLoading) return;
+
+    if (user) {
       // If user just signed up and needs to set preferences
       if (newUserNeedsPreferences) {
         setCurrentScreen('preferences');
@@ -128,8 +134,14 @@ function App() {
       else if (userProfile || guestMode) {
         setCurrentScreen('main-experience');
       }
+      // If user is logged in but no profile and not in guest mode, stay on current screen
+      // This prevents infinite redirects
     }
-  }, [user, userProfile, authLoading, newUserNeedsPreferences, guestMode]);
+    // If no user and not in guest mode, ensure we're on an appropriate screen
+    else if (!guestMode && !['home', 'signup', 'login', 'demo', 'reset-pin', 'guest-onboarding'].includes(currentScreen)) {
+      setCurrentScreen('home');
+    }
+  }, [user, userProfile, authLoading, newUserNeedsPreferences, guestMode, initialLoadComplete, currentScreen]);
 
   const handleLanguageSelect = (language: string) => {
     setSelectedLanguage(language);
@@ -249,8 +261,8 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Show loading while checking auth state
-  if (authLoading) {
+  // Show loading while checking auth state - but only if initial load is not complete
+  if (!initialLoadComplete || authLoading) {
     return (
       <div className="min-h-screen bg-spiritual-diagonal flex items-center justify-center">
         <div className="text-center">
