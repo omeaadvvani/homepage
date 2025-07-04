@@ -284,6 +284,11 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       recognition.maxAlternatives = 1;
 
       setIsListening(true);
+      
+      // Clear previous input and response immediately when starting
+      setQuestion('');
+      setResponse('');
+      setApiError('');
 
       recognition.onstart = () => {
         console.log("🎙️ VoiceVedic is listening...");
@@ -293,15 +298,11 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
         const spokenText = event.results[0][0].transcript;
         console.log("✅ Heard:", spokenText);
         
-        // Step 1: Clear previous answer before anything else
-        setResponse("");
-        setApiError("");
-        
-        // Step 2: Set input value
+        // Set the new spoken text as input
         setQuestion(spokenText);
         setIsListening(false);
         
-        // Step 3: Delay Ask trigger to ensure input + UI updated
+        // Delay Ask trigger to ensure input + UI updated
         setTimeout(() => {
           if (spokenText.trim()) {
             handleAskQuestion();
