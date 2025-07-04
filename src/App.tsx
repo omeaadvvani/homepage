@@ -22,6 +22,7 @@ function App() {
   const [newUserNeedsPreferences, setNewUserNeedsPreferences] = useState(false);
   const [guestMode, setGuestMode] = useState(false);
   const [previousScreen, setPreviousScreen] = useState<string>('home');
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const { user, userProfile, loading: authLoading, signOut } = useAuth();
 
@@ -141,7 +142,11 @@ function App() {
       alert(supabaseError);
       return;
     }
-    setCurrentScreen('login');
+    setIsNavigating(true);
+    setTimeout(() => {
+      setCurrentScreen('login');
+      setIsNavigating(false);
+    }, 100);
   };
 
   const handleSignUp = () => {
@@ -149,26 +154,42 @@ function App() {
       alert(supabaseError);
       return;
     }
-    setCurrentScreen('signup');
+    setIsNavigating(true);
+    setTimeout(() => {
+      setCurrentScreen('signup');
+      setIsNavigating(false);
+    }, 100);
   };
 
   const handleContinueAsGuest = () => {
-    setCurrentScreen('guest-onboarding');
+    setIsNavigating(true);
+    setTimeout(() => {
+      setCurrentScreen('guest-onboarding');
+      setIsNavigating(false);
+    }, 100);
   };
 
   const handleBackToHome = () => {
-    setCurrentScreen('home');
-    setNewUserNeedsPreferences(false);
-    setGuestMode(false);
-    setPreviousScreen('home');
-    // Clear URL if we're on reset-pin route
-    if (window.location.pathname === '/reset-pin') {
-      window.history.pushState({}, '', '/');
-    }
+    setIsNavigating(true);
+    setTimeout(() => {
+      setCurrentScreen('home');
+      setNewUserNeedsPreferences(false);
+      setGuestMode(false);
+      setPreviousScreen('home');
+      setIsNavigating(false);
+      // Clear URL if we're on reset-pin route
+      if (window.location.pathname === '/reset-pin') {
+        window.history.pushState({}, '', '/');
+      }
+    }, 100);
   };
 
   const handleBackToMainExperience = () => {
-    setCurrentScreen('main-experience');
+    setIsNavigating(true);
+    setTimeout(() => {
+      setCurrentScreen('main-experience');
+      setIsNavigating(false);
+    }, 100);
   };
 
   const handleSignUpComplete = () => {
@@ -179,46 +200,76 @@ function App() {
 
   const handlePreferencesComplete = () => {
     // Preferences saved successfully - move to main experience
-    setCurrentScreen('main-experience');
+    setIsNavigating(true);
+    setTimeout(() => {
+      setCurrentScreen('main-experience');
+      setIsNavigating(false);
+    }, 100);
   };
 
   const handleGuestOnboardingComplete = () => {
     // Guest onboarding completed - move to main experience in guest mode
     setGuestMode(true);
-    setCurrentScreen('main-experience');
+    setIsNavigating(true);
+    setTimeout(() => {
+      setCurrentScreen('main-experience');
+      setIsNavigating(false);
+    }, 100);
   };
 
   const handleLoginComplete = () => {
     // Login completed - move to main experience
-    setCurrentScreen('main-experience');
+    setIsNavigating(true);
+    setTimeout(() => {
+      setCurrentScreen('main-experience');
+      setIsNavigating(false);
+    }, 100);
   };
 
   const handleTryDemo = () => {
-    setCurrentScreen('demo');
+    setIsNavigating(true);
+    setTimeout(() => {
+      setCurrentScreen('demo');
+      setIsNavigating(false);
+    }, 100);
   };
 
   const handleShowPreferences = () => {
     // Store current screen as previous for proper back navigation
     setPreviousScreen(currentScreen);
-    setCurrentScreen('preferences');
+    setIsNavigating(true);
+    setTimeout(() => {
+      setCurrentScreen('preferences');
+      setIsNavigating(false);
+    }, 100);
   };
 
   const handleShowSettings = () => {
     // Store current screen as previous for proper back navigation
     setPreviousScreen(currentScreen);
-    setCurrentScreen('settings');
+    setIsNavigating(true);
+    setTimeout(() => {
+      setCurrentScreen('settings');
+      setIsNavigating(false);
+    }, 100);
   };
 
   const handleResetPinComplete = () => {
     // PIN reset completed, redirect to login
     alert('Your PIN has been reset successfully! Please log in with your new PIN.');
-    setCurrentScreen('login');
-    // Clear URL
-    window.history.pushState({}, '', '/');
+    setIsNavigating(true);
+    setTimeout(() => {
+      setCurrentScreen('login');
+      setIsNavigating(false);
+      // Clear URL
+      window.history.pushState({}, '', '/');
+    }, 100);
   };
 
   const handleLogout = async () => {
     try {
+      setIsNavigating(true);
+      
       // Call Supabase signOut
       await signOut();
       
@@ -227,17 +278,22 @@ function App() {
       setNewUserNeedsPreferences(false);
       setPreviousScreen('home');
       
-      // Navigate to home screen
-      setCurrentScreen('home');
+      // Navigate to home screen with delay to prevent loading screen flash
+      setTimeout(() => {
+        setCurrentScreen('home');
+        setIsNavigating(false);
+      }, 300);
       
       // Optional: Show logout success message
-      // You could implement a toast notification here
       console.log('Logged out successfully');
       
     } catch (error) {
       console.error('Logout error:', error);
       // Even if logout fails, still redirect to home for UX
-      setCurrentScreen('home');
+      setTimeout(() => {
+        setCurrentScreen('home');
+        setIsNavigating(false);
+      }, 300);
     }
   };
 
@@ -249,13 +305,15 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Show loading while checking auth state
-  if (authLoading) {
+  // Show loading while checking auth state or navigating
+  if (authLoading || isNavigating) {
     return (
       <div className="min-h-screen bg-spiritual-diagonal flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-spiritual-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-spiritual-700 tracking-spiritual">Loading...</p>
+          <p className="text-spiritual-700 tracking-spiritual">
+            {authLoading ? 'Loading...' : 'Navigating...'}
+          </p>
         </div>
       </div>
     );
@@ -431,7 +489,8 @@ function App() {
           {/* Login Button */}
           <button 
             onClick={handleLogin}
-            className="group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 bg-gradient-to-r from-spiritual-400 to-spiritual-500 hover:from-spiritual-500 hover:to-spiritual-600 text-white font-semibold rounded-button shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border-2 border-spiritual-600/30 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50"
+            disabled={isNavigating}
+            className="group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 bg-gradient-to-r from-spiritual-400 to-spiritual-500 hover:from-spiritual-500 hover:to-spiritual-600 text-white font-semibold rounded-button shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border-2 border-spiritual-600/30 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {/* Glow Effect */}
             <div className="absolute inset-0 rounded-button bg-gradient-to-r from-spiritual-400 to-spiritual-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
@@ -443,7 +502,8 @@ function App() {
           {/* Sign Up Button - Direct to Sign Up */}
           <button 
             onClick={handleSignUp}
-            className="group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 bg-gradient-to-r from-spiritual-900 to-red-600 hover:from-red-600 hover:to-rose-600 text-white font-semibold rounded-button shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border-2 border-spiritual-900/30 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50"
+            disabled={isNavigating}
+            className="group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 bg-gradient-to-r from-spiritual-900 to-red-600 hover:from-red-600 hover:to-rose-600 text-white font-semibold rounded-button shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border-2 border-spiritual-900/30 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {/* Glow Effect */}
             <div className="absolute inset-0 rounded-button bg-gradient-to-r from-spiritual-900 to-red-600 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
@@ -455,7 +515,8 @@ function App() {
           {/* Try Demo Button */}
           <button 
             onClick={handleTryDemo}
-            className="group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 bg-white border-2 border-spiritual-300 hover:border-spiritual-400 text-spiritual-900 font-semibold rounded-button shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-spiritual-200/50"
+            disabled={isNavigating}
+            className="group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 bg-white border-2 border-spiritual-300 hover:border-spiritual-400 text-spiritual-900 font-semibold rounded-button shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {/* Subtle Background Glow */}
             <div className="absolute inset-0 rounded-button bg-gradient-to-r from-spiritual-100 to-spiritual-200 opacity-0 group-hover:opacity-50 transition-opacity duration-300"></div>
@@ -469,7 +530,8 @@ function App() {
         <div className="mt-8 text-center">
           <button 
             onClick={handleContinueAsGuest}
-            className="group text-spiritual-700 hover:text-spiritual-600 font-medium transition-colors duration-300 relative tracking-spiritual"
+            disabled={isNavigating}
+            className="group text-spiritual-700 hover:text-spiritual-600 font-medium transition-colors duration-300 relative tracking-spiritual disabled:opacity-50 disabled:cursor-not-allowed"
             title="Explore basic features without logging in"
           >
             <span className="relative">
