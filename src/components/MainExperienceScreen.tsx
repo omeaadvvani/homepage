@@ -120,9 +120,11 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
     setUpcomingEvents(sampleUpcoming);
   }, [preferences]);
 
-  // Enhanced Text-to-Speech function with soothing female voice
+  // Enhanced Text-to-Speech function with improved safety and voice selection
   const speak = (text: string) => {
     try {
+      if (!text || text.trim() === "") return;
+
       const synth = window.speechSynthesis;
       
       // Stop any currently speaking utterance
@@ -130,28 +132,29 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       
       const utterance = new SpeechSynthesisUtterance(text);
 
+      // Good pace and tone
+      utterance.lang = "en-IN";
+      utterance.rate = 0.85;
+      utterance.pitch = 1.1;
+
+      // SAFELY load voices
       const setVoice = () => {
         const voices = synth.getVoices();
 
-        // Try to select a soft, feminine Indian English voice
-        const preferredVoice = voices.find(
-          (v) =>
-            v.lang.includes("en-IN") &&
-            (
-              v.name.toLowerCase().includes("female") ||
-              v.name.toLowerCase().includes("karen") ||
-              v.name.toLowerCase().includes("samantha") ||
-              v.name.toLowerCase().includes("zira") ||
-              v.name.toLowerCase().includes("google")
-            )
+        // Preferred female voices (pick what your device supports)
+        const preferredVoice = voices.find((v) =>
+          v.name === "Google UK English Female" ||
+          v.name === "Microsoft Zira Desktop - English (United States)" ||
+          v.name === "Samantha" ||
+          v.name === "Karen" ||
+          v.name.toLowerCase().includes("female") ||
+          v.name.toLowerCase().includes("google")
         );
 
         if (preferredVoice) {
           utterance.voice = preferredVoice;
         }
 
-        utterance.rate = 0.85; // slower, calm pace
-        utterance.pitch = 1.1; // slightly sweeter tone
         synth.speak(utterance);
       };
 
@@ -218,9 +221,12 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       const responseText = data.answer || 'Sorry, I couldn\'t provide a response at this time.';
       setResponse(responseText);
 
-      // Trigger enhanced text-to-speech after response is received
-      if (responseText) {
-        speak(responseText);
+      // Trigger enhanced text-to-speech ONLY when answer exists and is valid
+      if (responseText && responseText.trim() !== "") {
+        // Small delay to ensure response is rendered before speaking
+        setTimeout(() => {
+          speak(responseText);
+        }, 300);
       }
 
     } catch (error: any) {
@@ -231,8 +237,12 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       const fallbackResponse = 'I\'m unable to respond right now. Please try again in a moment. Your spiritual journey continues with patience and devotion.';
       setResponse(fallbackResponse);
       
-      // Speak fallback response
-      speak(fallbackResponse);
+      // Speak fallback response safely
+      if (fallbackResponse && fallbackResponse.trim() !== "") {
+        setTimeout(() => {
+          speak(fallbackResponse);
+        }, 300);
+      }
     } finally {
       setIsAsking(false);
     }
@@ -243,11 +253,15 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
     setResponse('');
     setApiError('');
     // Stop any currently speaking utterance
-    window.speechSynthesis.cancel();
+    try {
+      window.speechSynthesis.cancel();
+    } catch (error) {
+      console.warn('Could not cancel speech synthesis:', error);
+    }
   };
 
   const handleReplayAudio = () => {
-    if (response) {
+    if (response && response.trim() !== "") {
       speak(response);
     }
   };
@@ -526,7 +540,8 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
               >
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                 <span>Logout</span>
-              </button>
+              </ArrowRight>
+            </button>
             )}
           </div>
         </div>
