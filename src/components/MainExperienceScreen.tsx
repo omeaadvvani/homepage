@@ -15,7 +15,9 @@ import {
   MessageCircle,
   ChevronRight,
   Scroll,
-  Volume2
+  Volume2,
+  Mic,
+  MicOff
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useUserPreferences } from '../hooks/useUserPreferences';
@@ -60,6 +62,8 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
   const [todayEvent, setTodayEvent] = useState<SpiritualEvent | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isListening, setIsListening] = useState(false);
+  const [micSupported, setMicSupported] = useState(false);
 
   // Sample spiritual events data (in production, this would come from your database)
   const sampleEvents: SpiritualEvent[] = [
@@ -113,6 +117,11 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
     return () => clearInterval(timer);
   }, []);
 
+  // Check mic support on mount
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    setMicSupported(!!SpeechRecognition);
+  }, []);
   // Load today's event
   useEffect(() => {
     // In production, fetch from Supabase based on user's calendar type and location
@@ -259,6 +268,67 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
     }
   };
 
+  const startVoiceCapture = () => {
+    try {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      if (!SpeechRecognition) {
+        alert("Voice input is not supported on this browser. Please try Chrome or Safari.");
+        return;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-IN";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.continuous = false;
+
+      setIsListening(true);
+
+      recognition.onstart = () => {
+        console.log("🎙️ Listening...");
+      };
+
+      recognition.onresult = (event) => {
+        const spokenText = event.results[0][0].transcript;
+        console.log("Heard:", spokenText);
+        
+        // Fill the input field with spoken text
+        setQuestion(spokenText);
+        setIsListening(false);
+        
+        // Auto-trigger the ask function after a short delay
+        setTimeout(() => {
+          if (spokenText.trim()) {
+            handleAskQuestion();
+          }
+        }, 500);
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Mic Error:", event.error);
+        setIsListening(false);
+        
+        if (event.error === 'not-allowed') {
+          alert("Microphone access denied. Please allow microphone permissions and try again.");
+        } else if (event.error === 'no-speech') {
+          alert("No speech detected. Please try speaking again.");
+        } else {
+          alert("Voice recognition error. Please try again.");
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (err) {
+      console.error("Mic capture failed:", err);
+      setIsListening(false);
+      alert("Voice input failed. Please try typing your question instead.");
+    }
+  };
   const formatTime = (timeString: string) => {
     const [hours, minutes] = timeString.split(':');
     const hour = parseInt(hours);
@@ -409,27 +479,67 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
                   />
                   <MessageCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-spiritual-400" />
                 </div>
+                
+                {/* Mic Button */}
+                {micSupported && (
+                  <button
+                    onClick={startVoiceCapture}
+                    disabled={isAsking || isListening}
+                    className={`group relative overflow-hidden flex items-center justify-center w-12 h-12 rounded-full shadow-spiritual transition-all duration-300 transform focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 ${
+                      isListening
+                        ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
+                        : isAsking
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-spiritual-300 to-spiritual-400 hover:from-spiritual-400 hover:to-spiritual-500 text-spiritual-800 hover:text-spiritual-900 hover:scale-105 active:scale-95'
+                    }`}
+                    title={isListening ? "Listening... Speak now" : "Tap and ask your question aloud"}
+                  >
+                    {/* Glow Effect */}
+                    {!isAsking && !isListening && (
+                      <div className="absolute inset-0 rounded-full bg-gradient-to-r from-spiritual-300 to-spiritual-400 opacity-0 group-hover:opacity-30 blur-lg transition-opacity duration-300 -z-10"></div>
+                    )}
+                    
+                    {isListening ? (
+                      <MicOff className="w-5 h-5" />
+                    ) : (
+                      <Mic className={`w-5 h-5 transition-transform duration-300 ${!isAsking ? 'group-hover:scale-110' : ''}`} />
+                    )}
+                  </button>
+                )}
+                
                 <button
                   onClick={handleAskQuestion}
-                  disabled={!question.trim() || isAsking}
+                  disabled={!question.trim() || isAsking || isListening}
                   className={`group relative overflow-hidden flex items-center justify-center gap-3 px-6 py-3 font-semibold rounded-spiritual shadow-spiritual transition-all duration-300 transform tracking-spiritual ${
-                    question.trim() && !isAsking
+                    question.trim() && !isAsking && !isListening
                       ? 'bg-gradient-to-r from-spiritual-400 to-spiritual-500 hover:from-spiritual-500 hover:to-spiritual-600 text-white hover:shadow-spiritual-lg hover:scale-[1.02] active:scale-[0.98] border-2 border-spiritual-600/30 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50'
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }`}
                 >
                   {/* Glow Effect */}
-                  {question.trim() && !isAsking && (
+                  {question.trim() && !isAsking && !isListening && (
                     <div className="absolute inset-0 rounded-spiritual bg-gradient-to-r from-spiritual-400 to-spiritual-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
                   )}
                   
                   {isAsking ? (
                     <div className="w-5 h-5 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
                   ) : (
-                    <Send className={`w-5 h-5 transition-transform duration-300 ${question.trim() ? 'group-hover:translate-x-1 group-active:translate-x-0.5' : ''}`} />
+                    <Send className={`w-5 h-5 transition-transform duration-300 ${question.trim() && !isListening ? 'group-hover:translate-x-1 group-active:translate-x-0.5' : ''}`} />
                   )}
                 </button>
               </div>
+
+              {/* Voice Input Status */}
+              {isListening && (
+                <div className="bg-red-50/70 border border-red-200/50 rounded-spiritual p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                    <span className="text-red-800 font-medium tracking-spiritual">
+                      🎙️ Listening... Speak your question now
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* API Error Display */}
               {apiError && (
