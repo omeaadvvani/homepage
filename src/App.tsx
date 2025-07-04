@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Globe, LogIn, UserPlus, Headphones, ChevronDown, MapPin, AlertCircle, Settings } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import OnboardingScreen from './components/OnboardingScreen';
@@ -17,7 +18,6 @@ function App() {
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [showSacredText, setShowSacredText] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<'home' | 'signup' | 'preferences' | 'guest-onboarding' | 'login' | 'demo' | 'reset-pin' | 'main-experience' | 'settings'>('home');
-  const [showAskExperience, setShowAskExperience] = useState(false);
   const [location, setLocation] = useState<string>('Detecting location...');
   const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [supabaseError, setSupabaseError] = useState<string>('');
@@ -328,21 +328,30 @@ function App() {
 
   // Show Main Experience if user is authenticated or in guest mode
   if (currentScreen === 'main-experience') {
-    if (showAskExperience) {
-      return (
-        <AskVoiceVedicExperience 
-          onBack={() => setShowAskExperience(false)}
-        />
-      );
-    }
-    
     return (
-      <MainExperienceScreen 
-        onChangePreferences={handleShowPreferences}
-        onShowSettings={handleShowSettings}
-        onShowAskExperience={() => setShowAskExperience(true)}
-        onLogout={guestMode ? handleBackToHome : handleLogout}
-      />
+      <Router>
+        <Routes>
+          <Route 
+            path="/" 
+            element={
+              <MainExperienceScreen 
+                onChangePreferences={handleShowPreferences}
+                onShowSettings={handleShowSettings}
+                onLogout={guestMode ? handleBackToHome : handleLogout}
+              />
+            } 
+          />
+          <Route 
+            path="/ask" 
+            element={
+              <AskVoiceVedicExperience 
+                onBack={() => window.history.back()}
+              />
+            } 
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
     );
   }
 
