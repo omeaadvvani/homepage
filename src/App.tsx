@@ -9,12 +9,13 @@ import DemoScreen from './components/DemoScreen';
 import PreferencesScreen from './components/PreferencesScreen';
 import ResetPinScreen from './components/ResetPinScreen';
 import MainExperienceScreen from './components/MainExperienceScreen';
+import SettingsScreen from './components/SettingsScreen';
 
 function App() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [showSacredText, setShowSacredText] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState<'home' | 'signup' | 'preferences' | 'guest-onboarding' | 'login' | 'demo' | 'reset-pin' | 'main-experience'>('home');
+  const [currentScreen, setCurrentScreen] = useState<'home' | 'signup' | 'preferences' | 'guest-onboarding' | 'login' | 'demo' | 'reset-pin' | 'main-experience' | 'settings'>('home');
   const [location, setLocation] = useState<string>('Detecting location...');
   const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [supabaseError, setSupabaseError] = useState<string>('');
@@ -202,6 +203,12 @@ function App() {
     setCurrentScreen('preferences');
   };
 
+  const handleShowSettings = () => {
+    // Store current screen as previous for proper back navigation
+    setPreviousScreen(currentScreen);
+    setCurrentScreen('settings');
+  };
+
   const handleResetPinComplete = () => {
     // PIN reset completed, redirect to login
     alert('Your PIN has been reset successfully! Please log in with your new PIN.');
@@ -264,6 +271,7 @@ function App() {
     return (
       <MainExperienceScreen 
         onChangePreferences={handleShowPreferences}
+        onShowSettings={handleShowSettings}
         onLogout={guestMode ? handleBackToHome : handleLogout}
       />
     );
@@ -281,6 +289,18 @@ function App() {
         onComplete={handlePreferencesComplete} 
         onBack={backHandler} 
         detectedLocation={location} 
+      />
+    );
+  }
+
+  if (currentScreen === 'settings') {
+    // Determine the correct back handler based on previous screen
+    const backHandler = previousScreen === 'main-experience' ? handleBackToMainExperience : handleBackToHome;
+    return (
+      <SettingsScreen 
+        onBack={backHandler}
+        onChangePreferences={handleShowPreferences}
+        onLogout={handleLogout}
       />
     );
   }
