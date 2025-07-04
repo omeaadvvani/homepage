@@ -90,7 +90,7 @@ export const useAuth = () => {
       console.log("🔐 Auth hook cleanup");
       subscription.unsubscribe();
     };
-  }, []);
+  }, []); // ✅ Empty dependency array - only runs once
 
   const fetchUserProfile = async (userId: string) => {
     try {
@@ -245,7 +245,7 @@ export const useAuth = () => {
       loading,
       hasSession: !!session
     });
-  }, [user, userProfile, loading, session]);
+  }, [user, userProfile, loading, session]); // ✅ Proper dependency array
 
   return {
     user,

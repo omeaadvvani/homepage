@@ -47,7 +47,7 @@ function App() {
       newUserNeedsPreferences,
       guestMode
     });
-  }, [user, userProfile, authLoading, authInitialized, currentScreen, newUserNeedsPreferences, guestMode]);
+  }, [user, userProfile, authLoading, authInitialized, currentScreen, newUserNeedsPreferences, guestMode]); // ✅ Proper dependency array
 
   // Check for reset-pin route on mount
   useEffect(() => {
@@ -56,7 +56,7 @@ function App() {
     if (path === '/reset-pin') {
       setCurrentScreen('reset-pin');
     }
-  }, []);
+  }, []); // ✅ Empty dependency array - only runs once
 
   // Check Supabase configuration on mount
   useEffect(() => {
@@ -77,7 +77,7 @@ function App() {
         supabaseAnonKey.includes('placeholder')) {
       setSupabaseError('Supabase is not properly configured. Please click "Connect to Supabase" in the top right corner.');
     }
-  }, []);
+  }, []); // ✅ Empty dependency array - only runs once
 
   // Auto-detect location on component mount
   useEffect(() => {
@@ -163,7 +163,7 @@ function App() {
       isMounted = false;
       console.log("📍 Location detection cleanup");
     };
-  }, []);
+  }, []); // ✅ Empty dependency array - only runs once
 
   // **CRITICAL FIX**: Handle auth initialization and state changes properly
   useEffect(() => {
@@ -220,7 +220,7 @@ function App() {
         setCurrentScreen('home');
       }
     }
-  }, [user, userProfile, authLoading, authInitialized, newUserNeedsPreferences, guestMode, currentScreen]);
+  }, [user, userProfile, authLoading, authInitialized, newUserNeedsPreferences, guestMode, currentScreen]); // ✅ Proper dependency array
 
   // **CRITICAL FIX**: Handle guest mode properly
   useEffect(() => {
@@ -228,7 +228,7 @@ function App() {
       console.log("👤 Guest mode active, ensuring main experience");
       setCurrentScreen('main-experience');
     }
-  }, [guestMode, currentScreen]);
+  }, [guestMode, currentScreen]); // ✅ Proper dependency array
 
   const handleLanguageSelect = (language: string) => {
     console.log("🌐 Language selected:", language);
@@ -427,7 +427,7 @@ function App() {
       setShowSacredText(true);
     }, 800);
     return () => clearTimeout(timer);
-  }, []);
+  }, []); // ✅ Empty dependency array - only runs once
 
   // **CRITICAL FIX**: Only show loading while auth is initializing OR navigating
   if (!authInitialized || isNavigating) {

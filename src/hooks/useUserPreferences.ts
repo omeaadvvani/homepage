@@ -32,7 +32,7 @@ export const useUserPreferences = () => {
       loading,
       error
     });
-  }, [user, preferences, loading, error]);
+  }, [user, preferences, loading, error]); // ✅ Proper dependency array
 
   // Detect device type
   const getDeviceType = (): string => {
@@ -298,7 +298,7 @@ export const useUserPreferences = () => {
       isMounted = false;
       console.log("🧹 useUserPreferences cleanup");
     };
-  }, [user]);
+  }, [user]); // ✅ Only depends on user
 
   return {
     preferences,
