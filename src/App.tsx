@@ -23,20 +23,9 @@ function App() {
   const [guestMode, setGuestMode] = useState(false);
   const [previousScreen, setPreviousScreen] = useState<string>('home');
   const [isNavigating, setIsNavigating] = useState(false);
+  const [authInitialized, setAuthInitialized] = useState(false);
 
   const { user, userProfile, loading: authLoading, signOut } = useAuth();
-
-  // Debug logging for auth state
-  useEffect(() => {
-    console.log("🔍 Auth State Debug:", {
-      user: user ? { id: user.id, email: user.email } : null,
-      userProfile: userProfile ? { id: userProfile.id, email: userProfile.email, calendar: userProfile.calendar_tradition } : null,
-      authLoading,
-      currentScreen,
-      newUserNeedsPreferences,
-      guestMode
-    });
-  }, [user, userProfile, authLoading, currentScreen, newUserNeedsPreferences, guestMode]);
 
   const languages = [
     'English',
@@ -46,6 +35,19 @@ function App() {
     'Malayalam',
     'Kannada'
   ];
+
+  // Debug logging for auth state
+  useEffect(() => {
+    console.log("🔍 Auth State Debug:", {
+      user: user ? { id: user.id, email: user.email } : null,
+      userProfile: userProfile ? { id: userProfile.id, email: userProfile.email, calendar: userProfile.calendar_tradition } : null,
+      authLoading,
+      authInitialized,
+      currentScreen,
+      newUserNeedsPreferences,
+      guestMode
+    });
+  }, [user, userProfile, authLoading, authInitialized, currentScreen, newUserNeedsPreferences, guestMode]);
 
   // Check for reset-pin route on mount
   useEffect(() => {
@@ -163,10 +165,11 @@ function App() {
     };
   }, []);
 
-  // Handle user authentication state changes with proper dependency management
+  // **CRITICAL FIX**: Handle auth initialization and state changes properly
   useEffect(() => {
     console.log("🔄 Auth State Change Effect:", {
       authLoading,
+      authInitialized,
       hasUser: !!user,
       hasProfile: !!userProfile,
       newUserNeedsPreferences,
@@ -174,31 +177,58 @@ function App() {
       currentScreen
     });
 
-    // Only proceed if auth is not loading
-    if (authLoading) {
-      console.log("⏳ Auth still loading, waiting...");
+    // Mark auth as initialized once loading completes for the first time
+    if (!authInitialized && !authLoading) {
+      console.log("✅ Auth initialization complete");
+      setAuthInitialized(true);
+    }
+
+    // Only proceed if auth is initialized (not loading for the first time)
+    if (!authInitialized || authLoading) {
+      console.log("⏳ Auth still initializing, waiting...");
       return;
     }
     
     if (user) {
       console.log("👤 User authenticated, checking next steps...");
+      
       // If user just signed up and needs to set preferences
       if (newUserNeedsPreferences) {
         console.log("⚙️ New user needs preferences, navigating to preferences screen");
         setCurrentScreen('preferences');
         setNewUserNeedsPreferences(false);
       }
-      // If user already has profile or preferences, show main experience
-      else if (userProfile || guestMode) {
-        console.log("🏠 User has profile or in guest mode, showing main experience");
+      // If user already has profile, show main experience
+      else if (userProfile) {
+        console.log("🏠 User has profile, showing main experience");
         setCurrentScreen('main-experience');
-      } else {
-        console.log("❓ User authenticated but no profile found, staying on current screen");
+      }
+      // If user exists but no profile, they might need to set preferences
+      else {
+        console.log("❓ User authenticated but no profile found, staying on current screen or redirecting to preferences");
+        // For existing users without profiles, redirect to preferences
+        if (currentScreen === 'home' || currentScreen === 'login') {
+          console.log("🔄 Redirecting user without profile to preferences");
+          setCurrentScreen('preferences');
+        }
       }
     } else {
       console.log("🚫 No user authenticated");
+      // If no user and we're not on a public screen, go to home
+      if (!['home', 'signup', 'login', 'demo', 'guest-onboarding', 'reset-pin'].includes(currentScreen)) {
+        console.log("🏠 No user, redirecting to home");
+        setCurrentScreen('home');
+      }
     }
-  }, [user, userProfile, authLoading, newUserNeedsPreferences, guestMode]);
+  }, [user, userProfile, authLoading, authInitialized, newUserNeedsPreferences, guestMode, currentScreen]);
+
+  // **CRITICAL FIX**: Handle guest mode properly
+  useEffect(() => {
+    if (guestMode && currentScreen !== 'main-experience' && currentScreen !== 'guest-onboarding') {
+      console.log("👤 Guest mode active, ensuring main experience");
+      setCurrentScreen('main-experience');
+    }
+  }, [guestMode, currentScreen]);
 
   const handleLanguageSelect = (language: string) => {
     console.log("🌐 Language selected:", language);
@@ -399,15 +429,15 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Show loading while checking auth state or navigating
-  if (authLoading || isNavigating) {
-    console.log("⏳ Showing loading screen:", { authLoading, isNavigating });
+  // **CRITICAL FIX**: Only show loading while auth is initializing OR navigating
+  if (!authInitialized || isNavigating) {
+    console.log("⏳ Showing loading screen:", { authInitialized, isNavigating, authLoading });
     return (
       <div className="min-h-screen bg-spiritual-diagonal flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-spiritual-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
           <p className="text-spiritual-700 tracking-spiritual text-lg font-medium">
-            {authLoading ? 'Loading your spiritual journey...' : 'Navigating...'}
+            {!authInitialized ? 'Loading your spiritual journey...' : 'Navigating...'}
           </p>
         </div>
       </div>
