@@ -13,7 +13,8 @@ import {
   Bell,
   ArrowRight,
   MessageCircle,
-  ChevronRight
+  ChevronRight,
+  Scroll
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useUserPreferences } from '../hooks/useUserPreferences';
@@ -53,6 +54,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
   const [question, setQuestion] = useState('');
   const [response, setResponse] = useState('');
   const [isAsking, setIsAsking] = useState(false);
+  const [apiError, setApiError] = useState('');
   const [showSacredText, setShowSacredText] = useState(false);
   const [todayEvent, setTodayEvent] = useState<SpiritualEvent | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
@@ -122,24 +124,56 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
 
     setIsAsking(true);
     setResponse('');
+    setApiError('');
 
     try {
-      // Simulate API call to your Supabase Edge Function
-      // In production: const response = await fetch('/api/ask-voicevedic', { ... })
-      
-      // Mock response based on question
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      if (question.toLowerCase().includes('ekadashi')) {
-        setResponse('Ekadashi falls on January 2nd this month. It\'s a sacred fasting day dedicated to Lord Vishnu. Observe complete fast and chant Vishnu mantras for spiritual purification.');
-      } else if (question.toLowerCase().includes('amavasya')) {
-        setResponse('Amavasya is on January 5th. This new moon day is ideal for ancestral prayers. Light diyas, offer water to ancestors, and practice meditation in the evening.');
-      } else if (question.toLowerCase().includes('pradosham')) {
-        setResponse('Today\'s Pradosham is from 4:40 PM to 6:10 PM. Visit Shiva temple or offer water at home. This twilight period brings Lord Shiva\'s special blessings.');
-      } else {
-        setResponse('Thank you for your question about spiritual practices. Please consult your local priest or spiritual guide for personalized guidance. May your spiritual journey be blessed.');
+      // Get user context for API call
+      const userLocation = preferences?.location || userProfile?.location || null;
+      const userCalendar = preferences?.calendar_type || userProfile?.calendar_tradition || null;
+
+      // Prepare API payload
+      const payload: any = {
+        question: question.trim()
+      };
+
+      // Add context if available (fallback for guest users)
+      if (userLocation) {
+        payload.location = userLocation;
       }
-    } catch (error) {
+      if (userCalendar) {
+        payload.calendar = userCalendar;
+      }
+
+      // Call Supabase Edge Function
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const apiUrl = `${supabaseUrl}/functions/v1/ask-voicevedic`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setResponse(data.answer || 'Sorry, I couldn\'t provide a response at this time.');
+
+    } catch (error: any) {
+      console.error('Ask VoiceVedic error:', error);
+      setApiError(error.message || 'Failed to get response');
+      
+      // Fallback response for better UX
       setResponse('I\'m unable to respond right now. Please try again in a moment. Your spiritual journey continues with patience and devotion.');
     } finally {
       setIsAsking(false);
@@ -149,6 +183,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
   const handleTryAnother = () => {
     setQuestion('');
     setResponse('');
+    setApiError('');
   };
 
   const formatTime = (timeString: string) => {
@@ -294,8 +329,8 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
                     type="text"
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleAskQuestion()}
-                    placeholder="When is Ekadashi? What is Pradosham timing?"
+                    onKeyPress={(e) => e.key === 'Enter' && !isAsking && handleAskQuestion()}
+                    placeholder="e.g. When is Amavasya this month?"
                     className="w-full px-4 py-3 border-2 border-spiritual-200 rounded-spiritual focus:border-spiritual-400 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 transition-all duration-300 bg-white/70 text-spiritual-900 placeholder-spiritual-600/50 tracking-spiritual"
                     disabled={isAsking}
                   />
@@ -323,6 +358,15 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
                 </button>
               </div>
 
+              {/* API Error Display */}
+              {apiError && (
+                <div className="bg-red-50/70 border border-red-200/50 rounded-spiritual p-3">
+                  <p className="text-sm text-red-700 tracking-spiritual">
+                    <strong>Connection Error:</strong> {apiError}
+                  </p>
+                </div>
+              )}
+
               {/* Response Display */}
               {(isAsking || response) && (
                 <div className="bg-spiritual-50/70 border border-spiritual-200/50 rounded-spiritual p-4">
@@ -339,12 +383,12 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
                   ) : (
                     <div>
                       <div className="flex items-center gap-2 mb-3">
-                        <Sparkles className="w-5 h-5 text-spiritual-600" />
+                        <Scroll className="w-5 h-5 text-spiritual-600" />
                         <span className="text-sm font-medium text-spiritual-800 tracking-spiritual">VoiceVedic says:</span>
                       </div>
-                      <p className="text-spiritual-800 leading-relaxed tracking-spiritual mb-4">
+                      <div className="text-spiritual-800 leading-relaxed tracking-spiritual mb-4 whitespace-pre-line">
                         {response}
-                      </p>
+                      </div>
                       <button
                         onClick={handleTryAnother}
                         className="group flex items-center gap-2 text-spiritual-600 hover:text-spiritual-700 font-medium transition-colors duration-300 tracking-spiritual"
