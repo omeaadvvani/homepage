@@ -44,6 +44,15 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  // Fallback suggestions when API fails
+  const fallbackSuggestions = [
+    "When is the next Amavasya?",
+    "What should I do on Ekadashi?", 
+    "How do I perform a simple pooja at home?",
+    "Which day is best for Hanuman prayers?",
+    "What is the meaning of Rahukalam?"
+  ];
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -91,6 +100,13 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       console.log("🔍 Fetching suggestions for query:", query);
       
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      
+      if (!supabaseUrl) {
+        console.error("❌ VITE_SUPABASE_URL not found in environment variables");
+        setSuggestedQuestions([]);
+        return;
+      }
+      
       const response = await fetch(`${supabaseUrl}/functions/v1/match-similar-questions`, {
         method: "POST",
         headers: {
@@ -106,16 +122,26 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         const data = await response.json();
         console.log("✅ Raw response data:", data);
         console.log("Suggestions returned:", data.suggestions);
-        setSuggestedQuestions(data.suggestions || []);
+        
+        // Ensure we have an array of suggestions
+        const suggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
+        console.log("📝 Setting suggestions:", suggestions);
+        setSuggestedQuestions(suggestions);
       } else {
+        const errorText = await response.text();
         console.error("❌ Response not OK:", response.status, response.statusText);
-        console.warn("Failed to fetch suggestions:", response.status);
-        setSuggestedQuestions([]);
+        console.error("❌ Error details:", errorText);
+        
+        // Use fallback suggestions on API failure
+        console.log("🔄 API failed, using fallback suggestions");
+        setSuggestedQuestions(fallbackSuggestions);
       }
     } catch (error) {
       console.error("💥 Fetch error:", error);
-      console.error("Error fetching suggestions:", error);
-      setSuggestedQuestions([]);
+      
+      // Use fallback suggestions on network error
+      console.log("🔄 Network error, using fallback suggestions");
+      setSuggestedQuestions(fallbackSuggestions);
     } finally {
       setLoadingSuggestions(false);
     }
@@ -124,7 +150,17 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   // Fetch initial suggestions for common questions
   const fetchInitialSuggestions = async () => {
     console.log("🚀 Fetching initial suggestions...");
+    
+    // Try to fetch from API first
     await fetchSuggestions("spiritual guidance festivals timing");
+    
+    // If no suggestions loaded after API call, use fallback
+    setTimeout(() => {
+      if (suggestedQuestions.length === 0) {
+        console.log("🔄 Using fallback suggestions");
+        setSuggestedQuestions(fallbackSuggestions);
+      }
+    }, 2000); // Wait 2 seconds for API response
   };
 
   // Test function for browser console debugging
@@ -132,13 +168,25 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     console.log("🧪 Testing suggestions with query:", testQuery);
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      console.log("🔧 Environment check:");
+      console.log("- SUPABASE_URL:", supabaseUrl ? "✅ Found" : "❌ Missing");
+      console.log("- SUPABASE_ANON_KEY:", supabaseKey ? "✅ Found" : "❌ Missing");
+      
       const response = await fetch(`${supabaseUrl}/functions/v1/match-similar-questions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          "Authorization": `Bearer ${supabaseKey}`,
         },
         body: JSON.stringify({ query: testQuery }),
+      });
+      
+      console.log("📡 Full URL:", `${supabaseUrl}/functions/v1/match-similar-questions`);
+      console.log("📡 Request headers:", {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${supabaseKey?.substring(0, 10)}...`
       });
       
       const data = await response.json();
