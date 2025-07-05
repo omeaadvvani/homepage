@@ -88,6 +88,8 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     try {
       setLoadingSuggestions(true);
       
+      console.log("🔍 Fetching suggestions for query:", query);
+      
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const response = await fetch(`${supabaseUrl}/functions/v1/match-similar-questions`, {
         method: "POST",
@@ -98,15 +100,20 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         body: JSON.stringify({ query }),
       });
 
+      console.log("📡 Response status:", response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log("✅ Raw response data:", data);
         console.log("Suggestions returned:", data.suggestions);
         setSuggestedQuestions(data.suggestions || []);
       } else {
+        console.error("❌ Response not OK:", response.status, response.statusText);
         console.warn("Failed to fetch suggestions:", response.status);
         setSuggestedQuestions([]);
       }
     } catch (error) {
+      console.error("💥 Fetch error:", error);
       console.error("Error fetching suggestions:", error);
       setSuggestedQuestions([]);
     } finally {
@@ -116,8 +123,40 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
 
   // Fetch initial suggestions for common questions
   const fetchInitialSuggestions = async () => {
+    console.log("🚀 Fetching initial suggestions...");
     await fetchSuggestions("spiritual guidance festivals timing");
   };
+
+  // Test function for browser console debugging
+  const testSuggestions = async (testQuery = "When is fasting this month?") => {
+    console.log("🧪 Testing suggestions with query:", testQuery);
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/match-similar-questions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ query: testQuery }),
+      });
+      
+      const data = await response.json();
+      console.log("🎯 Test result:", data);
+      return data;
+    } catch (error) {
+      console.error("🚨 Test failed:", error);
+      return { error: error.message };
+    }
+  };
+
+  // Make test function available globally for console testing
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      (window as any).testSuggestions = testSuggestions;
+      console.log("🔧 Test function available: window.testSuggestions()");
+    }
+  }, []);
 
   // Handle suggestion click
   const handleSuggestionClick = (suggestion: string) => {
@@ -613,13 +652,14 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
           </div>
 
           {/* Live Suggestions Dropdown */}
-          {showSuggestions && question.trim().length > 0 && suggestedQuestions.length > 0 && messages.length === 0 && (
+          {showSuggestions && suggestedQuestions.length > 0 && (
             <div className="bg-white/95 backdrop-blur-sm border border-spiritual-200/50 rounded-spiritual shadow-spiritual-lg mt-2 max-h-48 overflow-y-auto">
               <div className="p-3 border-b border-spiritual-200/30">
                 <div className="flex items-center gap-2">
                   <Lightbulb className="w-4 h-4 text-spiritual-600" />
                   <span className="text-sm font-medium text-spiritual-800 tracking-spiritual">
-                    {loadingSuggestions ? 'Finding similar questions...' : 'Similar Questions'}
+                    {loadingSuggestions ? 'Finding similar questions...' : 
+                     question.trim().length > 0 ? 'Similar Questions' : 'Popular Questions'}
                   </span>
                   {loadingSuggestions && (
                     <div className="w-3 h-3 border border-spiritual-500 border-t-transparent rounded-full animate-spin ml-auto"></div>
@@ -648,11 +688,20 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
           {/* Helper Text */}
           <div className="mt-3 text-center">
             <p className="text-sm text-spiritual-700/70 tracking-spiritual">
-              {showSuggestions && suggestedQuestions.length > 0 && messages.length === 0 
+              {showSuggestions && suggestedQuestions.length > 0 && messages.length === 0
                 ? "Try one of the popular questions above, or ask your own"
                 : "Ask about Hindu festivals, auspicious timings, or spiritual guidance"
               }
             </p>
+            
+            {/* Debug Info - Remove in production */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mt-2 text-xs text-gray-500">
+                <p>Debug: {suggestedQuestions.length} suggestions loaded</p>
+                <p>Loading: {loadingSuggestions ? 'Yes' : 'No'}</p>
+                <p>Show suggestions: {showSuggestions ? 'Yes' : 'No'}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
