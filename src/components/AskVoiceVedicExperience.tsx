@@ -9,7 +9,9 @@ import {
   Sparkles, 
   MessageCircle,
   Scroll,
-  Trash2
+  Trash2,
+  Lightbulb,
+  ArrowRight
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useUserPreferences } from '../hooks/useUserPreferences';
@@ -36,6 +38,9 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   const [showSacredText, setShowSacredText] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [micSupported, setMicSupported] = useState(false);
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(true);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -57,6 +62,72 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Fetch smart suggestions when component mounts
+  useEffect(() => {
+    if (messages.length === 0) {
+      fetchInitialSuggestions();
+    }
+  }, []);
+
+  // Fetch suggestions based on user input
+  useEffect(() => {
+    if (question.trim().length > 3) {
+      const timeoutId = setTimeout(() => {
+        fetchSuggestions(question.trim());
+      }, 500); // Debounce for 500ms
+      
+      return () => clearTimeout(timeoutId);
+    } else if (question.trim().length === 0 && messages.length === 0) {
+      fetchInitialSuggestions();
+    }
+  }, [question]);
+
+  // Fetch smart suggestions function
+  const fetchSuggestions = async (query: string) => {
+    try {
+      setLoadingSuggestions(true);
+      
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/match-similar-questions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ query }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Suggestions returned:", data.suggestions);
+        setSuggestedQuestions(data.suggestions || []);
+      } else {
+        console.warn("Failed to fetch suggestions:", response.status);
+        setSuggestedQuestions([]);
+      }
+    } catch (error) {
+      console.error("Error fetching suggestions:", error);
+      setSuggestedQuestions([]);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  // Fetch initial suggestions for common questions
+  const fetchInitialSuggestions = async () => {
+    await fetchSuggestions("spiritual guidance festivals timing");
+  };
+
+  // Handle suggestion click
+  const handleSuggestionClick = (suggestion: string) => {
+    setQuestion(suggestion);
+    setShowSuggestions(false);
+    // Auto-submit the suggestion
+    setTimeout(() => {
+      handleAskQuestion();
+    }, 100);
+  };
 
   // Enhanced Text-to-Speech function
   const speak = (text: string) => {
@@ -204,6 +275,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
 
       setIsListening(true);
       setQuestion('');
+      setShowSuggestions(false);
 
       recognition.onstart = () => {
         console.log("🎙️ VoiceVedic is listening...");
@@ -261,6 +333,10 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         window.speechSynthesis.cancel();
       } catch (error) {
         console.warn('Could not cancel speech synthesis:', error);
+      }
+      setShowSuggestions(true);
+      if (messages.length === 0) {
+        fetchInitialSuggestions();
       }
     }
   };
@@ -333,6 +409,35 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
               <p className="text-spiritual-700/80 tracking-spiritual max-w-md mx-auto">
                 Ask me about Hindu festivals, auspicious timings, rituals, or any spiritual guidance you need.
               </p>
+              
+              {/* Smart Suggestions */}
+              {showSuggestions && suggestedQuestions.length > 0 && (
+                <div className="mt-8 max-w-2xl mx-auto">
+                  <div className="flex items-center justify-center gap-2 mb-4">
+                    <Lightbulb className="w-5 h-5 text-spiritual-600" />
+                    <h3 className="text-lg font-medium text-spiritual-800 tracking-spiritual">
+                      Popular Questions
+                    </h3>
+                  </div>
+                  <div className="grid gap-3">
+                    {suggestedQuestions.slice(0, 3).map((suggestion, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleSuggestionClick(suggestion)}
+                        className="group p-4 bg-white/70 backdrop-blur-sm border border-spiritual-200/50 rounded-spiritual hover:border-spiritual-300 hover:bg-spiritual-50/50 transition-all duration-300 text-left shadow-spiritual hover:shadow-spiritual-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <MessageCircle className="w-4 h-4 text-spiritual-600 group-hover:text-spiritual-700 transition-colors duration-300" />
+                          <span className="text-spiritual-800 group-hover:text-spiritual-900 tracking-spiritual transition-colors duration-300">
+                            {suggestion}
+                          </span>
+                          <ArrowRight className="w-4 h-4 text-spiritual-400 group-hover:text-spiritual-600 group-hover:translate-x-1 transition-all duration-300 ml-auto" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -449,6 +554,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && !isAsking && !isListening && handleAskQuestion()}
+                onFocus={() => setShowSuggestions(true)}
                 placeholder="Ask about festivals, timings, rituals, or spiritual guidance..."
                 className="w-full px-4 py-3 border-2 border-spiritual-200 rounded-spiritual focus:border-spiritual-400 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 transition-all duration-300 bg-white text-spiritual-900 placeholder-spiritual-600/50 tracking-spiritual"
                 disabled={isAsking || isListening}
@@ -506,10 +612,46 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
             </button>
           </div>
 
+          {/* Live Suggestions Dropdown */}
+          {showSuggestions && question.trim().length > 0 && suggestedQuestions.length > 0 && messages.length === 0 && (
+            <div className="bg-white/95 backdrop-blur-sm border border-spiritual-200/50 rounded-spiritual shadow-spiritual-lg mt-2 max-h-48 overflow-y-auto">
+              <div className="p-3 border-b border-spiritual-200/30">
+                <div className="flex items-center gap-2">
+                  <Lightbulb className="w-4 h-4 text-spiritual-600" />
+                  <span className="text-sm font-medium text-spiritual-800 tracking-spiritual">
+                    {loadingSuggestions ? 'Finding similar questions...' : 'Similar Questions'}
+                  </span>
+                  {loadingSuggestions && (
+                    <div className="w-3 h-3 border border-spiritual-500 border-t-transparent rounded-full animate-spin ml-auto"></div>
+                  )}
+                </div>
+              </div>
+              <div className="max-h-32 overflow-y-auto">
+                {suggestedQuestions.slice(0, 4).map((suggestion, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className="w-full p-3 text-left hover:bg-spiritual-50 transition-colors duration-200 border-b border-spiritual-100/50 last:border-b-0 group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <MessageCircle className="w-4 h-4 text-spiritual-500 group-hover:text-spiritual-600 transition-colors duration-200" />
+                      <span className="text-sm text-spiritual-800 group-hover:text-spiritual-900 tracking-spiritual transition-colors duration-200">
+                        {suggestion}
+                      </span>
+                      <ArrowRight className="w-3 h-3 text-spiritual-400 group-hover:text-spiritual-600 group-hover:translate-x-0.5 transition-all duration-200 ml-auto" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Helper Text */}
           <div className="mt-3 text-center">
             <p className="text-sm text-spiritual-700/70 tracking-spiritual">
-              Ask about Hindu festivals, auspicious timings, or spiritual guidance
+              {showSuggestions && suggestedQuestions.length > 0 && messages.length === 0 
+                ? "Try one of the popular questions above, or ask your own"
+                : "Ask about Hindu festivals, auspicious timings, or spiritual guidance"
+              }
             </p>
           </div>
         </div>
