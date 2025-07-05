@@ -496,35 +496,6 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
               <p className="text-spiritual-700/80 tracking-spiritual max-w-md mx-auto">
                 Ask me about Hindu festivals, auspicious timings, rituals, or any spiritual guidance you need.
               </p>
-              
-              {/* Smart Suggestions */}
-              {showSuggestions && suggestedQuestions.length > 0 && (
-                <div className="mt-8 max-w-2xl mx-auto">
-                  <div className="flex items-center justify-center gap-2 mb-4">
-                    <Lightbulb className="w-5 h-5 text-spiritual-600" />
-                    <h3 className="text-lg font-medium text-spiritual-800 tracking-spiritual">
-                      Popular Questions
-                    </h3>
-                  </div>
-                  <div className="grid gap-3">
-                    {suggestedQuestions.slice(0, 3).map((suggestion, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleSuggestionClick(suggestion)}
-                        className="group p-4 bg-white/70 backdrop-blur-sm border border-spiritual-200/50 rounded-spiritual hover:border-spiritual-300 hover:bg-spiritual-50/50 transition-all duration-300 text-left shadow-spiritual hover:shadow-spiritual-lg"
-                      >
-                        <div className="flex items-center gap-3">
-                          <MessageCircle className="w-4 h-4 text-spiritual-600 group-hover:text-spiritual-700 transition-colors duration-300" />
-                          <span className="text-spiritual-800 group-hover:text-spiritual-900 tracking-spiritual transition-colors duration-300">
-                            {suggestion}
-                          </span>
-                          <ArrowRight className="w-4 h-4 text-spiritual-400 group-hover:text-spiritual-600 group-hover:translate-x-1 transition-all duration-300 ml-auto" />
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
