@@ -741,15 +741,6 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
                 : "Ask about Hindu festivals, auspicious timings, or spiritual guidance"
               }
             </p>
-            
-            {/* Debug Info - Remove in production */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="mt-2 text-xs text-gray-500">
-                <p>Debug: {suggestedQuestions.length} suggestions loaded</p>
-                <p>Loading: {loadingSuggestions ? 'Yes' : 'No'}</p>
-                <p>Show suggestions: {showSuggestions ? 'Yes' : 'No'}</p>
-              </div>
-            )}
           </div>
         </div>
       </div>
