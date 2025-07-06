@@ -10,7 +10,6 @@ import {
   ArrowLeft,
   ChevronRight,
   User,
-  Shield,
   CheckCircle
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';

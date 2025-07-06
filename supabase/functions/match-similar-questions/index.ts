@@ -85,10 +85,10 @@ serve(async (req) => {
 
     // Extract suggestions and filter by similarity threshold
     const suggestions = (matchData || [])
-      .filter((row: any) => row.similarity > 0.7) // Only return highly similar questions
-      .map((row: any) => ({
-        question: row.question,
-        similarity: row.similarity
+      .filter((row: unknown) => (row as any).similarity > 0.7) // Only return highly similar questions
+      .map((row: unknown) => ({
+        question: (row as any).question,
+        similarity: (row as any).similarity
       }));
 
     return new Response(

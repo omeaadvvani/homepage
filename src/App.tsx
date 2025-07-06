@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Globe, LogIn, UserPlus, Headphones, ChevronDown, MapPin, AlertCircle, Settings } from 'lucide-react';
+import { Globe, LogIn, UserPlus, Headphones, ChevronDown, MapPin, AlertCircle } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
-import OnboardingScreen from './components/OnboardingScreen';
 import GuestOnboardingScreen from './components/GuestOnboardingScreen';
 import SignUpScreen from './components/SignUpScreen';
 import LoginScreen from './components/LoginScreen';
@@ -12,6 +11,7 @@ import ResetPinScreen from './components/ResetPinScreen';
 import MainExperienceScreen from './components/MainExperienceScreen';
 import SettingsScreen from './components/SettingsScreen';
 import AskVoiceVedicExperience from './components/AskVoiceVedicExperience';
+import SupabaseTest from './components/SupabaseTest';
 
 function App() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
@@ -69,10 +69,11 @@ function App() {
             async (position) => {
               try {
                 // Use reverse geocoding to get city name
-                const { latitude, longitude } = position.coords;
+                const { latitude: lat, longitude: lng } = position.coords;
                 
                 // For demo purposes, we'll simulate the API call
                 // In production, you'd use a service like OpenCage, MapBox, or Google Geocoding
+                // Using lat and lng for future implementation
                 setTimeout(() => {
                   // Simulate different locations based on coordinates
                   const mockLocations = [
@@ -559,6 +560,11 @@ function App() {
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-spiritual-400 group-hover:w-full transition-all duration-300"></span>
             </span>
           </button>
+        </div>
+
+        {/* Supabase Connection Test */}
+        <div className="mt-8 max-w-md">
+          <SupabaseTest />
         </div>
       </div>
 
