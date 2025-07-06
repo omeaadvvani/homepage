@@ -32,7 +32,7 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
   const [selectedRituals, setSelectedRituals] = useState<string[]>([]);
   const [notificationTime, setNotificationTime] = useState('07:00');
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
-  const [isCalendarDropdownOpen, setIsCalendarDropdownOpen] = useState(false);
+  // const [isCalendarDropdownOpen, setIsCalendarDropdownOpen] = useState(false);
   const [showSacredText, setShowSacredText] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -121,10 +121,10 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
     setIsLanguageDropdownOpen(false);
   };
 
-  const handleCalendarSelect = (selectedCalendar: string) => {
-    setCalendarType(selectedCalendar);
-    setIsCalendarDropdownOpen(false);
-  };
+  // const handleCalendarSelect = (selectedCalendar: string) => {
+  //   setCalendarType(selectedCalendar);
+  //   setIsCalendarDropdownOpen(false);
+  // };
 
   const handleRitualToggle = (ritualId: string) => {
     setSelectedRituals(prev => 
@@ -160,8 +160,9 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
         onComplete();
       }, 1500);
 
-    } catch (err: any) {
-      setSaveError(err.message || 'Failed to save preferences');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save preferences';
+      setSaveError(errorMessage);
     }
   };
 

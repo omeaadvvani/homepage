@@ -65,9 +65,10 @@ export const useUserPreferences = () => {
       }
 
       setPreferences(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching preferences:', err);
-      setError(err.message || 'Failed to fetch preferences');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch preferences';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -120,9 +121,9 @@ export const useUserPreferences = () => {
 
       setPreferences(data);
       return { data, error: null };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error saving preferences:', err);
-      const errorMessage = err.message || 'Failed to save preferences';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save preferences';
       setError(errorMessage);
       return { data: null, error: errorMessage };
     } finally {
@@ -176,9 +177,9 @@ export const useUserPreferences = () => {
 
       setPreferences(data);
       return { data, error: null };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating preferences:', err);
-      const errorMessage = err.message || 'Failed to update preferences';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update preferences';
       setError(errorMessage);
       return { data: null, error: errorMessage };
     } finally {
@@ -210,9 +211,9 @@ export const useUserPreferences = () => {
 
       setPreferences(null);
       return { error: null };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deactivating preferences:', err);
-      const errorMessage = err.message || 'Failed to deactivate preferences';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to deactivate preferences';
       setError(errorMessage);
       return { error: errorMessage };
     } finally {
@@ -241,9 +242,9 @@ export const useUserPreferences = () => {
 
       setPreferences(null);
       return { error: null };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deleting preferences:', err);
-      const errorMessage = err.message || 'Failed to delete preferences';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete preferences';
       setError(errorMessage);
       return { error: errorMessage };
     } finally {

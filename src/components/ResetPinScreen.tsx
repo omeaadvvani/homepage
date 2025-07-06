@@ -120,8 +120,9 @@ const ResetPinScreen: React.FC<ResetPinScreenProps> = ({ onComplete, onBack }) =
       setTimeout(() => {
         onComplete();
       }, 2000);
-    } catch (error: any) {
-      setPinError(error.message || 'Failed to save new PIN');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save new PIN';
+      setPinError(errorMessage);
     } finally {
       setLoading(false);
     }

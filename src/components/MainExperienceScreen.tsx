@@ -46,7 +46,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
   onShowSettings,
   onLogout 
 }) => {
-  const { user, userProfile } = useAuth();
+  const { userProfile } = useAuth();
   const { preferences } = useUserPreferences();
   const navigate = useNavigate();
   
@@ -164,12 +164,12 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
-  const getGreeting = () => {
-    const hour = currentTime.getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  };
+  // const getGreeting = () => {
+  //   const hour = currentTime.getHours();
+  //   if (hour < 12) return 'Good Morning';
+  //   if (hour < 17) return 'Good Afternoon';
+  //   return 'Good Evening';
+  // };
 
   const getEventIcon = (type: string) => {
     switch (type) {

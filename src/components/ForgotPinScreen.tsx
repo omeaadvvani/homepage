@@ -65,8 +65,9 @@ const ForgotPinScreen: React.FC<ForgotPinScreenProps> = ({ onBack, onComplete })
       setTimeout(() => {
         onComplete();
       }, 3000);
-    } catch (error: any) {
-      setEmailError(error.message || 'Failed to send reset link');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send reset link';
+      setEmailError(errorMessage);
     } finally {
       setLoading(false);
     }

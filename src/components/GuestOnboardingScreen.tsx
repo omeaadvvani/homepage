@@ -6,10 +6,8 @@ import {
   Bell, 
   AlertCircle, 
   BookOpen, 
-  Clock,
   ChevronDown,
   Check,
-  Sparkles,
   ArrowLeft,
   UserCheck
 } from 'lucide-react';

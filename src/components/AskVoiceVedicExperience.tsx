@@ -5,16 +5,67 @@ import {
   Mic, 
   MicOff, 
   Volume2, 
-  RotateCcw, 
   Sparkles, 
   MessageCircle,
-  Scroll,
   Trash2,
   Lightbulb,
   ArrowRight
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useUserPreferences } from '../hooks/useUserPreferences';
+
+// Type definitions for Web Speech API
+declare global {
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition;
+    webkitSpeechRecognition: typeof SpeechRecognition;
+  }
+}
+
+interface SpeechRecognition extends EventTarget {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
+  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
+}
+
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionResultList {
+  readonly length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  readonly length: number;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+  isFinal: boolean;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+  message: string;
+}
+
+declare var SpeechRecognition: {
+  prototype: SpeechRecognition;
+  new(): SpeechRecognition;
+};
 
 interface Message {
   id: string;
@@ -136,7 +187,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         console.log("🔄 API failed, using fallback suggestions");
         setSuggestedQuestions(fallbackSuggestions);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("💥 Fetch error:", error);
       
       // Use fallback suggestions on network error
@@ -192,9 +243,10 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       const data = await response.json();
       console.log("🎯 Test result:", data);
       return data;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("🚨 Test failed:", error);
-      return { error: error.message };
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return { error: errorMessage };
     }
   };
 
@@ -329,9 +381,10 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         }, 300);
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Ask VoiceVedic error:', error);
-      setApiError(error.message || 'Failed to get response');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to get response';
+      setApiError(errorMessage);
       
       const fallbackMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -368,7 +421,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         console.log("🎙️ VoiceVedic is listening...");
       };
 
-      recognition.onresult = (event) => {
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
         const spokenText = event.results[0][0].transcript;
         console.log("✅ Heard:", spokenText);
         
@@ -382,7 +435,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         }, 150);
       };
 
-      recognition.onerror = (event) => {
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.error("Mic Error:", event.error);
         setIsListening(false);
         

@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 
 const PreferencesDemo: React.FC = () => {
   const { user } = useAuth();
-  const { preferences, loading, error, upsertPreferences, updatePreferences, deletePreferences, deactivatePreferences } = useUserPreferences();
+  const { preferences, loading, error, upsertPreferences, deletePreferences, deactivatePreferences } = useUserPreferences();
   
   const [formData, setFormData] = useState({
     language: preferences?.language || 'English',
@@ -47,8 +47,9 @@ const PreferencesDemo: React.FC = () => {
         setSaveMessage({ type: 'success', text: 'Preferences saved successfully!' });
         setTimeout(() => setSaveMessage(null), 3000);
       }
-    } catch (err: any) {
-      setSaveMessage({ type: 'error', text: err.message || 'Failed to save preferences' });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save preferences';
+      setSaveMessage({ type: 'error', text: errorMessage });
     } finally {
       setSaveLoading(false);
     }
@@ -75,8 +76,9 @@ const PreferencesDemo: React.FC = () => {
         });
         setTimeout(() => setSaveMessage(null), 3000);
       }
-    } catch (err: any) {
-      setSaveMessage({ type: 'error', text: err.message || 'Failed to deactivate preferences' });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to deactivate preferences';
+      setSaveMessage({ type: 'error', text: errorMessage });
     } finally {
       setSaveLoading(false);
     }
@@ -103,8 +105,9 @@ const PreferencesDemo: React.FC = () => {
         });
         setTimeout(() => setSaveMessage(null), 3000);
       }
-    } catch (err: any) {
-      setSaveMessage({ type: 'error', text: err.message || 'Failed to delete preferences' });
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete preferences';
+      setSaveMessage({ type: 'error', text: errorMessage });
     } finally {
       setSaveLoading(false);
     }
