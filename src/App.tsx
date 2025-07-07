@@ -66,15 +66,12 @@ function App() {
         // Try to get user's location using geolocation API
         if ('geolocation' in navigator) {
           navigator.geolocation.getCurrentPosition(
-            async (position) => {
-              try {
-                // Use reverse geocoding to get city name
-                const { latitude: lat, longitude: lng } = position.coords;
-                
-                // For demo purposes, we'll simulate the API call
-                // In production, you'd use a service like OpenCage, MapBox, or Google Geocoding
-                // Using lat and lng for future implementation
-                setTimeout(() => {
+                          async () => {
+                              try {
+                  // For demo purposes, we'll simulate the API call
+                  // In production, you'd use a service like OpenCage, MapBox, or Google Geocoding
+                  // Using coordinates for future implementation
+                  setTimeout(() => {
                   // Simulate different locations based on coordinates
                   const mockLocations = [
                     'New Delhi, India',

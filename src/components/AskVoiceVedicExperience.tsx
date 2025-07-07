@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   ArrowLeft, 
   Send, 
@@ -29,10 +29,10 @@ interface SpeechRecognition extends EventTarget {
   start(): void;
   stop(): void;
   abort(): void;
-  onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
-  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any) | null;
-  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onstart: ((this: SpeechRecognition, ev: Event) => void) | null;
+  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null;
+  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => void) | null;
 }
 
 interface SpeechRecognitionEvent extends Event {
@@ -62,7 +62,7 @@ interface SpeechRecognitionErrorEvent extends Event {
   message: string;
 }
 
-declare var SpeechRecognition: {
+declare const SpeechRecognition: {
   prototype: SpeechRecognition;
   new(): SpeechRecognition;
 };
@@ -79,7 +79,7 @@ interface AskVoiceVedicExperienceProps {
 }
 
 const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBack }) => {
-  const { user, userProfile } = useAuth();
+  const { userProfile } = useAuth();
   const { preferences } = useUserPreferences();
   
   const [question, setQuestion] = useState('');
@@ -97,13 +97,13 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   const inputRef = useRef<HTMLInputElement>(null);
   
   // Fallback suggestions when API fails
-  const fallbackSuggestions = [
+  const fallbackSuggestions = useMemo(() => [
     "When is the next Amavasya?",
     "What should I do on Ekadashi?", 
     "How do I perform a simple pooja at home?",
     "Which day is best for Hanuman prayers?",
     "What is the meaning of Rahukalam?"
-  ];
+  ], []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -123,13 +123,6 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Fetch smart suggestions when component mounts
-  useEffect(() => {
-    if (messages.length === 0) {
-      fetchInitialSuggestions();
-    }
-  }, []);
-
   // Fetch suggestions based on user input
   useEffect(() => {
     if (question.trim().length > 3) {
@@ -141,10 +134,17 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     } else if (question.trim().length === 0 && messages.length === 0) {
       fetchInitialSuggestions();
     }
-  }, [question]);
+  }, [question, messages.length]);
+
+  // Fetch smart suggestions when component mounts
+  useEffect(() => {
+    if (messages.length === 0) {
+      fetchInitialSuggestions();
+    }
+  }, [messages.length]);
 
   // Fetch smart suggestions function
-  const fetchSuggestions = async (query: string) => {
+  const fetchSuggestions = useCallback(async (query: string) => {
     try {
       setLoadingSuggestions(true);
       
@@ -196,10 +196,10 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     } finally {
       setLoadingSuggestions(false);
     }
-  };
+  }, [fallbackSuggestions]);
 
   // Fetch initial suggestions for common questions
-  const fetchInitialSuggestions = async () => {
+  const fetchInitialSuggestions = useCallback(async () => {
     console.log("🚀 Fetching initial suggestions...");
     
     // Try to fetch from API first
@@ -212,7 +212,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         setSuggestedQuestions(fallbackSuggestions);
       }
     }, 2000); // Wait 2 seconds for API response
-  };
+  }, [fetchSuggestions, suggestedQuestions.length, fallbackSuggestions]);
 
   // Test function for browser console debugging
   const testSuggestions = async (testQuery = "When is fasting this month?") => {
@@ -253,7 +253,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   // Make test function available globally for console testing
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      (window as any).testSuggestions = testSuggestions;
+      (window as { testSuggestions?: typeof testSuggestions }).testSuggestions = testSuggestions;
       console.log("🔧 Test function available: window.testSuggestions()");
     }
   }, []);
@@ -329,7 +329,11 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       const userLocation = preferences?.location || userProfile?.location || null;
       const userCalendar = preferences?.calendar_type || userProfile?.calendar_tradition || null;
 
-      const payload: any = {
+      const payload: {
+        question: string;
+        location?: string | null;
+        calendar?: string | null;
+      } = {
         question: userMessage.content
       };
 

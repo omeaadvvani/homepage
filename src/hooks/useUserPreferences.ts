@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './useAuth';
 
@@ -46,7 +46,7 @@ export const useUserPreferences = () => {
   };
 
   // Fetch user preferences
-  const fetchPreferences = async () => {
+  const fetchPreferences = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -72,7 +72,7 @@ export const useUserPreferences = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   // Upsert user preferences (insert or update)
   const upsertPreferences = async (newPreferences: {
@@ -260,7 +260,7 @@ export const useUserPreferences = () => {
       setPreferences(null);
       setError(null);
     }
-  }, [user]);
+  }, [user, fetchPreferences]);
 
   return {
     preferences,
