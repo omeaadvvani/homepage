@@ -124,26 +124,6 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   }, [messages]);
 
   // Fetch suggestions based on user input
-  useEffect(() => {
-    if (question.trim().length > 3) {
-      const timeoutId = setTimeout(() => {
-        fetchSuggestions(question.trim());
-      }, 500); // Debounce for 500ms
-      
-      return () => clearTimeout(timeoutId);
-    } else if (question.trim().length === 0 && messages.length === 0) {
-      fetchInitialSuggestions();
-    }
-  }, [question, messages.length]);
-
-  // Fetch smart suggestions when component mounts
-  useEffect(() => {
-    if (messages.length === 0) {
-      fetchInitialSuggestions();
-    }
-  }, [messages.length]);
-
-  // Fetch smart suggestions function
   const fetchSuggestions = useCallback(async (query: string) => {
     try {
       setLoadingSuggestions(true);
@@ -213,6 +193,26 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       }
     }, 2000); // Wait 2 seconds for API response
   }, [fetchSuggestions, suggestedQuestions.length, fallbackSuggestions]);
+
+  // Fetch suggestions based on user input
+  useEffect(() => {
+    if (question.trim().length > 3) {
+      const timeoutId = setTimeout(() => {
+        fetchSuggestions(question.trim());
+      }, 500); // Debounce for 500ms
+      
+      return () => clearTimeout(timeoutId);
+    } else if (question.trim().length === 0 && messages.length === 0) {
+      fetchInitialSuggestions();
+    }
+  }, [question, messages.length, fetchSuggestions, fetchInitialSuggestions]);
+
+  // Fetch smart suggestions when component mounts
+  useEffect(() => {
+    if (messages.length === 0) {
+      fetchInitialSuggestions();
+    }
+  }, [messages.length, fetchInitialSuggestions]);
 
   // Test function for browser console debugging
   const testSuggestions = async (testQuery = "When is fasting this month?") => {
