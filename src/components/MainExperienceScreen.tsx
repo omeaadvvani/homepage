@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   MapPin, 
@@ -98,7 +98,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
   }, []);
 
   // Sample spiritual events data (in production, this would come from your database)
-  const sampleEvents: SpiritualEvent[] = [
+  const sampleEvents: SpiritualEvent[] = useMemo(() => [
     {
       id: '1',
       name: 'Pradosham',
@@ -108,9 +108,9 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       guidance: 'Offer water to Lord Shiva and observe silence during this auspicious time.',
       type: 'prayer'
     }
-  ];
+  ], []);
 
-  const sampleUpcoming: UpcomingEvent[] = [
+  const sampleUpcoming: UpcomingEvent[] = useMemo(() => [
     {
       id: '1',
       name: 'Ekadashi',
@@ -132,7 +132,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       action: 'Celebrate harvest festival with til-gud',
       days_away: 15
     }
-  ];
+  ], []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -154,7 +154,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
     // In production, fetch from Supabase based on user's calendar type and location
     setTodayEvent(sampleEvents[0]);
     setUpcomingEvents(sampleUpcoming);
-  }, [preferences]);
+  }, [preferences, sampleEvents, sampleUpcoming]);
 
   const formatTime = (timeString: string) => {
     const [hours, minutes] = timeString.split(':');
