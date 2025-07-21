@@ -21,23 +21,42 @@ export const useAuth = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Get initial session
+    // Get initial session with timeout
     const getInitialSession = async () => {
       try {
         setLoading(true);
-        const { data: { session } } = await supabase.auth.getSession();
+        setError(null);
+        console.log('[useAuth] Fetching initial session...');
+        
+        // Add timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Authentication timeout')), 8000);
+        });
+        
+        const sessionPromise = supabase.auth.getSession();
+        
+        const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as { data: { session: Session | null } };
         setSession(session);
         setUser(session?.user ?? null);
+        console.log('[useAuth] Session:', session);
         
         if (session?.user) {
+          console.log('[useAuth] Fetching user profile for user:', session.user.id);
           await fetchUserProfile(session.user.id);
+        } else {
+          console.log('[useAuth] No user in session.');
         }
       } catch (error) {
-        console.error('Error getting initial session:', error);
+        console.error('[useAuth] Error getting initial session:', error);
+        setError(error instanceof Error ? error.message : 'Authentication failed');
+        // Set loading to false even on error to prevent infinite loading
+        setLoading(false);
       } finally {
         setLoading(false);
+        console.log('[useAuth] Initial session fetch complete. Loading:', false);
       }
     };
 
@@ -46,22 +65,26 @@ export const useAuth = () => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session);
+        console.log('[useAuth] Auth state changed:', event, session);
         setLoading(true);
+        setError(null);
         
         try {
           setSession(session);
           setUser(session?.user ?? null);
-          
           if (session?.user) {
+            console.log('[useAuth] Fetching user profile for user:', session.user.id);
             await fetchUserProfile(session.user.id);
           } else {
             setUserProfile(null);
+            console.log('[useAuth] No user in session after auth change.');
           }
         } catch (error) {
-          console.error('Error handling auth state change:', error);
+          console.error('[useAuth] Error handling auth state change:', error);
+          setError(error instanceof Error ? error.message : 'Authentication state change failed');
         } finally {
           setLoading(false);
+          console.log('[useAuth] Auth state change complete. Loading:', false);
         }
       }
     );
@@ -71,26 +94,38 @@ export const useAuth = () => {
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      console.log('[useAuth] Fetching user profile from Supabase for user:', userId);
+      
+      // Add timeout to profile fetch
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 5000);
+      });
+      
+      const profilePromise = supabase
         .from('user_profiles')
         .select('*')
         .eq('user_id', userId)
         .maybeSingle();
+      
+      const { data, error } = await Promise.race([profilePromise, timeoutPromise]) as { data: UserProfile | null; error: unknown };
 
       if (error) {
-        console.error('Error fetching user profile:', error);
+        console.error('[useAuth] Error fetching user profile:', error);
         return;
       }
 
       setUserProfile(data);
+      console.log('[useAuth] User profile data:', data);
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('[useAuth] Error fetching user profile:', error);
+      // Don't set error here as profile fetch failure shouldn't block auth
     }
   };
 
   const signUp = async (email: string, pin: string) => {
     try {
       setLoading(true);
+      setError(null);
 
       // Create auth user with email and PIN as password
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -109,6 +144,7 @@ export const useAuth = () => {
       return { data: authData, error: null };
     } catch (error) {
       console.error('Sign up error:', error);
+      setError(error instanceof Error ? error.message : 'Sign up failed');
       return { data: null, error };
     } finally {
       setLoading(false);
@@ -118,6 +154,7 @@ export const useAuth = () => {
   const signIn = async (email: string, pin: string) => {
     try {
       setLoading(true);
+      setError(null);
 
       // Sign in with email and PIN
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -134,6 +171,7 @@ export const useAuth = () => {
       return { data, error: null };
     } catch (error) {
       console.error('Sign in error:', error);
+      setError(error instanceof Error ? error.message : 'Sign in failed');
       return { data: null, error };
     } finally {
       setLoading(false);
@@ -143,6 +181,7 @@ export const useAuth = () => {
   const signOut = async () => {
     try {
       setLoading(true);
+      setError(null);
       
       // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
@@ -195,6 +234,7 @@ export const useAuth = () => {
     session,
     userProfile,
     loading,
+    error,
     signUp,
     signIn,
     signOut,

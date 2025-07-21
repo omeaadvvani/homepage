@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Globe, LogIn, UserPlus, Headphones, ChevronDown, MapPin, AlertCircle } from 'lucide-react';
+import { Globe, LogIn, UserPlus, Headphones, ChevronDown, MapPin, AlertCircle, Navigation } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
+import { useLocation } from './hooks/useLocation';
 import GuestOnboardingScreen from './components/GuestOnboardingScreen';
 import SignUpScreen from './components/SignUpScreen';
 import LoginScreen from './components/LoginScreen';
@@ -25,8 +26,21 @@ function App() {
   const [guestMode, setGuestMode] = useState(false);
   const [previousScreen, setPreviousScreen] = useState<string>('home');
   const [isNavigating, setIsNavigating] = useState(false);
+  // Add a new state for location timeout and error
+  // const [locationTimeout, setLocationTimeout] = useState(false); // Removed as not needed with real-time tracking
+  const [authTimeout, setAuthTimeout] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [locationWarning, setLocationWarning] = useState('');
 
-  const { user, userProfile, loading: authLoading, signOut } = useAuth();
+  const { user, userProfile, loading: authLoading, error: authHookError, signOut } = useAuth();
+  const { 
+    currentLocation, 
+    isTracking, 
+    error: locationError, 
+    accuracy, 
+    startLocationTracking,
+    stopLocationTracking 
+  } = useLocation(user?.id);
 
   const languages = [
     'English',
@@ -61,61 +75,91 @@ function App() {
 
   // Auto-detect location on component mount
   useEffect(() => {
-    const detectLocation = async () => {
-      try {
-        // Try to get user's location using geolocation API
+    console.log('Location hook state:', { 
+      userId: user?.id, 
+      isTracking, 
+      currentLocation: currentLocation?.location_name,
+      locationError 
+    });
+    
+    if (user?.id && !isTracking && !currentLocation) {
+      console.log('Starting location tracking...');
+      // Start real-time location tracking when user is authenticated
+      startLocationTracking();
+    } else if (!user?.id) {
+      console.log('No user logged in, using high-precision location detection');
+      // High-precision location detection for non-authenticated users
         if ('geolocation' in navigator) {
           navigator.geolocation.getCurrentPosition(
-                          async () => {
+          async (position) => {
                               try {
-                  // For demo purposes, we'll simulate the API call
-                  // In production, you'd use a service like OpenCage, MapBox, or Google Geocoding
-                  // Using coordinates for future implementation
-                  setTimeout(() => {
-                  // Simulate different locations based on coordinates
-                  const mockLocations = [
-                    'New Delhi, India',
-                    'Mumbai, India', 
-                    'Bangalore, India',
-                    'Chennai, India',
-                    'Hyderabad, India',
-                    'Kolkata, India'
-                  ];
-                  const randomLocation = mockLocations[Math.floor(Math.random() * mockLocations.length)];
-                  setLocation(randomLocation);
+              const { latitude, longitude, accuracy } = position.coords;
+              console.log(`High-precision location: ${latitude}, ${longitude} (accuracy: ${accuracy}m)`);
+              
+              // Use precise geocoding to get exact location name
+              const locationName = await getPreciseLocationName(latitude, longitude);
+              
+              setLocation(locationName);
                   setLocationStatus('success');
-                }, 1500);
-                
+              console.log('Precise location detected:', locationName);
               } catch (error) {
-                console.error('Geocoding error:', error);
-                setLocation('Location unavailable');
-                setLocationStatus('error');
+              console.error('Precise location error:', error);
+              setLocation('India');
+              setLocationStatus('success');
+              setLocationWarning('Using default location (India).');
               }
             },
             (error) => {
-              console.error('Geolocation error:', error);
-              setLocation('Location unavailable');
+            console.error('High-precision location error:', error);
+            setLocation('India');
               setLocationStatus('error');
-            },
-            {
-              timeout: 30000, // Increased timeout to 30 seconds
-              enableHighAccuracy: false,
-              maximumAge: 300000 // 5 minutes
-            }
-          );
-        } else {
-          setLocation('Location unavailable');
-          setLocationStatus('error');
+            setLocationWarning('Location detection failed. Using default location.');
+          },
+          { 
+            timeout: 15000, 
+            enableHighAccuracy: true, 
+            maximumAge: 0 
+          }
+        );
+      }
+    }
+  }, [user?.id, isTracking, currentLocation, startLocationTracking, locationError]);
+
+  // Update location state when real-time location changes
+  useEffect(() => {
+    console.log('Location update effect:', { 
+      currentLocation: currentLocation?.location_name,
+      accuracy,
+      locationStatus 
+    });
+    
+    if (currentLocation) {
+      console.log('Setting location to:', currentLocation.location_name);
+      setLocation(currentLocation.location_name);
+      setLocationStatus('success');
+      if (accuracy) {
+        console.log(`Location accuracy: ${accuracy} meters`);
+      }
+    }
+  }, [currentLocation, accuracy, locationStatus]);
+
+  // Set loading status when tracking starts
+  useEffect(() => {
+    if (isTracking && !currentLocation) {
+      setLocationStatus('loading');
+      setLocation('Detecting location...');
         }
-      } catch (error) {
-        console.error('Location detection error:', error);
-        setLocation('Location unavailable');
+  }, [isTracking, currentLocation]);
+
+  // Handle location errors
+  useEffect(() => {
+    if (locationError) {
+      console.error('Location tracking error:', locationError);
+      setLocationWarning(locationError);
+      setLocation('India');
         setLocationStatus('error');
       }
-    };
-
-    detectLocation();
-  }, []);
+  }, [locationError]);
 
   // Handle user authentication state changes
   useEffect(() => {
@@ -130,7 +174,29 @@ function App() {
         setCurrentScreen('main-experience');
       }
     }
-  }, [user, userProfile, authLoading, newUserNeedsPreferences, guestMode]);
+    
+    // Handle authentication errors
+    if (authHookError && !authLoading) {
+      console.error('Authentication error:', authHookError);
+      // If authentication fails, allow user to continue as guest or retry
+      setAuthError(authHookError);
+    }
+  }, [user, userProfile, authLoading, authHookError, newUserNeedsPreferences, guestMode]);
+
+  // Add a timeout for authLoading
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    if (authLoading) {
+      timeoutId = setTimeout(() => {
+        setAuthTimeout(true);
+        setAuthError('Authentication is taking too long. Please check your connection or try again.');
+      }, 10000);
+    } else {
+      setAuthTimeout(false);
+      // Don't clear authError here as it might be set by the useAuth hook
+    }
+    return () => clearTimeout(timeoutId);
+  }, [authLoading]);
 
   const handleLanguageSelect = (language: string) => {
     setSelectedLanguage(language);
@@ -266,6 +332,57 @@ function App() {
     }, 100);
   };
 
+  // High-precision location name detection
+  const getPreciseLocationName = async (latitude: number, longitude: number): Promise<string> => {
+    try {
+      // Use a reliable geocoding service for precise location names
+      const response = await fetch(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const city = data.city || data.locality || '';
+        const state = data.principalSubdivision || '';
+        const country = data.countryName || '';
+        
+        // Return precise location name
+        if (city && state) {
+          return `${city}, ${state}, ${country}`;
+        } else if (city) {
+          return `${city}, ${country}`;
+        } else if (state) {
+          return `${state}, ${country}`;
+        } else {
+          return country || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+        }
+      } else {
+        // Fallback to coordinate-based detection for major regions
+        if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
+          return 'India';
+        } else if (latitude >= 24 && latitude <= 49 && longitude >= -125 && longitude <= -66) {
+          return 'United States';
+        } else if (latitude >= 35 && latitude <= 71 && longitude >= -10 && longitude <= 40) {
+          return 'Europe';
+        } else {
+          return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+        }
+      }
+    } catch (error) {
+      console.warn('Geocoding failed, using fallback:', error);
+      // Fallback to coordinate-based detection
+      if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
+        return 'India';
+      } else if (latitude >= 24 && latitude <= 49 && longitude >= -125 && longitude <= -66) {
+        return 'United States';
+      } else if (latitude >= 35 && latitude <= 71 && longitude >= -10 && longitude <= 40) {
+        return 'Europe';
+      } else {
+        return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+      }
+    }
+  };
+
   const handleLogout = async () => {
     try {
       setIsNavigating(true);
@@ -306,7 +423,7 @@ function App() {
   }, []);
 
   // Show loading while checking auth state or navigating
-  if (authLoading || isNavigating) {
+  if ((authLoading && !authTimeout) || isNavigating) {
     return (
       <div className="min-h-screen bg-spiritual-diagonal flex items-center justify-center">
         <div className="text-center">
@@ -314,6 +431,49 @@ function App() {
           <p className="text-spiritual-700 tracking-spiritual">
             {authLoading ? 'Loading...' : 'Navigating...'}
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if auth loading timed out
+  if (authTimeout) {
+    return (
+      <div className="min-h-screen bg-spiritual-diagonal flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-red-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-red-700 tracking-spiritual font-semibold mb-2">
+            {authError || 'Could not authenticate your session.'}
+          </p>
+          <button
+            className="px-4 py-2 bg-spiritual-500 text-white rounded shadow"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if location detection failed or timed out
+          if (locationStatus === 'error' && currentScreen === 'home') {
+    // Set default location and proceed
+    if (!locationWarning) {
+      setLocation('India');
+      setLocationStatus('success');
+      setLocationWarning('Location unavailable. Using default location: India.');
+      setCurrentScreen('main-experience');
+    }
+    // Show a quick message before proceeding
+    return (
+      <div className="min-h-screen bg-spiritual-diagonal flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-yellow-700 tracking-spiritual font-semibold mb-2">
+            Location unavailable. Using default location: India.
+          </p>
+          <p className="text-spiritual-700">You can continue using the app.</p>
         </div>
       </div>
     );
@@ -336,6 +496,7 @@ function App() {
                 onChangePreferences={handleShowPreferences}
                 onShowSettings={handleShowSettings}
                 onLogout={guestMode ? handleBackToHome : handleLogout}
+                locationWarning={locationWarning}
               />
             } 
           />
@@ -408,6 +569,25 @@ function App() {
         </div>
       )}
       
+      {/* Location Warning Banner */}
+      {locationWarning && (
+        <div className={`absolute ${supabaseError ? 'top-16' : 'top-0'} left-0 right-0 bg-yellow-50 border-b border-yellow-200 p-3 z-30`}>
+          <div className="flex items-center justify-center gap-3 text-yellow-800">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <p className="text-sm font-medium tracking-spiritual">{locationWarning}</p>
+            <button
+              onClick={() => setLocationWarning('')}
+              className="ml-2 p-1 text-yellow-600 hover:text-yellow-700 transition-colors"
+              title="Dismiss warning"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* Sacred Beginning Text - Bottom Right with Continuous Animation */}
       <div className={`absolute bottom-24 right-8 z-10 transition-opacity duration-1000 ${showSacredText ? 'opacity-100' : 'opacity-0'}`}>
         <div className="text-right">
@@ -419,21 +599,25 @@ function App() {
       </div>
 
       {/* Top Right Controls - Language & Location */}
-      <div className={`absolute ${supabaseError ? 'top-20' : 'top-6'} right-6 z-20 flex items-center gap-4`}>
+      <div className={`absolute ${supabaseError && locationWarning ? 'top-32' : supabaseError || locationWarning ? 'top-20' : 'top-6'} right-6 z-20 flex items-center gap-4`}>
         
-        {/* Location Auto-Detect */}
+        {/* Real-Time Location Tracking */}
         <div className="group relative">
           <div 
             className={`flex items-center gap-3 px-4 py-3 bg-white/90 backdrop-blur-sm rounded-spiritual shadow-spiritual border border-spiritual-200/50 transition-all duration-300 ${
               locationStatus === 'success' ? 'hover:bg-white hover:shadow-spiritual-lg' : ''
             }`}
-            title="Used to calculate accurate ritual timings based on your region"
+            title="Real-time location tracking for accurate ritual timings"
           >
+            {isTracking ? (
+              <Navigation className="w-5 h-5 text-green-600 animate-pulse" />
+            ) : (
             <MapPin className={`w-5 h-5 transition-colors duration-300 ${
               locationStatus === 'loading' ? 'text-spiritual-500 animate-pulse' :
               locationStatus === 'success' ? 'text-accent-600' :
               'text-gray-400'
             }`} />
+            )}
             <span className={`text-sm font-medium transition-colors duration-300 tracking-spiritual ${
               locationStatus === 'loading' ? 'text-spiritual-700' :
               locationStatus === 'success' ? 'text-spiritual-800' :
@@ -444,11 +628,46 @@ function App() {
             {locationStatus === 'loading' && (
               <div className="w-3 h-3 border border-spiritual-500 border-t-transparent rounded-full animate-spin"></div>
             )}
+            {isTracking && (
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-xs text-green-600 font-medium">Live</span>
+              </div>
+            )}
+            {(locationStatus === 'error' || locationStatus === 'loading') && (
+              <button
+                onClick={() => {
+                  if (user?.id) {
+                    console.log('Manual start location tracking');
+                    startLocationTracking();
+                  } else {
+                    setLocationWarning('Please log in to enable real-time location tracking.');
+                  }
+                }}
+                className="ml-2 p-1 text-spiritual-600 hover:text-spiritual-700 transition-colors"
+                title="Start location tracking"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            )}
+            {isTracking && (
+              <button
+                onClick={() => stopLocationTracking()}
+                className="ml-2 p-1 text-red-600 hover:text-red-700 transition-colors"
+                title="Stop location tracking"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
           </div>
           
           {/* Tooltip */}
           <div className="absolute top-full right-0 mt-3 px-4 py-3 bg-spiritual-900 text-white text-xs rounded-spiritual opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap z-30 shadow-spiritual-lg">
-            Used to calculate accurate ritual timings based on your region
+            Real-time location tracking for accurate ritual timings
             <div className="absolute bottom-full right-4 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-spiritual-900"></div>
           </div>
         </div>
@@ -483,6 +702,55 @@ function App() {
           )}
         </div>
       </div>
+
+      {/* Authentication Loading Screen */}
+      {(authLoading || authTimeout || authError) && (
+        <div className="fixed inset-0 bg-white/95 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto px-6">
+            {authLoading && !authTimeout && (
+              <>
+                <div className="w-16 h-16 border-4 border-spiritual-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+                <h2 className="text-2xl font-bold text-spiritual-900 mb-4 tracking-spiritual">
+                  Connecting to VoiceVedic...
+                </h2>
+                <p className="text-spiritual-700 mb-8 tracking-spiritual">
+                  Please wait while we authenticate your session.
+                </p>
+              </>
+            )}
+            
+            {(authTimeout || authError) && (
+              <>
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <AlertCircle className="w-8 h-8 text-red-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-spiritual-900 mb-4 tracking-spiritual">
+                  Connection Issue
+                </h2>
+                <p className="text-spiritual-700 mb-6 tracking-spiritual">
+                  {authError || 'Authentication is taking too long. Please check your connection.'}
+                </p>
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-6 py-3 bg-spiritual-600 text-white rounded-button font-medium tracking-spiritual hover:bg-spiritual-700 transition-colors"
+                  >
+                    Try Again
+                  </button>
+                  <button
+                    onClick={handleContinueAsGuest}
+                    className="px-6 py-3 bg-white border-2 border-spiritual-300 text-spiritual-700 rounded-button font-medium tracking-spiritual hover:border-spiritual-400 transition-colors"
+                  >
+                    Continue as Guest
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Location Test Component - Removed to avoid obstruction */}
 
       {/* Main Content */}
       <div className={`flex flex-col items-center justify-center min-h-screen px-6 pb-24 relative z-10 ${supabaseError ? 'pt-20' : ''}`}>

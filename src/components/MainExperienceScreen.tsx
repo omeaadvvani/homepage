@@ -21,6 +21,7 @@ interface MainExperienceScreenProps {
   onChangePreferences: () => void;
   onShowSettings: () => void;
   onLogout?: () => void;
+  locationWarning?: string;
 }
 
 interface SpiritualEvent {
@@ -44,7 +45,8 @@ interface UpcomingEvent {
 const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({ 
   onChangePreferences, 
   onShowSettings,
-  onLogout 
+  onLogout,
+  locationWarning
 }) => {
   const { userProfile } = useAuth();
   const { preferences } = useUserPreferences();
@@ -187,6 +189,12 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
 
   return (
     <div className="min-h-screen bg-spiritual-diagonal relative overflow-hidden font-sans">
+      {/* Location Warning Banner */}
+      {locationWarning && (
+        <div className="w-full bg-yellow-100 text-yellow-800 text-center py-2 font-semibold">
+          {locationWarning}
+        </div>
+      )}
       {/* Spiritual Visual Layer */}
       <div className="absolute inset-0 bg-gradient-to-br from-spiritual-400/10 via-spiritual-300/5 to-spiritual-900/5"></div>
       

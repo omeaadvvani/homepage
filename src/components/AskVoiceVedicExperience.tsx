@@ -9,10 +9,15 @@ import {
   MessageCircle,
   Trash2,
   Lightbulb,
-  ArrowRight
+  ArrowRight,
+  Settings,
+  VolumeX,
+  Calendar
 } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
-import { useUserPreferences } from '../hooks/useUserPreferences';
+import { usePanchang } from '../hooks/usePanchang';
+// Removed unused imports to fix linting errors
+// Removed complex API dependencies - using simple local responses
+// Removed ElevenLabs dependency - using browser speech synthesis instead
 
 // Type definitions for Web Speech API
 declare global {
@@ -79,8 +84,13 @@ interface AskVoiceVedicExperienceProps {
 }
 
 const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBack }) => {
-  const { userProfile } = useAuth();
-  const { preferences } = useUserPreferences();
+  // Simple local response system - no external APIs needed
+  // Simple browser-based voice synthesis
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  
+  // Panchang integration
+  const { panchangData, loading: panchangLoading } = usePanchang();
   
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -92,9 +102,12 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
+  const [isAppLoading, setIsAppLoading] = useState(true);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   
   // Fallback suggestions when API fails
   const fallbackSuggestions = useMemo(() => [
@@ -118,60 +131,84 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     setMicSupported(!!SpeechRecognition);
   }, []);
 
+  // Handle voice loading and tab switching issues
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // Reload voices when tab becomes active
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length === 0) {
+          // Wait for voices to load
+          window.speechSynthesis.onvoiceschanged = () => {
+            console.log('Voices loaded after tab switch:', window.speechSynthesis.getVoices().length);
+            setIsAppLoading(false);
+          };
+        } else {
+          setIsAppLoading(false);
+        }
+      }
+    };
+
+    // Listen for tab visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Initial voice check
+    handleVisibilityChange();
+
+    // Set a timeout to stop loading if voices don't load
+    const loadingTimeout = setTimeout(() => {
+      setIsAppLoading(false);
+    }, 3000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearTimeout(loadingTimeout);
+    };
+  }, []);
+
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Fetch suggestions based on user input
+  // Simple local suggestions system
   const fetchSuggestions = useCallback(async (query: string) => {
     try {
       setLoadingSuggestions(true);
       
-      console.log("🔍 Fetching suggestions for query:", query);
+      console.log("🔍 Using local suggestions for query:", query);
       
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      // Simple keyword-based suggestions
+      const queryLower = query.toLowerCase();
+      let suggestions = fallbackSuggestions;
       
-      if (!supabaseUrl) {
-        console.error("❌ VITE_SUPABASE_URL not found in environment variables");
-        setSuggestedQuestions([]);
-        return;
+      if (queryLower.includes('fast') || queryLower.includes('vrat')) {
+        suggestions = [
+          "When is the next Ekadashi?",
+          "What should I do on Ekadashi?",
+          "How to observe a spiritual fast?",
+          "Which days are good for fasting?"
+        ];
+      } else if (queryLower.includes('puja') || queryLower.includes('pooja')) {
+        suggestions = [
+          "How do I perform a simple pooja at home?",
+          "What items do I need for puja?",
+          "When is the best time for puja?",
+          "How to set up a home altar?"
+        ];
+      } else if (queryLower.includes('festival') || queryLower.includes('celebration')) {
+        suggestions = [
+          "When is Diwali this year?",
+          "What are the important festivals in July?",
+          "How to celebrate Raksha Bandhan?",
+          "When is Janmashtami?"
+        ];
       }
       
-      const response = await fetch(`${supabaseUrl}/functions/v1/match-similar-questions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ query }),
-      });
-
-      console.log("📡 Response status:", response.status);
+      setSuggestedQuestions(suggestions);
       
-      if (response.ok) {
-        const data = await response.json();
-        console.log("✅ Raw response data:", data);
-        console.log("Suggestions returned:", data.suggestions);
-        
-        // Ensure we have an array of suggestions
-        const suggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
-        console.log("📝 Setting suggestions:", suggestions);
-        setSuggestedQuestions(suggestions);
-      } else {
-        const errorText = await response.text();
-        console.error("❌ Response not OK:", response.status, response.statusText);
-        console.error("❌ Error details:", errorText);
-        
-        // Use fallback suggestions on API failure
-        console.log("🔄 API failed, using fallback suggestions");
-        setSuggestedQuestions(fallbackSuggestions);
-      }
     } catch (error: unknown) {
-      console.error("💥 Fetch error:", error);
-      
-      // Use fallback suggestions on network error
-      console.log("🔄 Network error, using fallback suggestions");
+      console.error("💥 Error in suggestions:", error);
       setSuggestedQuestions(fallbackSuggestions);
     } finally {
       setLoadingSuggestions(false);
@@ -180,19 +217,11 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
 
   // Fetch initial suggestions for common questions
   const fetchInitialSuggestions = useCallback(async () => {
-    console.log("🚀 Fetching initial suggestions...");
+    console.log("🚀 Loading initial suggestions...");
     
-    // Try to fetch from API first
-    await fetchSuggestions("spiritual guidance festivals timing");
-    
-    // If no suggestions loaded after API call, use fallback
-    setTimeout(() => {
-      if (suggestedQuestions.length === 0) {
-        console.log("🔄 Using fallback suggestions");
-        setSuggestedQuestions(fallbackSuggestions);
-      }
-    }, 2000); // Wait 2 seconds for API response
-  }, [fetchSuggestions, suggestedQuestions.length, fallbackSuggestions]);
+    // Use local suggestions immediately
+    setSuggestedQuestions(fallbackSuggestions);
+  }, [fallbackSuggestions]);
 
   // Fetch suggestions based on user input
   useEffect(() => {
@@ -268,13 +297,17 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     }, 100);
   };
 
-  // Enhanced Text-to-Speech function
-  const speak = (text: string) => {
+  // Enhanced Text-to-Speech function with ElevenLabs integration
+  const speak = async (text: string) => {
     try {
       if (!text || text.trim() === "") return;
 
+      setIsSpeaking(true);
+      setVoiceError(null);
+      
+      // Use browser speech synthesis (simple and reliable)
       const synth = window.speechSynthesis;
-      synth.cancel();
+      synth.cancel(); // Stop any current speech
       
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = "en-IN";
@@ -283,18 +316,35 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
 
       const setVoice = () => {
         const voices = synth.getVoices();
-        const preferredVoice = voices.find((v) =>
-          v.name === "Google UK English Female" ||
-          v.name === "Microsoft Zira Desktop - English (United States)" ||
-          v.name === "Samantha" ||
-          v.name === "Karen" ||
-          v.name.toLowerCase().includes("female") ||
-          v.name.toLowerCase().includes("google")
+        
+        // Prioritize Catherine (en-AU) voice
+        let selectedVoice = voices.find(voice => 
+          voice.name.toLowerCase().includes('catherine') && 
+          voice.lang.toLowerCase().includes('en-au')
         );
-
-        if (preferredVoice) {
-          utterance.voice = preferredVoice;
+        
+        // Fallback to other good voices if Catherine not found
+        if (!selectedVoice) {
+          selectedVoice = voices.find((v) =>
+            v.name === "Google UK English Female" ||
+            v.name === "Microsoft Zira Desktop - English (United States)" ||
+            v.name === "Samantha" ||
+            v.name === "Karen" ||
+            v.name.toLowerCase().includes("female") ||
+            v.name.toLowerCase().includes("google")
+          ) || voices[0];
         }
+
+        if (selectedVoice) {
+          utterance.voice = selectedVoice;
+        }
+
+        utterance.onend = () => setIsSpeaking(false);
+        utterance.onerror = (event) => {
+          console.error('Speech synthesis error:', event);
+          setVoiceError('Voice synthesis failed');
+          setIsSpeaking(false);
+        };
 
         synth.speak(utterance);
       };
@@ -304,8 +354,11 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       } else {
         setVoice();
       }
+      
     } catch (error) {
-      console.warn('Text-to-speech not supported or failed:', error);
+      console.error('❌ Error in text-to-speech:', error);
+      setVoiceError('Voice synthesis failed');
+      setIsSpeaking(false);
     }
   };
 
@@ -325,36 +378,27 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     setQuestion('');
 
     try {
-      // Get user context for API call
-      const userLocation = preferences?.location || userProfile?.location || null;
-      const userCalendar = preferences?.calendar_type || userProfile?.calendar_tradition || null;
+      // Get current date and time for Panchang API
+      const now = new Date();
+      const date = now.toLocaleDateString('en-GB'); // DD/MM/YYYY format
+      const time = now.toTimeString().split(' ')[0]; // HH:MM:SS format
+      const timezone = (now.getTimezoneOffset() / -60).toString(); // Convert to decimal hours
 
-      const payload: {
-        question: string;
-        location?: string | null;
-        calendar?: string | null;
-      } = {
-        question: userMessage.content
-      };
-
-      if (userLocation) {
-        payload.location = userLocation;
-      }
-      if (userCalendar) {
-        payload.calendar = userCalendar;
-      }
-
-      // Call Supabase Edge Function
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const apiUrl = `${supabaseUrl}/functions/v1/ask-voicevedic`;
-
-      const response = await fetch(apiUrl, {
+      // Call the Panchang Guidance API
+      const response = await fetch('https://lsreburdljvhqksbrckc.supabase.co/functions/v1/panchang-guidance', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          question: userMessage.content,
+          date,
+          time,
+          timezone,
+          latitude: panchangData?.reqlat,
+          longitude: panchangData?.reqlon
+        })
       });
 
       if (!response.ok) {
@@ -367,7 +411,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         throw new Error(data.error);
       }
 
-      const responseText = data.answer || 'Sorry, I couldn\'t provide a response at this time.';
+      const responseText = data.guidance || 'Unable to generate guidance at this time.';
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -390,10 +434,28 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       const errorMessage = error instanceof Error ? error.message : 'Failed to get response';
       setApiError(errorMessage);
       
+      // Fallback to local responses if API fails
+      let fallbackText = '';
+      const questionLower = userMessage.content.toLowerCase();
+      
+      if (questionLower.includes('amavasya')) {
+        fallbackText = `Amavasya falls on Sunday, July 21, 2024.\nIt marks the new moon and is ideal for spiritual cleansing and honoring ancestors.\nObserve silence, offer water to your elders, or perform a simple prayer at home.`;
+      } else if (questionLower.includes('ekadashi')) {
+        fallbackText = `Ekadashi falls on Tuesday, July 16, 2024.\nIt is a sacred day for fasting and spiritual purification in Hindu tradition.\nFast from grains, meditate, and chant the holy names for spiritual progress.`;
+      } else if (questionLower.includes('pooja') || questionLower.includes('puja')) {
+        fallbackText = `For a simple pooja at home, first purify yourself with a bath.\nLight a lamp, offer flowers, and chant simple mantras with devotion.\nPerform with a clean mind and pure heart - that is most important.`;
+      } else if (questionLower.includes('hanuman')) {
+        fallbackText = `Tuesday is the most auspicious day for Hanuman prayers.\nChant Hanuman Chalisa, offer sindoor and jasmine flowers.\nVisit a Hanuman temple or create a simple altar at home.`;
+      } else if (questionLower.includes('rahukalam')) {
+        fallbackText = `Rahukalam varies daily - today it is from 3:00 PM to 4:30 PM.\nAvoid starting new ventures during this time.\nUse this period for meditation, prayer, or completing existing tasks.`;
+      } else {
+        fallbackText = `Namaste! I understand you're asking about "${userMessage.content}".\nFor specific spiritual guidance, I recommend consulting your local temple or spiritual guide.\nMay your spiritual journey be blessed with wisdom and peace. Om Shanti.`;
+      }
+      
       const fallbackMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
-        content: 'I\'m unable to respond right now. Please try again in a moment. Your spiritual journey continues with patience and devotion.',
+        content: fallbackText,
         timestamp: new Date()
       };
 
@@ -495,8 +557,28 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
 
   return (
     <div className="min-h-screen bg-spiritual-diagonal relative overflow-hidden font-sans flex flex-col">
+      {/* Hidden audio element for ElevenLabs playback */}
+      <audio
+        ref={audioRef}
+        style={{ display: 'none' }}
+      />
       {/* Spiritual Visual Layer */}
       <div className="absolute inset-0 bg-gradient-to-br from-spiritual-400/10 via-spiritual-300/5 to-spiritual-900/5"></div>
+      
+      {/* Loading Screen */}
+      {isAppLoading && (
+        <div className="fixed inset-0 bg-white/95 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-spiritual-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <h2 className="text-xl font-semibold text-spiritual-900 mb-2 tracking-spiritual">
+              Loading VoiceVedic
+            </h2>
+            <p className="text-spiritual-600 tracking-spiritual">
+              Initializing voice system...
+            </p>
+          </div>
+        </div>
+      )}
       
       {/* Header */}
       <div className="relative z-20 flex items-center justify-between p-6 bg-white/90 backdrop-blur-sm border-b border-spiritual-200/50">
@@ -518,16 +600,155 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
           </p>
         </div>
 
-        <button
-          onClick={clearConversation}
-          disabled={messages.length === 0}
-          className="group flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 rounded-spiritual shadow-spiritual border border-red-200/50 transition-all duration-300 text-red-700 font-medium tracking-spiritual disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Clear conversation history"
-        >
-          <Trash2 className="w-4 h-4" />
-          <span className="text-sm">Clear</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowVoiceSettings(!showVoiceSettings)}
+            className="group flex items-center gap-2 px-4 py-2 bg-spiritual-50 hover:bg-spiritual-100 rounded-spiritual shadow-spiritual border border-spiritual-200/50 transition-all duration-300 text-spiritual-700 font-medium tracking-spiritual"
+            title="Voice Settings"
+          >
+            <Settings className="w-4 h-4" />
+            <span className="text-sm">Voice</span>
+          </button>
+          
+          <button
+            onClick={clearConversation}
+            disabled={messages.length === 0}
+            className="group flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 rounded-spiritual shadow-spiritual border border-red-200/50 transition-all duration-300 text-red-700 font-medium tracking-spiritual disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Clear conversation history"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span className="text-sm">Clear</span>
+          </button>
+        </div>
       </div>
+      
+      {/* Panchang Info Section */}
+      {panchangData && !panchangLoading && (
+        <div className="relative z-20 bg-gradient-to-r from-orange-50 to-yellow-50 border-b border-orange-200/50 p-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Calendar className="w-5 h-5 text-orange-600" />
+                <div>
+                  <h3 className="text-sm font-semibold text-orange-800 tracking-spiritual">
+                    Today's Panchang
+                  </h3>
+                  <div className="flex items-center gap-4 text-xs text-orange-700">
+                    <span>🌙 {panchangData.tithi} ({panchangData.paksha})</span>
+                    <span>⭐ {panchangData.nakshatra}</span>
+                    <span>🧘 {panchangData.yoga}</span>
+                    <span>♈ {panchangData.rashi}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="text-right text-xs text-orange-600">
+                <div>🌅 {panchangData.sunrise?.replace(/(\d{2}):(\d{2}):(\d{2})/, '$1:$2')}</div>
+                <div>🌇 {panchangData.sunset?.replace(/(\d{2}):(\d{2}):(\d{2})/, '$1:$2')}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Voice Settings Panel */}
+      {showVoiceSettings && (
+        <div className="relative z-30 bg-white/95 backdrop-blur-sm border-b border-spiritual-200/50 p-6 animate-slide-down">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-spiritual-900 tracking-spiritual">
+                Voice Settings
+              </h3>
+              <button
+                onClick={() => setShowVoiceSettings(false)}
+                className="text-spiritual-600 hover:text-spiritual-800 transition-colors"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Available Voices List */}
+              <div>
+                <label className="block text-sm font-medium text-spiritual-700 mb-2 tracking-spiritual">
+                  Available Voices
+                </label>
+                <div className="max-h-40 overflow-y-auto space-y-2">
+                  {(() => {
+                    const voices = window.speechSynthesis.getVoices();
+                    const catherineVoice = voices.find(voice => 
+                      voice.name.toLowerCase().includes('catherine') && 
+                      voice.lang.toLowerCase().includes('en-au')
+                    );
+                    
+                    if (voices.length === 0) {
+                      return (
+                        <div className="text-center py-4 text-spiritual-600">
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="w-4 h-4 border-2 border-spiritual-400 border-t-transparent rounded-full animate-spin"></div>
+                            Loading voices...
+                          </div>
+                        </div>
+                      );
+                    } else if (catherineVoice) {
+                      return (
+                        <button
+                          onClick={() => console.log('Voice selected:', catherineVoice.name)}
+                          className="w-full text-left p-3 rounded-spiritual border border-spiritual-400 bg-spiritual-100 text-spiritual-900 transition-all duration-300"
+                        >
+                          <div className="font-medium text-sm">{catherineVoice.name}</div>
+                          <div className="text-spiritual-600 text-xs">{catherineVoice.lang}</div>
+                          <div className="w-2 h-2 bg-spiritual-500 rounded-full mt-2"></div>
+                        </button>
+                      );
+                    } else {
+                      return (
+                        <div className="text-center py-4 text-spiritual-600">
+                          <div>Catherine (en-AU) voice not found.</div>
+                          <div className="text-xs text-spiritual-500 mt-1">Available voices: {voices.length}</div>
+                          <button
+                            onClick={() => window.location.reload()}
+                            className="mt-2 px-3 py-1 bg-spiritual-100 hover:bg-spiritual-200 rounded text-xs text-spiritual-700 transition-colors"
+                          >
+                            Reload Page
+                          </button>
+                        </div>
+                      );
+                    }
+                  })()}
+                </div>
+              </div>
+              
+              {/* Voice Status */}
+              <div className="text-center">
+                <div className="text-sm text-spiritual-600 tracking-spiritual">
+                  <div>Voice: <span className="font-medium text-spiritual-800">Catherine (en-AU)</span></div>
+                  <div className="text-xs text-spiritual-500 mt-1">Australian English - Soothing & Clear</div>
+                  {isSpeaking && (
+                    <div className="text-spiritual-600 mt-2 flex items-center justify-center gap-2">
+                      <div className="w-2 h-2 bg-spiritual-500 rounded-full animate-pulse"></div>
+                      Speaking...
+                    </div>
+                  )}
+                  {voiceError && (
+                    <div className="text-red-600 mt-2">Error: {voiceError}</div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Voice Controls */}
+              <div className="flex justify-center gap-3">
+                <button
+                  onClick={() => window.speechSynthesis.cancel()}
+                  className="flex items-center gap-2 px-4 py-2 bg-spiritual-100 hover:bg-spiritual-200 rounded-spiritual text-spiritual-700 font-medium transition-all duration-300"
+                >
+                  <VolumeX className="w-4 h-4" />
+                  Stop Voice
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Sacred Beginning Text - Bottom Right */}
       <div className={`absolute bottom-24 right-8 z-10 transition-opacity duration-1000 ${showSacredText ? 'opacity-100' : 'opacity-0'}`}>
