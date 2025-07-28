@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { panchangApi, type PanchangData, type PanchangApiResponse } from '../lib/panchang-api';
+import { panchangAPI, type PanchangData, type PanchangResponse } from '../lib/panchang-api';
 
 interface UsePanchangReturn {
   panchangData: PanchangData | null;
   loading: boolean;
   error: string | null;
-  fetchPanchang: (date?: Date, latitude?: string, longitude?: string) => Promise<void>;
-  fetchTodaysPanchang: (latitude?: string, longitude?: string) => Promise<void>;
+  fetchPanchang: (date?: string, latitude?: number, longitude?: number) => Promise<void>;
+  fetchTodaysPanchang: (latitude?: number, longitude?: number) => Promise<void>;
   refreshPanchang: () => Promise<void>;
 }
 
@@ -16,31 +16,25 @@ export const usePanchang = (): UsePanchangReturn => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchPanchang = useCallback(async (
-    date: Date = new Date(),
-    latitude?: string,
-    longitude?: string
+    date: string = new Date().toISOString().split('T')[0],
+    latitude?: number,
+    longitude?: number
   ) => {
     setLoading(true);
     setError(null);
 
     try {
-      const formattedDate = panchangApi.formatDateForApi(date);
-      const formattedTime = panchangApi.formatTimeForApi(date);
-      const timezone = panchangApi.getTimezoneOffset();
+      // Default to Delhi coordinates if not provided
+      const lat = latitude || 28.6139;
+      const lon = longitude || 77.2090;
 
-      const response: PanchangApiResponse = await panchangApi.getPanchang(
-        formattedDate,
-        formattedTime,
-        timezone,
-        latitude,
-        longitude
-      );
+      const response: PanchangResponse = await panchangAPI.getPanchangData(date, lat, lon);
 
-      if (response.error) {
-        setError(response.error);
+      if (!response.success) {
+        setError(response.error || 'Failed to fetch Panchang data');
         setPanchangData(null);
       } else {
-        setPanchangData(response.data);
+        setPanchangData(response.data || null);
         setError(null);
       }
     } catch (err) {
@@ -52,18 +46,22 @@ export const usePanchang = (): UsePanchangReturn => {
     }
   }, []);
 
-  const fetchTodaysPanchang = useCallback(async (latitude?: string, longitude?: string) => {
+  const fetchTodaysPanchang = useCallback(async (latitude?: number, longitude?: number) => {
     setLoading(true);
     setError(null);
 
     try {
-      const response: PanchangApiResponse = await panchangApi.getTodaysPanchang(latitude, longitude);
+      const today = new Date().toISOString().split('T')[0];
+      const lat = latitude || 28.6139;
+      const lon = longitude || 77.2090;
 
-      if (response.error) {
-        setError(response.error);
+      const response: PanchangResponse = await panchangAPI.getPanchangData(today, lat, lon);
+
+      if (!response.success) {
+        setError(response.error || 'Failed to fetch today\'s Panchang data');
         setPanchangData(null);
       } else {
-        setPanchangData(response.data);
+        setPanchangData(response.data || null);
         setError(null);
       }
     } catch (err) {
@@ -77,10 +75,11 @@ export const usePanchang = (): UsePanchangReturn => {
 
   const refreshPanchang = useCallback(async () => {
     if (panchangData) {
-      const date = new Date();
-      const latitude = panchangData.reqlat;
-      const longitude = panchangData.reqlon;
-      await fetchPanchang(date, latitude, longitude);
+      // Extract coordinates from location string or use defaults
+      const locationParts = panchangData.location.split(', ');
+      const lat = parseFloat(locationParts[0]) || 28.6139;
+      const lon = parseFloat(locationParts[1]) || 77.2090;
+      await fetchPanchang(panchangData.date, lat, lon);
     } else {
       await fetchTodaysPanchang();
     }

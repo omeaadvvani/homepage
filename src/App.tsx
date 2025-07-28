@@ -13,6 +13,14 @@ import MainExperienceScreen from './components/MainExperienceScreen';
 import SettingsScreen from './components/SettingsScreen';
 import AskVoiceVedicExperience from './components/AskVoiceVedicExperience';
 import SupabaseTest from './components/SupabaseTest';
+import PanchangTest from './components/PanchangTest';
+import PanchangQueryTest from './components/PanchangQueryTest';
+import PerformanceMonitor from './components/PerformanceMonitor';
+import UpcomingEvents from './components/UpcomingEvents';
+import UserList from './components/UserList';
+import AllTithisTest from './components/AllTithisTest';
+import DebugInfo from './components/DebugInfo';
+import DevelopmentModeIndicator from './components/DevelopmentModeIndicator';
 
 function App() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
@@ -26,6 +34,7 @@ function App() {
   const [guestMode, setGuestMode] = useState(false);
   const [previousScreen, setPreviousScreen] = useState<string>('home');
   const [isNavigating, setIsNavigating] = useState(false);
+  const [isAppLoading, setIsAppLoading] = useState(true);
   // Add a new state for location timeout and error
   // const [locationTimeout, setLocationTimeout] = useState(false); // Removed as not needed with real-time tracking
   const [authTimeout, setAuthTimeout] = useState(false);
@@ -57,6 +66,28 @@ function App() {
     if (path === '/reset-pin') {
       setCurrentScreen('reset-pin');
     }
+  }, []);
+
+  // Handle app loading with progress messages
+  useEffect(() => {
+    const loadingSteps = [
+      { message: 'Loading VoiceVedic...', delay: 500 },
+      { message: 'Connecting to APIs...', delay: 1000 },
+      { message: 'Initializing Panchang...', delay: 1500 },
+      { message: 'Ready!', delay: 2000 }
+    ];
+
+    let currentStep = 0;
+    const interval = setInterval(() => {
+      if (currentStep < loadingSteps.length) {
+        currentStep++;
+      } else {
+        clearInterval(interval);
+        setIsAppLoading(false);
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Check Supabase configuration on mount
@@ -423,14 +454,21 @@ function App() {
   }, []);
 
   // Show loading while checking auth state or navigating
-  if ((authLoading && !authTimeout) || isNavigating) {
+  if ((authLoading && !authTimeout) || isNavigating || isAppLoading) {
     return (
       <div className="min-h-screen bg-spiritual-diagonal flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-spiritual-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-spiritual-700 tracking-spiritual">
-            {authLoading ? 'Loading...' : 'Navigating...'}
+            {isAppLoading ? 'Initializing VoiceVedic...' : authLoading ? 'Loading...' : 'Navigating...'}
           </p>
+          {isAppLoading && (
+            <div className="mt-4 text-sm text-spiritual-600">
+              <p>Setting up Panchang API...</p>
+              <p>Connecting to Supabase...</p>
+              <p>Initializing voice features...</p>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -830,6 +868,41 @@ function App() {
         {/* Supabase Connection Test */}
         <div className="mt-8 max-w-md">
           <SupabaseTest />
+        </div>
+
+        {/* Panchang API Test */}
+        <div className="mt-4 max-w-md">
+          <PanchangTest />
+        </div>
+
+        {/* Panchang Query Test */}
+        <div className="mt-4 max-w-lg">
+          <PanchangQueryTest />
+        </div>
+
+        {/* Upcoming Events */}
+        <div className="mt-4 max-w-md">
+          <UpcomingEvents />
+        </div>
+
+        {/* User Database */}
+        <div className="mt-4 max-w-md">
+          <UserList />
+        </div>
+
+        {/* All 16 Tithis Test */}
+        <div className="mt-4 max-w-4xl">
+          <AllTithisTest />
+        </div>
+
+        {/* Performance Monitor */}
+        <div className="mt-4 max-w-md">
+          <PerformanceMonitor />
+        </div>
+
+        {/* Debug Information */}
+        <div className="mt-4 max-w-md">
+          <DebugInfo />
         </div>
       </div>
 

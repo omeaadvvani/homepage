@@ -31,6 +31,7 @@ interface SpeechRecognition extends EventTarget {
   lang: string;
   interimResults: boolean;
   maxAlternatives: number;
+  continuous: boolean;
   start(): void;
   stop(): void;
   abort(): void;
@@ -42,6 +43,7 @@ interface SpeechRecognition extends EventTarget {
 
 interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
+  resultIndex: number;
 }
 
 interface SpeechRecognitionResultList {
@@ -111,11 +113,13 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   
   // Fallback suggestions when API fails
   const fallbackSuggestions = useMemo(() => [
+    "When is the next Ekadashi?",
+    "What is today's Tithi?",
+    "When is the next Purnima?",
+    "Tell me about fasting today",
+    "What is the Nakshatra today?",
     "When is the next Amavasya?",
-    "What should I do on Ekadashi?", 
-    "How do I perform a simple pooja at home?",
-    "Which day is best for Hanuman prayers?",
-    "What is the meaning of Rahukalam?"
+    "What are the auspicious timings today?"
   ], []);
 
   useEffect(() => {
@@ -182,12 +186,34 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       const queryLower = query.toLowerCase();
       let suggestions = fallbackSuggestions;
       
-      if (queryLower.includes('fast') || queryLower.includes('vrat')) {
+      if (queryLower.includes('fast') || queryLower.includes('vrat') || queryLower.includes('ekadashi')) {
         suggestions = [
           "When is the next Ekadashi?",
           "What should I do on Ekadashi?",
           "How to observe a spiritual fast?",
-          "Which days are good for fasting?"
+          "Which days are good for fasting?",
+          "Tell me about fasting today"
+        ];
+      } else if (queryLower.includes('purnima') || queryLower.includes('full moon')) {
+        suggestions = [
+          "When is the next Purnima?",
+          "What should I do on Purnima?",
+          "How to celebrate Purnima?",
+          "What are the auspicious timings for Purnima?"
+        ];
+      } else if (queryLower.includes('amavasya') || queryLower.includes('new moon')) {
+        suggestions = [
+          "When is the next Amavasya?",
+          "What should I do on Amavasya?",
+          "How to observe Amavasya?",
+          "What are the rituals for Amavasya?"
+        ];
+      } else if (queryLower.includes('tithi') || queryLower.includes('nakshatra')) {
+        suggestions = [
+          "What is today's Tithi?",
+          "What is the Nakshatra today?",
+          "What is today's Yoga?",
+          "What are the auspicious timings today?"
         ];
       } else if (queryLower.includes('puja') || queryLower.includes('pooja')) {
         suggestions = [
@@ -378,40 +404,29 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     setQuestion('');
 
     try {
-      // Get current date and time for Panchang API
-      const now = new Date();
-      const date = now.toLocaleDateString('en-GB'); // DD/MM/YYYY format
-      const time = now.toTimeString().split(' ')[0]; // HH:MM:SS format
-      const timezone = (now.getTimezoneOffset() / -60).toString(); // Convert to decimal hours
-
-      // Call the Panchang Guidance API
-      const response = await fetch('https://lsreburdljvhqksbrckc.supabase.co/functions/v1/panchang-guidance', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({
-          question: userMessage.content,
-          date,
-          time,
-          timezone,
-          latitude: panchangData?.reqlat,
-          longitude: panchangData?.reqlon
-        })
+      // Use our new Panchang API service
+      const { panchangAPI } = await import('../lib/panchang-api');
+      
+      // Get Panchang guidance with your credentials
+      const guidanceResponse = await panchangAPI.getPanchangGuidance({
+        question: userMessage.content,
+        date: new Date().toISOString().split('T')[0],
+        time: new Date().toLocaleTimeString('en-IN'),
+        latitude: 28.6139, // Default to Delhi
+        longitude: 77.2090,
+        location: 'Delhi, India'
       });
 
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`);
-      }
-
-      const data = await response.json();
+      let responseText = '';
       
-      if (data.error) {
-        throw new Error(data.error);
+      if (guidanceResponse.success && guidanceResponse.guidance) {
+        responseText = guidanceResponse.guidance;
+        console.log("✅ Panchang guidance received using your credentials");
+      } else {
+        // Fallback if API fails
+        responseText = 'Unable to generate guidance at this time. Please try again.';
+        console.log("⚠️ Using fallback response");
       }
-
-      const responseText = data.guidance || 'Unable to generate guidance at this time.';
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -422,12 +437,12 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      // Trigger text-to-speech safely
-      if (responseText && responseText.trim() !== "") {
-        setTimeout(() => {
-          speak(responseText);
-        }, 300);
-      }
+      // Text-to-speech temporarily disabled
+      // if (responseText && responseText.trim() !== "") {
+      //   setTimeout(() => {
+      //     speak(responseText);
+      //   }, 300);
+      // }
 
     } catch (error: unknown) {
       console.error('Ask VoiceVedic error:', error);
@@ -466,69 +481,118 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   };
 
   const startVoiceCapture = () => {
+    // Voice capture temporarily disabled
+    console.log('🔇 Voice capture is currently disabled');
+    alert('Voice capture is temporarily disabled. Please use text input instead.');
+    return;
+    
+    // Original code commented out
+    /*
     try {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
       if (!SpeechRecognition) {
-        alert("Mic input is not supported on this browser.");
+        alert("Voice input is not supported on this browser. Please use Chrome, Edge, or Safari.");
         return;
       }
 
+      // Check if microphone permission is granted
+      if (navigator.permissions) {
+        navigator.permissions.query({ name: 'microphone' as PermissionName }).then((result) => {
+          if (result.state === 'denied') {
+            alert("Microphone access is denied. Please enable microphone permissions in your browser settings and try again.");
+            return;
+          }
+        }).catch(() => {
+          // Permission API not supported, continue anyway
+        });
+      }
+
       const recognition = new SpeechRecognition();
-      recognition.lang = "en-IN";
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
+      
+      // Enhanced configuration for better accuracy
+      recognition.lang = "en-IN"; // Indian English
+      recognition.interimResults = true; // Show interim results
+      recognition.maxAlternatives = 3; // Get multiple alternatives
+      recognition.continuous = false; // Single utterance
 
       setIsListening(true);
       setQuestion('');
       setShowSuggestions(false);
 
+      let finalTranscript = '';
+
       recognition.onstart = () => {
         console.log("🎙️ VoiceVedic is listening...");
+        // Add visual feedback
+        document.body.style.cursor = 'wait';
       };
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
-        const spokenText = event.results[0][0].transcript;
-        console.log("✅ Heard:", spokenText);
+        let interimTranscript = '';
         
-        setQuestion(spokenText);
-        setIsListening(false);
-        
-        setTimeout(() => {
-          if (spokenText.trim()) {
-            handleAskQuestion();
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
           }
-        }, 150);
+        }
+
+        // Show interim results for better UX
+        if (interimTranscript) {
+          setQuestion(finalTranscript + interimTranscript);
+        }
+
+        // When final result is available
+        if (finalTranscript) {
+          console.log("✅ Final transcript:", finalTranscript);
+          setQuestion(finalTranscript);
+          setIsListening(false);
+          
+          // Auto-submit after a short delay
+          setTimeout(() => {
+            if (finalTranscript.trim()) {
+              handleAskQuestion();
+            }
+          }, 500);
+        }
       };
 
       recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.error("Mic Error:", event.error);
         setIsListening(false);
+        document.body.style.cursor = 'default';
         
-        if (event.error === 'not-allowed') {
-          alert("Microphone access denied. Please allow microphone permissions and try again.");
-        } else if (event.error === 'no-speech') {
-          console.log("🔇 No speech detected, resetting...");
-        } else {
-          console.warn("❌ Voice recognition error:", event.error);
+        switch (event.error) {
+          case 'not-allowed':
+            alert("Microphone access denied. Please allow microphone permissions and try again.");
+            break;
+          case 'no-speech':
+            console.log("🔇 No speech detected, resetting...");
+            setQuestion('');
+            break;
+          case 'audio-capture':
+            alert("No microphone found. Please connect a microphone and try again.");
+            break;
+          case 'network':
+            alert("Network error occurred. Please check your internet connection.");
+            break;
+          default:
+            console.warn("❌ Voice recognition error:", event.error);
+            alert("Voice recognition failed. Please try again.");
         }
       };
-
-      recognition.onend = () => {
-        setIsListening(false);
-      };
-
-      recognition.start();
-    } catch (err) {
-      console.error("Voice capture failed:", err);
-      setIsListening(false);
-    }
+    */
   };
 
   const handleReplayAudio = (content: string) => {
-    if (content && content.trim() !== "") {
-      speak(content);
-    }
+    // Text-to-speech temporarily disabled
+    // if (content && content.trim() !== "") {
+    //   speak(content);
+    // }
+    console.log('🔇 Text-to-speech is currently disabled');
   };
 
   const clearConversation = () => {
@@ -899,13 +963,13 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
             </div>
             
             {/* Mic Button */}
-            {micSupported && (
+            {micSupported ? (
               <button
                 onClick={startVoiceCapture}
                 disabled={isAsking || isListening}
                 className={`group relative overflow-hidden flex items-center justify-center w-12 h-12 rounded-full shadow-spiritual transition-all duration-300 transform focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 ${
                   isListening
-                    ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
+                    ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse ring-4 ring-red-300'
                     : isAsking
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-gradient-to-r from-spiritual-300 to-spiritual-400 hover:from-spiritual-400 hover:to-spiritual-500 text-spiritual-800 hover:text-spiritual-900 hover:scale-105 active:scale-95'
@@ -917,12 +981,21 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
                   <div className="absolute inset-0 rounded-full bg-gradient-to-r from-spiritual-300 to-spiritual-400 opacity-0 group-hover:opacity-30 blur-lg transition-opacity duration-300 -z-10"></div>
                 )}
                 
+                {/* Listening Animation */}
+                {isListening && (
+                  <div className="absolute inset-0 rounded-full bg-red-400 opacity-20 animate-ping"></div>
+                )}
+                
                 {isListening ? (
-                  <MicOff className="w-5 h-5" />
+                  <MicOff className="w-5 h-5 relative z-10" />
                 ) : (
                   <Mic className={`w-5 h-5 transition-transform duration-300 ${!isAsking ? 'group-hover:scale-110' : ''}`} />
                 )}
               </button>
+            ) : (
+              <div className="text-xs text-spiritual-600 text-center mt-2">
+                Voice input not supported in this browser
+              </div>
             )}
             
             {/* Send Button */}
