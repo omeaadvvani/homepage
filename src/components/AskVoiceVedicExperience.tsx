@@ -15,6 +15,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { usePanchang } from '../hooks/usePanchang';
+import VoiceInterface from './VoiceInterface';
 // Removed unused imports to fix linting errors
 // Removed complex API dependencies - using simple local responses
 // Removed ElevenLabs dependency - using browser speech synthesis instead
@@ -1055,6 +1056,42 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
               </div>
             </div>
           )}
+          {/* Voice Interface Section */}
+          <div className="mt-8 p-6 bg-gradient-to-br from-spiritual-50 to-spiritual-100 rounded-spiritual border border-spiritual-200/50">
+            <div className="text-center mb-6">
+              <h3 className="text-lg font-semibold text-spiritual-900 mb-2 tracking-spiritual">
+                🎤 Voice Interface
+              </h3>
+              <p className="text-sm text-spiritual-700/80 tracking-spiritual">
+                Speak your questions and get voice responses automatically
+              </p>
+            </div>
+            
+            <VoiceInterface 
+              onUserQuestion={(question) => {
+                // Add the user's spoken question to messages
+                const userMessage: Message = {
+                  id: Date.now().toString(),
+                  type: 'user',
+                  content: question,
+                  timestamp: new Date()
+                };
+                setMessages(prev => [...prev, userMessage]);
+              }}
+              onResponse={(response) => {
+                // Add the response to messages
+                const newMessage: Message = {
+                  id: Date.now().toString(),
+                  type: 'assistant',
+                  content: response,
+                  timestamp: new Date()
+                };
+                setMessages(prev => [...prev, newMessage]);
+              }}
+              className="max-w-md mx-auto"
+            />
+          </div>
+
           {/* Helper Text */}
           <div className="mt-3 text-center">
             <p className="text-sm text-spiritual-700/70 tracking-spiritual">

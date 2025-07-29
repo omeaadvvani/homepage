@@ -19,6 +19,7 @@ import PerformanceMonitor from './components/PerformanceMonitor';
 import UpcomingEvents from './components/UpcomingEvents';
 import UserList from './components/UserList';
 import AllTithisTest from './components/AllTithisTest';
+import VoiceTest from './components/VoiceTest';
 import DebugInfo from './components/DebugInfo';
 import DevelopmentModeIndicator from './components/DevelopmentModeIndicator';
 
@@ -893,6 +894,7 @@ function App() {
         {/* All 16 Tithis Test */}
         <div className="mt-4 max-w-4xl">
           <AllTithisTest />
+        <VoiceTest />
         </div>
 
         {/* Performance Monitor */}

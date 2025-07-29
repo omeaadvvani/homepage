@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { panchangAPI, type PanchangData, type PanchangResponse } from '../lib/panchang-api';
+import { panchangAPI, type PanchangData, type PanchangResponse, type PanchangGuidanceRequest, type PanchangGuidanceResponse } from '../lib/panchang-api';
 
 interface UsePanchangReturn {
   panchangData: PanchangData | null;
@@ -8,6 +8,7 @@ interface UsePanchangReturn {
   fetchPanchang: (date?: string, latitude?: number, longitude?: number) => Promise<void>;
   fetchTodaysPanchang: (latitude?: number, longitude?: number) => Promise<void>;
   refreshPanchang: () => Promise<void>;
+  getPanchangGuidance: (request: PanchangGuidanceRequest) => Promise<PanchangGuidanceResponse>;
 }
 
 export const usePanchang = (): UsePanchangReturn => {
@@ -85,6 +86,19 @@ export const usePanchang = (): UsePanchangReturn => {
     }
   }, [panchangData, fetchPanchang, fetchTodaysPanchang]);
 
+  const getPanchangGuidance = useCallback(async (request: PanchangGuidanceRequest): Promise<PanchangGuidanceResponse> => {
+    try {
+      const response = await panchangAPI.getPanchangGuidance(request);
+      return response;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get Panchang guidance';
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+  }, []);
+
   // Auto-fetch today's Panchang data on mount
   useEffect(() => {
     fetchTodaysPanchang();
@@ -97,5 +111,6 @@ export const usePanchang = (): UsePanchangReturn => {
     fetchPanchang,
     fetchTodaysPanchang,
     refreshPanchang,
+    getPanchangGuidance,
   };
 }; 

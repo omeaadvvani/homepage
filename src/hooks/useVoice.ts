@@ -12,6 +12,11 @@ export interface VoiceState {
   selectedVoice: ElevenLabsVoice | null;
   userSettings: VoiceSettings | null;
   isLoading: boolean;
+  // Speech-to-Text state
+  isListening: boolean;
+  isProcessing: boolean;
+  transcribedText: string;
+  speechError: string | null;
 }
 
 export const useVoice = () => {
@@ -25,12 +30,166 @@ export const useVoice = () => {
     availableVoices: [],
     selectedVoice: null,
     userSettings: null,
-    isLoading: false
+    isLoading: false,
+    // Speech-to-Text state
+    isListening: false,
+    isProcessing: false,
+    transcribedText: '',
+    speechError: null
   });
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const mediaSourceRef = useRef<MediaSource | null>(null);
   const sourceBufferRef = useRef<SourceBuffer | null>(null);
+  const recognitionRef = useRef<any>(null);
+
+  // Initialize Speech Recognition
+  const initializeSpeechRecognition = useCallback(() => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      setVoiceState(prev => ({ 
+        ...prev, 
+        speechError: 'Speech recognition is not supported in this browser' 
+      }));
+      return false;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognitionRef.current = new SpeechRecognition();
+    
+    const recognition = recognitionRef.current;
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setVoiceState(prev => ({ 
+        ...prev, 
+        isListening: true,
+        speechError: null,
+        transcribedText: ''
+      }));
+    };
+
+    recognition.onresult = (event: any) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      setVoiceState(prev => ({ 
+        ...prev, 
+        transcribedText: finalTranscript || interimTranscript
+      }));
+    };
+
+    recognition.onerror = (event: any) => {
+      let errorMessage = 'Speech recognition error';
+      switch (event.error) {
+        case 'no-speech':
+          errorMessage = 'No speech detected. Please try again.';
+          break;
+        case 'audio-capture':
+          errorMessage = 'Audio capture error. Please check your microphone.';
+          break;
+        case 'not-allowed':
+          errorMessage = 'Microphone access denied. Please allow microphone access.';
+          break;
+        case 'network':
+          errorMessage = 'Network error. Please check your connection.';
+          break;
+        default:
+          errorMessage = `Speech recognition error: ${event.error}`;
+      }
+      
+      setVoiceState(prev => ({ 
+        ...prev, 
+        isListening: false,
+        speechError: errorMessage
+      }));
+    };
+
+    recognition.onend = () => {
+      setVoiceState(prev => ({ 
+        ...prev, 
+        isListening: false 
+      }));
+    };
+
+    return true;
+  }, []);
+
+  // Start listening for speech
+  const startListening = useCallback(() => {
+    if (!recognitionRef.current) {
+      if (!initializeSpeechRecognition()) {
+        return;
+      }
+    }
+
+    try {
+      recognitionRef.current.start();
+    } catch (error) {
+      console.error('Error starting speech recognition:', error);
+      setVoiceState(prev => ({ 
+        ...prev, 
+        speechError: 'Failed to start speech recognition' 
+      }));
+    }
+  }, [initializeSpeechRecognition]);
+
+  // Stop listening for speech
+  const stopListening = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+  }, []);
+
+  // Process speech input and get response
+  const processSpeechInput = useCallback(async (text: string) => {
+    if (!text.trim()) return;
+
+    setVoiceState(prev => ({ 
+      ...prev, 
+      isProcessing: true,
+      currentText: text
+    }));
+
+    try {
+      // Here you would call your API to get the response
+      // For now, we'll simulate this with a simple response
+      const response = `I heard you say: "${text}". This is a simulated response.`;
+      
+      // Speak the response
+      await speakText(response);
+      
+      setVoiceState(prev => ({ 
+        ...prev, 
+        isProcessing: false,
+        transcribedText: ''
+      }));
+    } catch (error) {
+      console.error('Error processing speech input:', error);
+      setVoiceState(prev => ({ 
+        ...prev, 
+        isProcessing: false,
+        error: 'Failed to process speech input'
+      }));
+    }
+  }, []);
+
+  // Auto-process when transcription is complete
+  useEffect(() => {
+    if (voiceState.transcribedText && !voiceState.isListening && !voiceState.isProcessing) {
+      processSpeechInput(voiceState.transcribedText);
+    }
+  }, [voiceState.transcribedText, voiceState.isListening, voiceState.isProcessing, processSpeechInput]);
 
   // Load user's voice settings
   const loadUserVoiceSettings = useCallback(async () => {
@@ -355,12 +514,16 @@ export const useVoice = () => {
   useEffect(() => {
     loadUserVoiceSettings();
     loadAvailableVoices();
-  }, [loadUserVoiceSettings, loadAvailableVoices]);
+    initializeSpeechRecognition();
+  }, [loadUserVoiceSettings, loadAvailableVoices, initializeSpeechRecognition]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       cleanupAudio();
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
     };
   }, [cleanupAudio]);
 
@@ -374,6 +537,10 @@ export const useVoice = () => {
     saveVoiceSettings,
     loadAvailableVoices,
     loadUserVoiceSettings,
-    cleanupAudio
+    cleanupAudio,
+    // Speech-to-Text methods
+    startListening,
+    stopListening,
+    processSpeechInput
   };
 }; 
