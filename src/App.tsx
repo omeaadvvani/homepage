@@ -97,25 +97,30 @@ function App() {
 
   // Simplified location detection
   useEffect(() => {
+    console.log('📍 Location detection triggered:', { userId: user?.id, isTracking });
+    
     if (!user?.id) {
       // Simple location detection for non-authenticated users
       if ('geolocation' in navigator) {
+        console.log('🌍 Starting geolocation for guest user...');
         navigator.geolocation.getCurrentPosition(
           async (position) => {
             try {
               const { latitude, longitude } = position.coords;
+              console.log('✅ Position obtained:', { latitude, longitude });
               const locationName = await getPreciseLocationName(latitude, longitude);
               setLocation(locationName);
               setLocationStatus('success');
+              console.log('📍 Location set to:', locationName);
             } catch (error) {
-              console.error('Location error:', error);
+              console.error('❌ Location error:', error);
               setLocation('India');
               setLocationStatus('success');
               setLocationWarning('Using default location (India).');
             }
           },
           (error) => {
-            console.error('Location error:', error);
+            console.error('❌ Location error:', error);
             setLocation('India');
             setLocationStatus('success');
             setLocationWarning('Location detection failed. Using default location.');
@@ -127,6 +132,7 @@ function App() {
           }
         );
       } else {
+        console.log('❌ Geolocation not supported');
         setLocation('India');
         setLocationStatus('success');
         setLocationWarning('Geolocation not supported. Using default location.');
@@ -134,10 +140,11 @@ function App() {
     } else {
       // For authenticated users, start location tracking
       if (user?.id && !isTracking) {
+        console.log('🚀 Starting location tracking for authenticated user:', user.id);
         startLocationTracking();
       }
     }
-  }, [user?.id, isTracking, startLocationTracking]);
+  }, [user?.id, isTracking]);
 
   // Update location state when real-time location changes
   useEffect(() => {

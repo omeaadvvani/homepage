@@ -244,13 +244,44 @@ class PanchangAPIService {
         authCode: this.authCode.substring(0, 8) + '...'
       });
       
-      const { data, error } = await supabase.functions.invoke('panchang-guidance', {
-        body: functionBody
-      });
+      // Try Supabase Edge Function first
+      let data, error;
+      try {
+        console.log('🔄 Trying Supabase Edge Function...');
+        const result = await supabase.functions.invoke('panchang-guidance', {
+          body: functionBody
+        });
+        data = result.data;
+        error = result.error;
+      } catch (supabaseError) {
+        console.error('❌ Supabase function error:', supabaseError);
+        error = supabaseError;
+      }
 
-      if (error) {
-        console.error('❌ Supabase function error:', error);
-        return { success: false, error: error.message };
+      // If Supabase fails, try direct API call
+      if (error || !data || data.status !== 'ok') {
+        console.log('🔄 Supabase failed, trying direct API call...');
+        try {
+          const directUrl = `https://api.panchang.click/v0.4/panchangapip1?date=${formattedDate}&time=06:00:00&tz=5.5&userid=${this.userId}&authcode=${this.authCode}&lat=${latitude}&lon=${longitude}`;
+          
+          const directResponse = await fetch(directUrl, {
+            method: 'GET',
+            mode: 'cors'
+          });
+          
+          if (directResponse.ok) {
+            const directData = await directResponse.json();
+            console.log('✅ Direct API call successful');
+            data = { status: 'ok', panchang: directData };
+            error = null;
+          } else {
+            console.error('❌ Direct API call failed:', directResponse.status);
+            return { success: false, error: `API call failed: ${directResponse.status}` };
+          }
+        } catch (directError) {
+          console.error('❌ Direct API call error:', directError);
+          return { success: false, error: 'Both Supabase and direct API calls failed' };
+        }
       }
 
       if (!data || data.status !== 'ok') {
@@ -1016,8 +1047,38 @@ class PanchangAPIService {
   async validateCredentials(): Promise<boolean> {
     try {
       console.log('🔐 Validating Panchang API credentials...');
+      console.log('📋 Credentials:', {
+        userId: this.userId,
+        authCodeLength: this.authCode.length,
+        hasSupabaseUrl: !!this.supabaseUrl,
+        hasSupabaseKey: !!this.supabaseAnonKey
+      });
       
-      // Use a simple test call to validate credentials
+      // First, test direct API call to check if external API is accessible
+      try {
+        const testUrl = `https://api.panchang.click/v0.4/panchangapip1?date=27/07/2025&time=14:45:00&tz=5.5&userid=${this.userId}&authcode=${this.authCode}&lat=28.6139&lon=77.2090`;
+        console.log('🌐 Testing direct API call...');
+        
+        const directResponse = await fetch(testUrl, {
+          method: 'GET',
+          mode: 'cors'
+        });
+        
+        console.log('📡 Direct API response status:', directResponse.status);
+        
+        if (directResponse.ok) {
+          const directData = await directResponse.json();
+          console.log('✅ Direct API call successful:', directData);
+          return true;
+        } else {
+          console.error('❌ Direct API call failed:', directResponse.status, directResponse.statusText);
+        }
+      } catch (directError) {
+        console.error('❌ Direct API call error:', directError);
+      }
+      
+      // Fallback: Test Supabase Edge Function
+      console.log('🔄 Testing Supabase Edge Function...');
       const { data, error } = await supabase.functions.invoke('panchang-guidance', {
         body: {
           question: 'test',
@@ -1041,7 +1102,7 @@ class PanchangAPIService {
         return false;
       }
 
-      console.log('✅ Credentials validated successfully');
+      console.log('✅ Credentials validated successfully via Supabase');
       return true;
 
     } catch (error) {
