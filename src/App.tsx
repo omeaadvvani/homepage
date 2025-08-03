@@ -94,71 +94,133 @@ function App() {
     }
   }, []);
 
-  // Simplified location detection
+  // Comprehensive location detection with multiple fallback strategies
   useEffect(() => {
     console.log('📍 Location detection triggered:', { userId: user?.id, isTracking });
     
-    if (!user?.id) {
-      // Simple location detection for non-authenticated users
-      if ('geolocation' in navigator) {
-        console.log('🌍 Starting geolocation for guest user...');
-        
-        // Check permission first
-        navigator.permissions?.query({ name: 'geolocation' }).then((permissionStatus) => {
-          console.log('🔐 Permission status:', permissionStatus.state);
-          
-          if (permissionStatus.state === 'denied') {
-            console.log('❌ Permission denied, using default location');
-            setLocation('India');
-            setLocationStatus('success');
-            setLocationWarning('Location permission denied. Using default location.');
-            return;
-          }
-        }).catch((error) => {
-          console.log('⚠️ Could not check permission status:', error);
-        });
-        
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            try {
-              const { latitude, longitude } = position.coords;
-              console.log('✅ Position obtained:', { latitude, longitude });
-              const locationName = await getPreciseLocationName(latitude, longitude);
-              setLocation(locationName);
-              setLocationStatus('success');
-              console.log('📍 Location set to:', locationName);
-            } catch (error) {
-              console.error('❌ Location error:', error);
-              setLocation('India');
-              setLocationStatus('success');
-              setLocationWarning('Using default location (India).');
-            }
-          },
-          (error) => {
-            console.error('❌ Location error:', error);
-            setLocation('India');
-            setLocationStatus('success');
-            setLocationWarning('Location detection failed. Using default location.');
-          },
-          { 
-            timeout: 15000, // Increased timeout
-            enableHighAccuracy: false, // Better compatibility
-            maximumAge: 300000 // 5 minutes cache
-          }
-        );
-      } else {
+    const detectLocation = async () => {
+      // For authenticated users, use the location tracking hook
+      if (user?.id) {
+        if (!isTracking) {
+          console.log('🚀 Starting location tracking for authenticated user:', user.id);
+          startLocationTracking();
+        }
+        return;
+      }
+
+      // For non-authenticated users, use simple location detection
+      console.log('🌍 Starting location detection for guest user...');
+      
+      // Check if geolocation is supported
+      if (!('geolocation' in navigator)) {
         console.log('❌ Geolocation not supported');
         setLocation('India');
         setLocationStatus('success');
         setLocationWarning('Geolocation not supported. Using default location.');
+        return;
       }
-    } else {
-      // For authenticated users, start location tracking
-      if (user?.id && !isTracking) {
-        console.log('🚀 Starting location tracking for authenticated user:', user.id);
-        startLocationTracking();
+
+      // Check HTTPS requirement
+      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+        console.log('⚠️ HTTPS required for geolocation');
+        setLocation('India');
+        setLocationStatus('success');
+        setLocationWarning('HTTPS required for geolocation. Using default location.');
+        return;
       }
-    }
+
+      // Check permission status
+      try {
+        const permissionStatus = await navigator.permissions?.query({ name: 'geolocation' });
+        console.log('🔐 Permission status:', permissionStatus?.state);
+        
+        if (permissionStatus?.state === 'denied') {
+          console.log('❌ Permission denied, using default location');
+          setLocation('India');
+          setLocationStatus('success');
+          setLocationWarning('Location permission denied. Using default location.');
+          return;
+        }
+      } catch (error) {
+        console.log('⚠️ Could not check permission status:', error);
+      }
+
+      // Try multiple location strategies
+      const tryLocationStrategies = async () => {
+        // Strategy 1: High accuracy GPS
+        try {
+          console.log('📍 Trying high accuracy GPS...');
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 0
+            });
+          });
+
+          const { latitude, longitude, accuracy } = position.coords;
+          console.log('✅ High accuracy position obtained:', { latitude, longitude, accuracy });
+          
+          const locationName = await getPreciseLocationName(latitude, longitude);
+          setLocation(locationName);
+          setLocationStatus('success');
+          setLocationWarning('');
+          console.log('📍 Location set to:', locationName);
+          return;
+        } catch (error) {
+          console.log('❌ High accuracy failed:', error);
+        }
+
+        // Strategy 2: Low accuracy (network-based)
+        try {
+          console.log('📍 Trying low accuracy...');
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: false,
+              timeout: 15000,
+              maximumAge: 300000 // 5 minutes cache
+            });
+          });
+
+          const { latitude, longitude, accuracy } = position.coords;
+          console.log('✅ Low accuracy position obtained:', { latitude, longitude, accuracy });
+          
+          const locationName = await getPreciseLocationName(latitude, longitude);
+          setLocation(locationName);
+          setLocationStatus('success');
+          setLocationWarning('Location obtained with low accuracy.');
+          console.log('📍 Location set to:', locationName);
+          return;
+        } catch (error) {
+          console.log('❌ Low accuracy failed:', error);
+        }
+
+        // Strategy 3: IP-based location
+        try {
+          console.log('📍 Trying IP-based location...');
+          const ipLocation = await getIPBasedLocation();
+          console.log('✅ IP-based location obtained:', ipLocation);
+          
+          setLocation(ipLocation.name);
+          setLocationStatus('success');
+          setLocationWarning('Location obtained via IP address.');
+          console.log('📍 Location set to:', ipLocation.name);
+          return;
+        } catch (error) {
+          console.log('❌ IP-based location failed:', error);
+        }
+
+        // Strategy 4: Default fallback
+        console.log('❌ All location strategies failed, using default');
+        setLocation('India');
+        setLocationStatus('success');
+        setLocationWarning('Location detection failed. Using default location.');
+      };
+
+      await tryLocationStrategies();
+    };
+
+    detectLocation();
   }, [user?.id, isTracking, startLocationTracking]);
 
   // Update location state when real-time location changes
@@ -372,29 +434,98 @@ function App() {
         return locationName;
       } else {
         console.warn('⚠️ Geocoding API failed, using fallback');
-        // Fallback to coordinate-based detection
-        if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
-          return 'India';
-        } else if (latitude >= 24 && latitude <= 49 && longitude >= -125 && longitude <= -66) {
-          return 'United States';
-        } else if (latitude >= 35 && latitude <= 71 && longitude >= -10 && longitude <= 40) {
-          return 'Europe';
-        } else {
-          return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-        }
+        return getFallbackLocationName(latitude, longitude);
       }
     } catch (error) {
       console.warn('❌ Geocoding failed, using fallback:', error);
-      // Fallback to coordinate-based detection
-      if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
-        return 'India';
-      } else if (latitude >= 24 && latitude <= 49 && longitude >= -125 && longitude <= -66) {
-        return 'United States';
-      } else if (latitude >= 35 && latitude <= 71 && longitude >= -10 && longitude <= 40) {
-        return 'Europe';
+      return getFallbackLocationName(latitude, longitude);
+    }
+  };
+
+  // Fallback location name based on coordinates
+  const getFallbackLocationName = (latitude: number, longitude: number): string => {
+    // India coordinates
+    if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
+      return 'India';
+    }
+    // United States coordinates
+    else if (latitude >= 24 && latitude <= 49 && longitude >= -125 && longitude <= -66) {
+      return 'United States';
+    }
+    // Europe coordinates
+    else if (latitude >= 35 && latitude <= 71 && longitude >= -10 && longitude <= 40) {
+      return 'Europe';
+    }
+    // China coordinates
+    else if (latitude >= 18 && latitude <= 54 && longitude >= 73 && longitude <= 135) {
+      return 'China';
+    }
+    // Japan coordinates
+    else if (latitude >= 24 && latitude <= 46 && longitude >= 122 && longitude <= 146) {
+      return 'Japan';
+    }
+    // Australia coordinates
+    else if (latitude >= -44 && latitude <= -10 && longitude >= 113 && longitude <= 154) {
+      return 'Australia';
+    }
+    // Canada coordinates
+    else if (latitude >= 41 && latitude <= 84 && longitude >= -141 && longitude <= -52) {
+      return 'Canada';
+    }
+    // Brazil coordinates
+    else if (latitude >= -34 && latitude <= 6 && longitude >= -74 && longitude <= -34) {
+      return 'Brazil';
+    }
+    // Russia coordinates
+    else if (latitude >= 41 && latitude <= 82 && longitude >= 26 && longitude <= 190) {
+      return 'Russia';
+    }
+    // Default to coordinates
+    else {
+      return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+    }
+  };
+
+  // Get IP-based location as fallback
+  const getIPBasedLocation = async (): Promise<{ latitude: number; longitude: number; name: string }> => {
+    try {
+      console.log('🌐 Getting IP-based location...');
+      
+      const response = await fetch('https://api.bigdatacloud.net/data/ip-geolocation-full?key=free');
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('📍 IP-based location response:', data);
+        
+        const latitude = data.location?.latitude || 20.5937; // Default to India
+        const longitude = data.location?.longitude || 78.9629;
+        const city = data.location?.city || '';
+        const state = data.location?.principalSubdivision || '';
+        const country = data.location?.country?.name || 'India';
+        
+        let name = '';
+        if (city && state) {
+          name = `${city}, ${state}, ${country}`;
+        } else if (city) {
+          name = `${city}, ${country}`;
+        } else if (state) {
+          name = `${state}, ${country}`;
+        } else {
+          name = country;
+        }
+        
+        return { latitude, longitude, name };
       } else {
-        return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+        throw new Error('IP-based location failed');
       }
+    } catch (error) {
+      console.warn('❌ IP-based location failed:', error);
+      // Return default India location
+      return { 
+        latitude: 20.5937, 
+        longitude: 78.9629, 
+        name: 'India (IP fallback)' 
+      };
     }
   };
 

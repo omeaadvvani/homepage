@@ -47,18 +47,61 @@ export const useLocation = (userId?: string) => {
       return;
     }
 
+    // Check HTTPS requirement
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+      console.error('❌ HTTPS required for geolocation');
+      setLocationState(prev => ({ ...prev, error: 'HTTPS required for geolocation' }));
+      return;
+    }
+
     try {
       console.log('📍 Requesting current position...');
       setLocationState(prev => ({ ...prev, isTracking: true, error: null }));
 
-      // Get initial position
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 0
+      // Check permission first
+      try {
+        const permissionStatus = await navigator.permissions?.query({ name: 'geolocation' });
+        console.log('🔐 Permission status:', permissionStatus?.state);
+        
+        if (permissionStatus?.state === 'denied') {
+          console.error('❌ Location permission denied');
+          setLocationState(prev => ({ 
+            ...prev, 
+            error: 'Location permission denied. Please allow location access in your browser settings.',
+            isTracking: false 
+          }));
+          return;
+        }
+      } catch (error) {
+        console.log('⚠️ Could not check permission status:', error);
+      }
+
+      // Get initial position with multiple strategies
+      let position: GeolocationPosition;
+      
+      // Strategy 1: High accuracy
+      try {
+        position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          });
         });
-      });
+        console.log('✅ High accuracy position obtained');
+      } catch (error) {
+        console.log('❌ High accuracy failed, trying low accuracy...');
+        
+        // Strategy 2: Low accuracy
+        position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: false,
+            timeout: 15000,
+            maximumAge: 300000 // 5 minutes cache
+          });
+        });
+        console.log('✅ Low accuracy position obtained');
+      }
 
       console.log('✅ Position obtained:', {
         latitude: position.coords.latitude,
@@ -85,7 +128,8 @@ export const useLocation = (userId?: string) => {
         currentLocation: locationData,
         accuracy: position.coords.accuracy,
         lastUpdate: new Date(),
-        isTracking: true
+        isTracking: true,
+        error: null
       }));
 
       console.log('👀 Starting position watch...');
@@ -102,7 +146,9 @@ export const useLocation = (userId?: string) => {
             is_active: true
           };
 
-          // Save to Supabase
+          console.log('📍 Location updated:', updatedLocationData.location_name);
+          
+          // Save to database
           await saveLocationToDatabase(updatedLocationData);
 
           setLocationState(prev => ({
@@ -113,27 +159,43 @@ export const useLocation = (userId?: string) => {
           }));
         },
         (error) => {
-          console.error('Location watch error:', error);
+          console.error('❌ Location watch error:', error);
+          let errorMessage = 'Location tracking error';
+          
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = 'Location permission denied. Please allow location access.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = 'Location information unavailable. This might be due to network issues or GPS not being available.';
+              break;
+            case error.TIMEOUT:
+              errorMessage = 'Location request timed out. Please try again.';
+              break;
+            default:
+              errorMessage = `Location error: ${error.message}`;
+          }
+          
           setLocationState(prev => ({
             ...prev,
-            error: `Location tracking error: ${error.message}`,
+            error: errorMessage,
             isTracking: false
           }));
         },
         {
           enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 30000 // Update every 30 seconds
+          timeout: 10000,
+          maximumAge: 300000 // 5 minutes cache
         }
       );
 
       setWatchId(newWatchId);
-
+      console.log('✅ Location tracking started successfully');
     } catch (error) {
-      console.error('Location tracking start error:', error);
+      console.error('❌ Failed to start location tracking:', error);
       setLocationState(prev => ({
         ...prev,
-        error: error instanceof Error ? error.message : 'Failed to start location tracking',
+        error: 'Failed to start location tracking. Please check your browser settings.',
         isTracking: false
       }));
     }
@@ -209,29 +271,55 @@ export const useLocation = (userId?: string) => {
         return locationName;
       } else {
         console.warn('⚠️ Geocoding API failed, using fallback');
-        // Fallback to coordinate-based detection for major regions
-        if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
-          return 'India';
-        } else if (latitude >= 24 && latitude <= 49 && longitude >= -125 && longitude <= -66) {
-          return 'United States';
-        } else if (latitude >= 35 && latitude <= 71 && longitude >= -10 && longitude <= 40) {
-          return 'Europe';
-        } else {
-          return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-        }
+        return getFallbackLocationName(latitude, longitude);
       }
     } catch (error) {
       console.warn('❌ Geocoding failed, using fallback:', error);
-      // Fallback to coordinate-based detection
-      if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
-        return 'India';
-      } else if (latitude >= 24 && latitude <= 49 && longitude >= -125 && longitude <= -66) {
-        return 'United States';
-      } else if (latitude >= 35 && latitude <= 71 && longitude >= -10 && longitude <= 40) {
-        return 'Europe';
-      } else {
-        return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-      }
+      return getFallbackLocationName(latitude, longitude);
+    }
+  };
+
+  // Fallback location name based on coordinates
+  const getFallbackLocationName = (latitude: number, longitude: number): string => {
+    // India coordinates
+    if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
+      return 'India';
+    }
+    // United States coordinates
+    else if (latitude >= 24 && latitude <= 49 && longitude >= -125 && longitude <= -66) {
+      return 'United States';
+    }
+    // Europe coordinates
+    else if (latitude >= 35 && latitude <= 71 && longitude >= -10 && longitude <= 40) {
+      return 'Europe';
+    }
+    // China coordinates
+    else if (latitude >= 18 && latitude <= 54 && longitude >= 73 && longitude <= 135) {
+      return 'China';
+    }
+    // Japan coordinates
+    else if (latitude >= 24 && latitude <= 46 && longitude >= 122 && longitude <= 146) {
+      return 'Japan';
+    }
+    // Australia coordinates
+    else if (latitude >= -44 && latitude <= -10 && longitude >= 113 && longitude <= 154) {
+      return 'Australia';
+    }
+    // Canada coordinates
+    else if (latitude >= 41 && latitude <= 84 && longitude >= -141 && longitude <= -52) {
+      return 'Canada';
+    }
+    // Brazil coordinates
+    else if (latitude >= -34 && latitude <= 6 && longitude >= -74 && longitude <= -34) {
+      return 'Brazil';
+    }
+    // Russia coordinates
+    else if (latitude >= 41 && latitude <= 82 && longitude >= 26 && longitude <= 190) {
+      return 'Russia';
+    }
+    // Default to coordinates
+    else {
+      return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
     }
   };
 
