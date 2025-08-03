@@ -78,6 +78,15 @@ class PanchangAPIService {
     this.supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
     this.userId = import.meta.env.VITE_PANCHANG_USER_ID || '';
     this.authCode = import.meta.env.VITE_PANCHANG_AUTH_CODE || '';
+    
+    console.log('🔑 PanchangAPIService credentials check:', {
+      hasSupabaseUrl: !!this.supabaseUrl,
+      hasSupabaseKey: !!this.supabaseAnonKey,
+      hasUserId: !!this.userId,
+      hasAuthCode: !!this.authCode,
+      userId: this.userId,
+      authCodeLength: this.authCode.length
+    });
   }
 
   private getCacheKey(date: string, latitude: number, longitude: number): string {
@@ -218,17 +227,25 @@ class PanchangAPIService {
       console.log('📅 Formatted date for API:', formattedDate);
       
       // Call Supabase Edge Function as proxy
+      const functionBody = {
+        question: 'What is today\'s panchang?',
+        date: formattedDate,
+        time: '06:00:00',
+        timezone: '5.5', // IST timezone for panchang calculations
+        latitude: latitude.toString(),
+        longitude: longitude.toString(),
+        userId: this.userId,
+        authCode: this.authCode
+      };
+      
+      console.log('📡 Calling Supabase function with:', {
+        ...functionBody,
+        userId: this.userId,
+        authCode: this.authCode.substring(0, 8) + '...'
+      });
+      
       const { data, error } = await supabase.functions.invoke('panchang-guidance', {
-        body: {
-          question: 'What is today\'s panchang?',
-          date: formattedDate,
-          time: '06:00:00',
-          timezone: '5.5', // IST timezone for panchang calculations
-          latitude: latitude.toString(),
-          longitude: longitude.toString(),
-          userId: this.userId,
-          authCode: this.authCode
-        }
+        body: functionBody
       });
 
       if (error) {

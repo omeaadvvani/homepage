@@ -202,14 +202,38 @@ async function findNextEvent(event: string, startDate: string, timezone: string,
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  }
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const body = await req.json()
-    const { action, question, date, time, timezone, latitude, longitude, userId, authCode, eventType } = body
+    const { question, date, time, timezone, latitude, longitude, userId, authCode, action, eventType } = await req.json()
+    
+    console.log('🚀 panchang-guidance function called with:', {
+      question: question?.substring(0, 50) + '...',
+      date,
+      time,
+      timezone,
+      latitude,
+      longitude,
+      hasUserId: !!userId,
+      hasAuthCode: !!authCode
+    });
+
+    if (!question) {
+      return new Response(
+        JSON.stringify({ error: 'Question is required' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
 
     // Handle different actions
     if (action === 'validate_credentials') {
@@ -575,12 +599,31 @@ async function fetchPanchangData(
   authCode?: string
 ): Promise<PanchangData | null> {
   try {
+    console.log('🔍 fetchPanchangData called with:', {
+      date,
+      time,
+      timezone,
+      latitude,
+      longitude,
+      hasUserId: !!userId,
+      hasAuthCode: !!authCode
+    });
+
     // Use provided credentials or fall back to environment variables
     const panchangUserId = userId || Deno.env.get('PANCHANG_USER_ID')
     const panchangAuthCode = authCode || Deno.env.get('PANCHANG_AUTH_CODE')
 
+    console.log('🔑 Credentials check:', {
+      hasUserId: !!panchangUserId,
+      hasAuthCode: !!panchangAuthCode,
+      userIdLength: panchangUserId?.length,
+      authCodeLength: panchangAuthCode?.length
+    });
+
     if (!panchangUserId || !panchangAuthCode) {
-      console.error('Panchang API credentials not configured')
+      console.error('❌ Panchang API credentials not configured')
+      console.error('User ID:', panchangUserId ? 'Present' : 'Missing')
+      console.error('Auth Code:', panchangAuthCode ? 'Present' : 'Missing')
       return null
     }
 
@@ -597,26 +640,34 @@ async function fetchPanchangData(
       params.append('lon', longitude)
     }
 
-    const response = await fetch(`https://api.panchang.click/v0.4/panchangapip1?${params.toString()}`)
+    const apiUrl = `https://api.panchang.click/v0.4/panchangapip1?${params.toString()}`
+    console.log('📡 Calling Panchang API:', apiUrl.replace(panchangAuthCode, '[HIDDEN]'));
+
+    const response = await fetch(apiUrl)
+    
+    console.log('📡 Response status:', response.status);
     
     if (!response.ok) {
-      console.error('Panchang API error:', response.status, response.statusText)
+      const errorText = await response.text();
+      console.error('❌ Panchang API error:', response.status, response.statusText, errorText);
       return null
     }
 
     const data = await response.json()
+    console.log('📡 API response status:', data.status);
     
     if (data.status !== 'ok') {
-      console.error('Panchang API returned error status:', data.status)
+      console.error('❌ Panchang API returned error status:', data.status, data);
       return null
     }
 
+    console.log('✅ Panchang API success, fixing years...');
     // Fix incorrect years in the response data
     const fixedData = fixIncorrectYears(data)
     
     return fixedData
   } catch (error) {
-    console.error('Error fetching Panchang data:', error)
+    console.error('❌ Error fetching Panchang data:', error)
     return null
   }
 }
