@@ -31,7 +31,7 @@ class GeminiAPI {
   private baseUrl: string;
 
   constructor() {
-    this.apiKey = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyDeXkh_zbZxuNESQUH1FXAlXBB5YFOcV08';
+    this.apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
     this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
   }
 

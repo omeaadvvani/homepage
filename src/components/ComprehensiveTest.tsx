@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, AlertCircle, Loader2, Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle, XCircle, Loader2, VolumeX } from 'lucide-react';
 import { usePanchang } from '../hooks/usePanchang';
 import { useVoice } from '../hooks/useVoice';
 
@@ -7,7 +7,7 @@ interface TestResult {
   name: string;
   status: 'pending' | 'running' | 'passed' | 'failed';
   message: string;
-  details?: any;
+  details?: string | number | boolean | Record<string, unknown>;
 }
 
 const ComprehensiveTest: React.FC = () => {

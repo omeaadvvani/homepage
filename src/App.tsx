@@ -22,7 +22,7 @@ import UserList from './components/UserList';
 import AllTithisTest from './components/AllTithisTest';
 import VoiceTest from './components/VoiceTest';
 import DebugInfo from './components/DebugInfo';
-import DevelopmentModeIndicator from './components/DevelopmentModeIndicator';
+// Removed unused import: DevelopmentModeIndicator
 import GitLogTest from './components/GitLogTest';
 import ComprehensiveTest from './components/ComprehensiveTest';
 import LocationTest from './components/LocationTest';
@@ -49,7 +49,6 @@ function App() {
     currentLocation, 
     isTracking, 
     error: locationError, 
-    accuracy, 
     startLocationTracking,
     stopLocationTracking 
   } = useLocation(user?.id);
@@ -160,7 +159,7 @@ function App() {
         startLocationTracking();
       }
     }
-  }, [user?.id, isTracking]);
+  }, [user?.id, isTracking, startLocationTracking]);
 
   // Update location state when real-time location changes
   useEffect(() => {

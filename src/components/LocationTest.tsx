@@ -185,7 +185,7 @@ const LocationTest: React.FC = () => {
                    setError('');
                    setLocationName(ipLocation.name);
                  }).catch((ipError) => {
-                   console.error('❌ All location strategies failed:', error);
+                   console.error('❌ All location strategies failed:', ipError);
                    setLocationStatus('Location error');
                    
                    let errorMessage = '';
@@ -328,10 +328,10 @@ const LocationTest: React.FC = () => {
               setLocationStatus('IP-based location obtained!');
               setError('');
               setLocationName(ipLocation.name);
-            } catch (error) {
-              setLocationStatus('IP-based location failed');
-              setError('Failed to get IP-based location');
-            }
+                         } catch (ipError) {
+               setLocationStatus('IP-based location failed');
+               setError('Failed to get IP-based location');
+             }
           }}
           style={{
             background: '#ffc107',

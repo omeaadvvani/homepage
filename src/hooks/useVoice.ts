@@ -41,7 +41,7 @@ export const useVoice = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const mediaSourceRef = useRef<MediaSource | null>(null);
   const sourceBufferRef = useRef<SourceBuffer | null>(null);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<unknown>(null);
 
   // Initialize Speech Recognition
   const initializeSpeechRecognition = useCallback(() => {
