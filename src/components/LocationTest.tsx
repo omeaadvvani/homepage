@@ -62,11 +62,29 @@ const LocationTest: React.FC = () => {
       if (!('geolocation' in navigator)) {
         console.error('❌ Geolocation not supported');
         setLocationStatus('Geolocation not supported');
+        setError('Your browser does not support geolocation.');
         return;
       }
 
       setLocationStatus('Requesting location...');
       console.log('📍 Requesting current position...');
+
+      // First, check if we have permission
+      navigator.permissions?.query({ name: 'geolocation' }).then((permissionStatus) => {
+        console.log('🔐 Permission status:', permissionStatus.state);
+        
+        if (permissionStatus.state === 'denied') {
+          setLocationStatus('Permission denied');
+          setError('Location permission denied. Please allow location access in your browser settings.');
+          return;
+        }
+        
+        if (permissionStatus.state === 'prompt') {
+          console.log('📋 Permission prompt needed');
+        }
+      }).catch((error) => {
+        console.log('⚠️ Could not check permission status:', error);
+      });
 
       navigator.geolocation.getCurrentPosition(
         async (position) => {
@@ -84,24 +102,32 @@ const LocationTest: React.FC = () => {
         (error) => {
           console.error('❌ Location error:', error);
           setLocationStatus('Location error');
+          
+          let errorMessage = '';
           switch (error.code) {
             case error.PERMISSION_DENIED:
-              setError('Location permission denied. Please allow location access.');
+              errorMessage = 'Location permission denied. Please allow location access in your browser settings.';
               break;
             case error.POSITION_UNAVAILABLE:
-              setError('Location information unavailable.');
+              errorMessage = 'Location information unavailable. This might be due to network issues or GPS not being available.';
               break;
             case error.TIMEOUT:
-              setError('Location request timed out.');
+              errorMessage = 'Location request timed out. Please try again.';
               break;
             default:
-              setError(`Location error: ${error.message}`);
+              errorMessage = `Location error: ${error.message}`;
           }
+          
+          setError(errorMessage);
+          
+          // Set default location as fallback
+          setLocationName('India (fallback)');
+          setCoordinates('Default location used');
         },
         {
-          timeout: 10000,
-          enableHighAccuracy: true,
-          maximumAge: 0
+          timeout: 15000, // Increased timeout
+          enableHighAccuracy: false, // Changed to false for better compatibility
+          maximumAge: 300000 // 5 minutes cache
         }
       );
     };
@@ -128,20 +154,72 @@ const LocationTest: React.FC = () => {
       {locationName && <p><strong>Location Name:</strong> {locationName}</p>}
       {isTestingGeocoding && <p style={{ color: '#666' }}>🔄 Testing geocoding...</p>}
       {error && <p style={{ color: 'red' }}><strong>Error:</strong> {error}</p>}
-      <button 
-        onClick={() => window.location.reload()} 
-        style={{
-          background: '#007bff',
-          color: 'white',
-          border: 'none',
-          padding: '8px 16px',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          marginTop: '10px'
-        }}
-      >
-        🔄 Refresh Test
-      </button>
+      <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
+        <button 
+          onClick={() => window.location.reload()} 
+          style={{
+            background: '#007bff',
+            color: 'white',
+            border: 'none',
+            padding: '8px 16px',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          🔄 Refresh Test
+        </button>
+        <button 
+          onClick={() => {
+            setLocationStatus('Testing...');
+            setError('');
+            setCoordinates('');
+            setLocationName('');
+            setTimeout(() => {
+              const testLocation = () => {
+                if (!('geolocation' in navigator)) {
+                  setLocationStatus('Geolocation not supported');
+                  setError('Your browser does not support geolocation.');
+                  return;
+                }
+                
+                setLocationStatus('Requesting location...');
+                
+                navigator.geolocation.getCurrentPosition(
+                  async (position) => {
+                    const { latitude, longitude, accuracy } = position.coords;
+                    setCoordinates(`${latitude}, ${longitude} (accuracy: ${accuracy}m)`);
+                    setLocationStatus('Location obtained successfully!');
+                    setError('');
+                    
+                    const name = await getLocationName(latitude, longitude);
+                    setLocationName(name);
+                  },
+                  (error) => {
+                    setLocationStatus('Location error');
+                    setError(`Error: ${error.message}`);
+                  },
+                  {
+                    timeout: 15000,
+                    enableHighAccuracy: false,
+                    maximumAge: 300000
+                  }
+                );
+              };
+              testLocation();
+            }, 100);
+          }}
+          style={{
+            background: '#28a745',
+            color: 'white',
+            border: 'none',
+            padding: '8px 16px',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          🧪 Test Again
+        </button>
+      </div>
     </div>
   );
 };

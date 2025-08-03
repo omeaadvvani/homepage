@@ -103,6 +103,22 @@ function App() {
       // Simple location detection for non-authenticated users
       if ('geolocation' in navigator) {
         console.log('🌍 Starting geolocation for guest user...');
+        
+        // Check permission first
+        navigator.permissions?.query({ name: 'geolocation' }).then((permissionStatus) => {
+          console.log('🔐 Permission status:', permissionStatus.state);
+          
+          if (permissionStatus.state === 'denied') {
+            console.log('❌ Permission denied, using default location');
+            setLocation('India');
+            setLocationStatus('success');
+            setLocationWarning('Location permission denied. Using default location.');
+            return;
+          }
+        }).catch((error) => {
+          console.log('⚠️ Could not check permission status:', error);
+        });
+        
         navigator.geolocation.getCurrentPosition(
           async (position) => {
             try {
@@ -126,9 +142,9 @@ function App() {
             setLocationWarning('Location detection failed. Using default location.');
           },
           { 
-            timeout: 10000, 
-            enableHighAccuracy: true, 
-            maximumAge: 0 
+            timeout: 15000, // Increased timeout
+            enableHighAccuracy: false, // Better compatibility
+            maximumAge: 300000 // 5 minutes cache
           }
         );
       } else {
