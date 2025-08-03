@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mic, MicOff, Volume2, VolumeX, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Mic, MicOff, Volume2, VolumeX, Loader2, AlertCircle, CheckCircle, Send, Type } from 'lucide-react';
 import { useVoice } from '../hooks/useVoice';
 import { usePanchang } from '../hooks/usePanchang';
 
@@ -19,11 +19,14 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ onResponse, onUserQuest
     error,
     startListening,
     stopListening,
-    speakText
+    speakText,
+    stopAudio
   } = useVoice();
 
   const { getPanchangGuidance } = usePanchang();
   const [isAutoMode, setIsAutoMode] = useState(true);
+  const [textInput, setTextInput] = useState('');
+  const [isTextMode, setIsTextMode] = useState(false);
 
   // Handle microphone button click
   const handleMicrophoneClick = () => {
@@ -34,8 +37,8 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ onResponse, onUserQuest
     }
   };
 
-  // Process speech input with Panchang API
-  const processSpeechWithAPI = async (text: string) => {
+  // Process input (speech or text) with Panchang API
+  const processInputWithAPI = async (text: string) => {
     if (!text.trim()) return;
 
     try {
@@ -44,7 +47,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ onResponse, onUserQuest
         onUserQuestion(text);
       }
 
-      // Call Panchang API with the transcribed text
+      // Call Panchang API with the input text
       const response = await getPanchangGuidance({
         question: text,
         latitude: 28.6139, // Default to Delhi
@@ -68,7 +71,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ onResponse, onUserQuest
         }
       }
     } catch (error) {
-      console.error('Error processing speech with API:', error);
+      console.error('Error processing input with API:', error);
       const errorMessage = 'Sorry, there was an error processing your request. Please try again.';
       await speakText(errorMessage);
       
@@ -78,12 +81,33 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ onResponse, onUserQuest
     }
   };
 
+  // Handle text input submission
+  const handleTextSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (textInput.trim()) {
+      processInputWithAPI(textInput.trim());
+      setTextInput('');
+    }
+  };
+
   // Auto-process when transcription is complete
   useEffect(() => {
     if (transcribedText && !isListening && !isProcessing && isAutoMode) {
-      processSpeechWithAPI(transcribedText);
+      processInputWithAPI(transcribedText);
     }
   }, [transcribedText, isListening, isProcessing, isAutoMode]);
+
+  // Keyboard shortcut to stop TTS playback
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isPlaying) {
+        stopAudio();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPlaying, stopAudio]);
 
   return (
     <div className={`voice-interface ${className}`}>
@@ -107,6 +131,15 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ onResponse, onUserQuest
           <div className="flex items-center gap-2 text-green-600">
             <Volume2 className="w-4 h-4" />
             <span className="text-sm font-medium">Speaking...</span>
+            <button
+              onClick={stopAudio}
+              className="ml-2 p-1 bg-red-500 hover:bg-red-600 text-white rounded-full transition-colors"
+              title="Stop playback"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         )}
         
@@ -136,47 +169,116 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ onResponse, onUserQuest
         </div>
       )}
 
-      {/* Microphone Button */}
-      <div className="flex justify-center">
-        <button
-          onClick={handleMicrophoneClick}
-          disabled={isProcessing || isPlaying}
-          className={`
-            relative w-16 h-16 rounded-full flex items-center justify-center
-            transition-all duration-300 ease-in-out
-            ${isListening 
-              ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg scale-110' 
-              : 'bg-spiritual-500 hover:bg-spiritual-600 text-white shadow-lg'
-            }
-            ${isProcessing || isPlaying 
-              ? 'opacity-50 cursor-not-allowed' 
-              : 'hover:scale-105 active:scale-95'
-            }
-          `}
-        >
-          {isListening ? (
-            <MicOff className="w-6 h-6" />
-          ) : (
-            <Mic className="w-6 h-6" />
-          )}
-          
-          {/* Pulse animation when listening */}
-          {isListening && (
-            <div className="absolute inset-0 rounded-full bg-red-400 animate-ping opacity-75"></div>
-          )}
-        </button>
+      {/* Input Mode Toggle */}
+      <div className="flex justify-center mb-4">
+        <div className="flex bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => setIsTextMode(false)}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              !isTextMode 
+                ? 'bg-white text-spiritual-600 shadow-sm' 
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            <Mic className="w-4 h-4 inline mr-2" />
+            Voice
+          </button>
+          <button
+            onClick={() => setIsTextMode(true)}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              isTextMode 
+                ? 'bg-white text-spiritual-600 shadow-sm' 
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            <Type className="w-4 h-4 inline mr-2" />
+            Text
+          </button>
+        </div>
       </div>
+
+      {/* Stop TTS Button - Only show when playing */}
+      {isPlaying && (
+        <div className="flex justify-center mb-4">
+          <button
+            onClick={stopAudio}
+            className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-lg"
+            title="Stop text-to-speech playback"
+          >
+            <VolumeX className="w-4 h-4" />
+            <span className="text-sm font-medium">Stop Speaking</span>
+          </button>
+        </div>
+      )}
+
+      {/* Voice Input */}
+      {!isTextMode && (
+        <div className="flex justify-center">
+          <button
+            onClick={handleMicrophoneClick}
+            disabled={isProcessing || isPlaying}
+            className={`
+              relative w-16 h-16 rounded-full flex items-center justify-center
+              transition-all duration-300 ease-in-out
+              ${isListening 
+                ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg scale-110' 
+                : 'bg-spiritual-500 hover:bg-spiritual-600 text-white shadow-lg'
+              }
+              ${isProcessing || isPlaying 
+                ? 'opacity-50 cursor-not-allowed' 
+                : 'hover:scale-105 active:scale-95'
+              }
+            `}
+          >
+            {isListening ? (
+              <MicOff className="w-6 h-6" />
+            ) : (
+              <Mic className="w-6 h-6" />
+            )}
+            
+            {/* Pulse animation when listening */}
+            {isListening && (
+              <div className="absolute inset-0 rounded-full bg-red-400 animate-ping opacity-75"></div>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Text Input */}
+      {isTextMode && (
+        <form onSubmit={handleTextSubmit} className="w-full max-w-md mx-auto">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              placeholder="Ask your question here..."
+              disabled={isProcessing || isPlaying}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-spiritual-500 focus:border-transparent disabled:opacity-50"
+            />
+            <button
+              type="submit"
+              disabled={!textInput.trim() || isProcessing || isPlaying}
+              className="px-4 py-2 bg-spiritual-600 text-white rounded-lg hover:bg-spiritual-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        </form>
+      )}
 
       {/* Instructions */}
       <div className="mt-4 text-center">
         <p className="text-sm text-gray-600 mb-2">
-          {isListening 
-            ? 'Speak your question now...' 
-            : 'Click the microphone to start speaking'
+          {isTextMode 
+            ? 'Type your question and press Enter or click Send'
+            : isListening 
+              ? 'Speak your question now...' 
+              : 'Click the microphone to start speaking'
           }
         </p>
         
-        {isAutoMode && (
+        {isAutoMode && !isTextMode && (
           <p className="text-xs text-gray-500">
             Auto-processing enabled - your question will be processed automatically
           </p>

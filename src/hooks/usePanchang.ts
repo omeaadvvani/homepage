@@ -9,6 +9,8 @@ interface UsePanchangReturn {
   fetchTodaysPanchang: (latitude?: number, longitude?: number) => Promise<void>;
   refreshPanchang: () => Promise<void>;
   getPanchangGuidance: (request: PanchangGuidanceRequest) => Promise<PanchangGuidanceResponse>;
+  getPanchangData: (date: string, latitude: number, longitude: number) => Promise<PanchangResponse>;
+  validateCredentials: () => Promise<boolean>;
 }
 
 export const usePanchang = (): UsePanchangReturn => {
@@ -52,11 +54,19 @@ export const usePanchang = (): UsePanchangReturn => {
     setError(null);
 
     try {
-      const today = new Date().toISOString().split('T')[0];
+      // Get today's date in user's local timezone
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const todayFormatted = `${year}-${month}-${day}`;
+      
+      console.log('📅 Today\'s date:', todayFormatted);
+      
       const lat = latitude || 28.6139;
       const lon = longitude || 77.2090;
 
-      const response: PanchangResponse = await panchangAPI.getPanchangData(today, lat, lon);
+      const response: PanchangResponse = await panchangAPI.getPanchangData(todayFormatted, lat, lon);
 
       if (!response.success) {
         setError(response.error || 'Failed to fetch today\'s Panchang data');
@@ -112,5 +122,7 @@ export const usePanchang = (): UsePanchangReturn => {
     fetchTodaysPanchang,
     refreshPanchang,
     getPanchangGuidance,
+    getPanchangData: panchangAPI.getPanchangData.bind(panchangAPI),
+    validateCredentials: panchangAPI.validateCredentials.bind(panchangAPI),
   };
 }; 

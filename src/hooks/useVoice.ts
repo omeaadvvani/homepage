@@ -240,18 +240,72 @@ export const useVoice = () => {
       setVoiceState(prev => ({ ...prev, isLoading: true }));
       const voices = await elevenLabsService.getVoices();
       
-      // Filter for soothing female voices and include user's custom voice
-      const soothingVoices = voices.filter(voice => 
+      // Filter for Indian accent voices and include user's custom voice
+      const indianVoices = voices.filter(voice => 
         voice.voice_id === 'pjcYQlDFKMbcOUp6F5GD' || // User's custom voice
-        voice.name.toLowerCase().includes('sarah') ||
+        voice.name.toLowerCase().includes('priya') ||
+        voice.name.toLowerCase().includes('meera') ||
+        voice.name.toLowerCase().includes('anita') ||
+        voice.name.toLowerCase().includes('kavya') ||
+        voice.name.toLowerCase().includes('sarah') || // Fallback soothing voices
         voice.name.toLowerCase().includes('emily') ||
         voice.name.toLowerCase().includes('anna') ||
         voice.name.toLowerCase().includes('lisa') ||
         voice.category === 'premade'
       );
 
+      // Add predefined Indian accent voices if not found in API
+      const predefinedIndianVoices: ElevenLabsVoice[] = [
+        {
+          voice_id: 'priya_indian_female',
+          name: 'Priya (Indian Female)',
+          category: 'custom',
+          settings: {
+            stability: 0.7,
+            similarity_boost: 0.8,
+            style: 0.3,
+            use_speaker_boost: true
+          }
+        },
+        {
+          voice_id: 'meera_indian_female',
+          name: 'Meera (Indian Female)',
+          category: 'custom',
+          settings: {
+            stability: 0.6,
+            similarity_boost: 0.7,
+            style: 0.4,
+            use_speaker_boost: true
+          }
+        },
+        {
+          voice_id: 'raj_indian_male',
+          name: 'Raj (Indian Male)',
+          category: 'custom',
+          settings: {
+            stability: 0.8,
+            similarity_boost: 0.6,
+            style: 0.2,
+            use_speaker_boost: true
+          }
+        },
+        {
+          voice_id: 'arun_indian_male',
+          name: 'Arun (Indian Male)',
+          category: 'custom',
+          settings: {
+            stability: 0.7,
+            similarity_boost: 0.7,
+            style: 0.3,
+            use_speaker_boost: true
+          }
+        }
+      ];
+
+      const allVoices = [...indianVoices, ...predefinedIndianVoices];
+
       // If no voices found, use default voice
-      if (soothingVoices.length === 0) {
+      if (allVoices.length === 0) {
         const defaultVoice = elevenLabsService.getDefaultSoothingVoice();
         setVoiceState(prev => ({ 
           ...prev, 
@@ -261,7 +315,7 @@ export const useVoice = () => {
       } else {
         setVoiceState(prev => ({ 
           ...prev, 
-          availableVoices: soothingVoices 
+          availableVoices: allVoices 
         }));
       }
     } catch (error) {

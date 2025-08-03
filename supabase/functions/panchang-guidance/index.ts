@@ -71,14 +71,14 @@ function buildTodayPrompt(panchang: PanchangData, timezone: string) {
   const normalDate = getFormattedLocalDate(panchang.reqdate, tz);
   const sunrise = panchang.sunrise?.slice(0,5) || '';
   const tithiEnd = panchang.tithiTill?.slice(11,16) || '';
-  return `You're VoiceVedic, a peaceful Hindu calendar assistant.\n\nWhen a user asks \"What day is today\", your answer must be:\n1. A warm spiritual greeting (e.g., Jai Shree Krishna)\n2. The weekday and Gregorian date in full\n3. Panchang elements: Tithi, Paksha, Maasa\n4. Tithi end time (if available)\n5. A closing suggestion only if relevant (e.g., fast, rest, or pray)\n\nAvoid giving extra spiritual context unless the day is a known event or festival. Use only 3 calm and clear lines in your response.\n\n🪔 Jai Shree Krishna.\nToday is ${normalDate} – ${panchang.tithi}, ${panchang.paksha} Paksha, ${panchang.maasa} Maasa.\nTithi ends at ${tithiEnd || 'unknown'}.`;
+  return `You're VoiceVedic, a peaceful Hindu calendar assistant.\n\nWhen a user asks "What day is today", your answer must be:\n1. A warm spiritual greeting (e.g., Jai Shree Krishna)\n2. The weekday and Gregorian date in full\n3. Panchang elements: Tithi, Paksha, Maasa\n4. Tithi end time (if available)\n5. A closing suggestion only if relevant (e.g., fast, rest, or pray)\n\nAvoid giving extra spiritual context unless the day is a known event or festival. Use only 3 calm and clear lines in your response.\n\n🪔 Jai Shree Krishna.\nToday is ${normalDate} – ${panchang.tithi}, ${panchang.paksha} Paksha, ${panchang.maasa} Maasa.\nTithi ends at ${tithiEnd || 'unknown'}.`;
 }
 
 function buildEventPrompt(eventName: string, eventDate: string, tithiStart: string, tithiEnd: string) {
-  return `You are VoiceVedic, a spiritual calendar assistant.\n\nWhen a user asks about the next festival or event (like Amavasya, Ekadashi, Poornima), respond with:\n1. The name of the event\n2. The full date (weekday + date)\n3. The start and end time of the tithi\n4. Ask if they’d like to know what to do on that day\n\nDo not give spiritual meaning unless the user asks. Be calm and clear.\n\n🪔 Jai Shree Krishna.\nThe next ${eventName} falls on ${eventDate}.\nIt begins at ${tithiStart} and ends at ${tithiEnd}. Would you like to know what to do on this day?`;
+  return `You are VoiceVedic, a spiritual calendar assistant.\n\nWhen a user asks about the next festival or event (like Amavasya, Ekadashi, Poornima), respond with:\n1. The name of the event\n2. The full date (weekday + date)\n3. The start and end time of the tithi\n4. Ask if they'd like to know what to do on that day\n\nDo not give spiritual meaning unless the user asks. Be calm and clear.\n\n🪔 Jai Shree Krishna.\nThe next ${eventName} falls on ${eventDate}.\nIt begins at ${tithiStart} and ends at ${tithiEnd}. Would you like to know what to do on this day?`;
 }
 
-async function findNextEvent(event: string, startDate: string, timezone: string, lat?: string, lon?: string): Promise<{date: string, panchang: PanchangData} | null> {
+async function findNextEvent(event: string, startDate: string, timezone: string, lat?: string, lon?: string, userId?: string, authCode?: string): Promise<{date: string, panchang: PanchangData} | null> {
   // Map event names to Tithi and Paksha
   const eventMap: Record<string, { tithi: string, paksha?: string }> = {
     amavasya: { tithi: 'Amavasya' },
@@ -97,6 +97,10 @@ async function findNextEvent(event: string, startDate: string, timezone: string,
     shashti: { tithi: 'Shashthi' },
     panchami: { tithi: 'Panchami' },
     tithi: { tithi: 'Tithi' },
+    pratipada: { tithi: 'Pratipada' },
+    dwitiya: { tithi: 'Dwitiya' },
+    tritiya: { tithi: 'Tritiya' },
+    chaturdashi: { tithi: 'Chaturdashi' }
   };
   const eventKey = event.toLowerCase();
   const eventCriteria = eventMap[eventKey];
@@ -110,7 +114,7 @@ async function findNextEvent(event: string, startDate: string, timezone: string,
   for (let i = 0; i < 60; i++) {
     const dateStr = `${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`;
     const timeStr = '06:00:00';
-    const panchang = await fetchPanchangData(dateStr, timeStr, timezone, lat, lon);
+    const panchang = await fetchPanchangData(dateStr, timeStr, timezone, lat, lon, userId, authCode);
     if (panchang) {
       // Check if tithi matches at 6:00 AM
       const tithiMatch = panchang.tithi && panchang.tithi.toLowerCase() === eventCriteria.tithi.toLowerCase();
@@ -150,11 +154,197 @@ serve(async (req) => {
   }
 
   try {
-    const { question, date, time, timezone, latitude, longitude } = await req.json()
+    const body = await req.json()
+    const { action, question, date, time, timezone, latitude, longitude, userId, authCode, eventType } = body
 
+    // Handle different actions
+    if (action === 'validate_credentials') {
+      // Use credentials from request body instead of environment variables
+      const panchangUserId = userId || Deno.env.get('PANCHANG_USER_ID')
+      const panchangAuthCode = authCode || Deno.env.get('PANCHANG_AUTH_CODE')
+      
+      if (!panchangUserId || !panchangAuthCode) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Credentials not provided or configured' }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      // Test credentials by making a simple API call
+      const testParams = new URLSearchParams({
+        userid: panchangUserId,
+        authcode: panchangAuthCode,
+        date: '27/07/2025',
+        time: '06:00:00',
+        tz: '5.5'
+      })
+
+      const testResponse = await fetch(`https://api.panchang.click/v0.4/panchangapip1?${testParams.toString()}`)
+      
+      if (!testResponse.ok) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Invalid credentials' }),
+          { 
+            status: 401, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      const testData = await testResponse.json()
+      
+      if (testData.status !== 'ok') {
+        return new Response(
+          JSON.stringify({ success: false, error: 'API returned error status' }),
+          { 
+            status: 401, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Credentials validated successfully' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    if (action === 'get_panchang') {
+      if (!date || !latitude || !longitude) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Date, latitude, and longitude are required' }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      // Ensure we have the correct date format
+      let formattedDate = date;
+      let targetDate = date;
+      
+      // If date is in YYYY-MM-DD format, convert to DD/MM/YYYY
+      if (date.includes('-')) {
+        const [year, month, day] = date.split('-');
+        formattedDate = `${day}/${month}/${year}`;
+        targetDate = `${year}-${month}-${day}`;
+      } else if (date.includes('/')) {
+        // If date is already in DD/MM/YYYY format, convert to YYYY-MM-DD for internal use
+        const [day, month, year] = date.split('/');
+        targetDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+      
+      console.log('📅 Received date:', date);
+      console.log('📅 Formatted date for API:', formattedDate);
+      console.log('📅 Target date for response:', targetDate);
+      
+      const timeStr = time || '06:00:00'
+      const tz = timezone || '5.5'
+
+      const panchangData = await fetchPanchangData(formattedDate, timeStr, tz, latitude.toString(), longitude.toString(), userId, authCode)
+      
+      if (!panchangData) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to fetch Panchang data' }),
+          { 
+            status: 500, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      // Transform the data to match frontend expectations
+      const transformedData = {
+        tithi: panchangData.tithi || '',
+        nakshatra: panchangData.nakshatra || '',
+        yoga: panchangData.yoga || '',
+        karana: panchangData.karana || '',
+        rashi: panchangData.rashi || '',
+        maasa: panchangData.maasa || '',
+        paksha: panchangData.paksha || '',
+        sunrise: panchangData.sunrise || '',
+        sunset: panchangData.sunset || '',
+        date: targetDate, // Use the exact requested date
+        time: timeStr,
+        location: `${latitude}, ${longitude}`,
+        tithiTill: panchangData.tithiTill || '',
+        tithinum: panchangData.tithinum,
+        tithiStart: panchangData.tithiStart || '',
+        nakshatraStart: panchangData.nakshatraStart || '',
+        nakshatraTill: panchangData.nakshatraTill || '',
+        yogaStart: panchangData.yoga || '',
+        yogaTill: panchangData.yogTill || '',
+        karanaStart: panchangData.karana || '',
+        karanaTill: panchangData.karanTill || '',
+        vaar: new Date(targetDate).toLocaleDateString('en-US', { weekday: 'long' }),
+        vaar_number: new Date(targetDate).getDay()
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, data: transformedData }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    if (action === 'find_next_event') {
+      if (!eventType || !latitude || !longitude) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Event type, latitude, and longitude are required' }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      const today = new Date()
+      const startDate = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`
+      const tz = timezone || '5.5'
+
+      const nextEvent = await findNextEvent(eventType, startDate, tz, latitude.toString(), longitude.toString(), userId, authCode)
+      
+      if (!nextEvent) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Could not find next event' }),
+          { 
+            status: 404, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        )
+      }
+
+      // Transform the event data
+      const eventData = {
+        date: nextEvent.date,
+        tithi: nextEvent.panchang.tithi,
+        nakshatra: nextEvent.panchang.nakshatra,
+        paksha: nextEvent.panchang.paksha,
+        maasa: nextEvent.panchang.maasa,
+        vaar: new Date(nextEvent.date.split('/').reverse().join('-')).toLocaleDateString('en-US', { weekday: 'long' }),
+        startTime: nextEvent.panchang.tithiStart,
+        endTime: nextEvent.panchang.tithiTill
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, event: eventData }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    // Legacy support for the original question-based approach
     if (!question) {
       return new Response(
-        JSON.stringify({ error: 'Question is required' }),
+        JSON.stringify({ error: 'Question is required for legacy mode' }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -163,7 +353,7 @@ serve(async (req) => {
     }
 
     // Get Panchang data
-    const panchangData = await fetchPanchangData(date, time, timezone, latitude, longitude)
+    const panchangData = await fetchPanchangData(date, time, timezone, latitude, longitude, userId, authCode)
     
     if (!panchangData) {
       return new Response(
@@ -198,55 +388,57 @@ serve(async (req) => {
     ];
     const isEventQuery = eventPatterns.some((pat) => pat.test(question));
 
-    if (isEventQuery) {
-      // Extract event name
-      const eventName = (question.match(/amavasya|ekadashi|poornima|purnima|pradosh|sankashti|chaturthi|ashtami|dwadashi|trayodashi|navami|dashami|saptami|shashti|panchami|tithi/i) || ["Event"])[0];
-      // Find next event using Panchang API only
-      const nextEvent = await findNextEvent(eventName, date, timezone, latitude, longitude);
-      if (!nextEvent) {
-        return new Response(
-          JSON.stringify({ error: `Could not find the next ${eventName}` }),
-          {
-            status: 404,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
-      }
+    if (isTodayQuery) {
       const tz = parseFloat(timezone) || 5.5;
-      const eventDate = getFormattedLocalDate(nextEvent.date, tz);
-      const tithiStart = nextEvent.panchang.tithiStart || '';
-      const tithiEnd = nextEvent.panchang.tithiTill || '';
-      // Always return only the greeting and event info, no long spiritual message
-      const guidance = `🪔 Jai Shree Krishna. The next ${eventName} falls on ${eventDate}.\nIt begins at ${tithiStart} and ends at ${tithiEnd}. Would you like to know what to do on this day?`;
+      const message = buildTodayMessage(panchangData, timezone);
+      
       return new Response(
         JSON.stringify({
-          event: eventName,
-          date: eventDate,
-          tithiStart,
-          tithiEnd,
-          panchang: nextEvent.panchang,
-          guidance,
+          message,
+          panchang: panchangData,
           timestamp: new Date().toISOString()
         }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
-      );
+      )
     }
 
-    // Use GPT for both cases, but with different system prompts
-    let systemPrompt = globalInstruction;
-    let userPrompt = question;
-    if (isTodayQuery) {
-      systemPrompt = globalInstruction + '\n' +
-        `You're VoiceVedic, a peaceful Hindu calendar assistant.\n\nWhen a user asks \"What day is today\", your answer must be:\n1. A warm spiritual greeting (e.g., Jai Shree Krishna)\n2. The weekday and Gregorian date in full\n3. Panchang elements: Tithi, Paksha, Maasa\n4. Tithi end time (if available)\n5. A closing suggestion only if relevant (e.g., fast, rest, or pray)\n\nAvoid giving extra spiritual context unless the day is a known event or festival. Use only 3 calm and clear lines in your response.`;
-      userPrompt = `Today is ${getFormattedLocalDate(panchangData.reqdate, parseFloat(timezone) || 5.5)} – ${panchangData.tithi}, ${panchangData.paksha} Paksha, ${panchangData.maasa} Maasa. Tithi ends at ${panchangData.tithiTill?.slice(11,16) || 'unknown'}.`;
-    } else {
-      // Default: use the old prompt logic
-      userPrompt = createGuidancePrompt(question, panchangData);
+    if (isEventQuery) {
+      const eventMatch = question.match(/next\s+(\w+)/i);
+      if (eventMatch) {
+        const eventName = eventMatch[1];
+        const today = new Date();
+        const startDate = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
+        const nextEvent = await findNextEvent(eventName, startDate, timezone, latitude, longitude, userId, authCode);
+        
+        if (nextEvent) {
+          const tz = parseFloat(timezone) || 5.5;
+          const normalDate = getFormattedLocalDate(nextEvent.date, tz);
+          const tithiStart = nextEvent.panchang.tithiStart?.slice(11,16) || '';
+          const tithiEnd = nextEvent.panchang.tithiTill?.slice(11,16) || '';
+          
+          const message = `🪔 Jai Shree Krishna.\nThe next ${eventName} falls on ${normalDate}.\nIt begins at ${tithiStart} and ends at ${tithiEnd}. Would you like to know what to do on this day?`;
+          
+          return new Response(
+            JSON.stringify({
+              message,
+              event: {
+                name: eventName,
+                date: nextEvent.date,
+                panchang: nextEvent.panchang
+              },
+              timestamp: new Date().toISOString()
+            }),
+            { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          )
+        }
+      }
     }
 
-    // Get OpenAI API key from environment
+    // Generate spiritual guidance using OpenAI
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
     if (!openaiApiKey) {
       return new Response(
@@ -258,7 +450,8 @@ serve(async (req) => {
       )
     }
 
-    // Call OpenAI API
+    const guidancePrompt = createGuidancePrompt(question, panchangData)
+    
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -266,27 +459,25 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
+        model: 'gpt-4',
         messages: [
           {
             role: 'system',
-            content: systemPrompt
+            content: 'You are VoiceVedic, a spiritual Hindu calendar assistant. Provide guidance based on Panchang (Hindu calendar) data. Be respectful, supportive, and practical in your advice.'
           },
           {
             role: 'user',
-            content: userPrompt
+            content: guidancePrompt
           }
         ],
-        max_tokens: 500,
-        temperature: 0.7,
-      }),
+        max_tokens: 300,
+        temperature: 0.7
+      })
     })
 
     if (!openaiResponse.ok) {
-      const errorData = await openaiResponse.text()
-      console.error('OpenAI API error:', errorData)
       return new Response(
-        JSON.stringify({ error: 'Failed to generate spiritual guidance' }),
+        JSON.stringify({ error: 'Failed to generate guidance' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -325,11 +516,14 @@ async function fetchPanchangData(
   time: string,
   timezone: string,
   latitude?: string,
-  longitude?: string
+  longitude?: string,
+  userId?: string,
+  authCode?: string
 ): Promise<PanchangData | null> {
   try {
-    const panchangUserId = Deno.env.get('PANCHANG_USER_ID')
-    const panchangAuthCode = Deno.env.get('PANCHANG_AUTH_CODE')
+    // Use provided credentials or fall back to environment variables
+    const panchangUserId = userId || Deno.env.get('PANCHANG_USER_ID')
+    const panchangAuthCode = authCode || Deno.env.get('PANCHANG_AUTH_CODE')
 
     if (!panchangUserId || !panchangAuthCode) {
       console.error('Panchang API credentials not configured')

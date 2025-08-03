@@ -12,9 +12,16 @@ import {
   ChevronDown,
   BookOpen,
   Bell,
-  Moon
+  Moon,
+  Volume2,
+  Play,
+  Pause,
+  VolumeX
 } from 'lucide-react';
 import { useUserPreferences } from '../hooks/useUserPreferences';
+import { useVoice } from '../hooks/useVoice';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
 
 interface PreferencesScreenProps {
   onComplete: () => void;
@@ -32,12 +39,23 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
   const [selectedRituals, setSelectedRituals] = useState<string[]>([]);
   const [notificationTime, setNotificationTime] = useState('07:00');
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
-  // const [isCalendarDropdownOpen, setIsCalendarDropdownOpen] = useState(false);
+  const [isVoiceDropdownOpen, setIsVoiceDropdownOpen] = useState(false);
+  const [selectedVoiceId, setSelectedVoiceId] = useState<string>('');
   const [showSacredText, setShowSacredText] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   const { upsertPreferences, loading } = useUserPreferences();
+  const { 
+    availableVoices, 
+    selectedVoice, 
+    speakText, 
+    stopAudio, 
+    isPlaying,
+    loadAvailableVoices 
+  } = useVoice();
+
+  const { user } = useAuth();
 
   const languages = [
     'English', 'Hindi', 'Tamil', 'Telugu', 'Malayalam', 'Kannada'
@@ -121,6 +139,49 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
     setIsLanguageDropdownOpen(false);
   };
 
+  const handleVoiceSelect = (voiceId: string) => {
+    setSelectedVoiceId(voiceId);
+    setIsVoiceDropdownOpen(false);
+  };
+
+  const handleVoiceSample = async (voiceId: string) => {
+    const voice = availableVoices.find(v => v.voice_id === voiceId);
+    if (voice) {
+      // Stop any current playback
+      if (isPlaying) {
+        stopAudio();
+      }
+      
+      // Play sample text
+      const sampleText = "Namaste. Welcome to VoiceVedic. This is a sample of how I will sound when reading your spiritual guidance.";
+      await speakText(sampleText, voice);
+    }
+  };
+
+  // Load available voices on component mount
+  useEffect(() => {
+    loadAvailableVoices();
+  }, [loadAvailableVoices]);
+
+  // Set initial selected voice
+  useEffect(() => {
+    if (selectedVoice && !selectedVoiceId) {
+      setSelectedVoiceId(selectedVoice.voice_id);
+    }
+  }, [selectedVoice, selectedVoiceId]);
+
+  // Keyboard shortcut to stop voice sample playback
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isPlaying) {
+        stopAudio();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPlaying, stopAudio]);
+
   // const handleCalendarSelect = (selectedCalendar: string) => {
   //   setCalendarType(selectedCalendar);
   //   setIsCalendarDropdownOpen(false);
@@ -141,16 +202,42 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
       setSaveError('');
       setSaveSuccess(false);
 
-      const { error } = await upsertPreferences({
+      // Save user preferences
+      const { error: preferencesError } = await upsertPreferences({
         language,
         calendar_type: selectedCalendarOption?.name || 'North Indian (Drik Panchang)',
         location: detectedLocation,
         notification_time: notificationTime
       });
 
-      if (error) {
-        setSaveError(error);
+      if (preferencesError) {
+        setSaveError(preferencesError);
         return;
+      }
+
+      // Save voice settings if a voice is selected
+      if (selectedVoiceId) {
+        const selectedVoice = availableVoices.find(v => v.voice_id === selectedVoiceId);
+        if (selectedVoice) {
+          const { error: voiceError } = await supabase
+            .from('voice_settings')
+            .upsert({
+              user_id: user?.id,
+              voice_id: selectedVoice.voice_id,
+              voice_name: selectedVoice.name,
+              stability: selectedVoice.settings?.stability || 0.5,
+              similarity_boost: selectedVoice.settings?.similarity_boost || 0.5,
+              style: selectedVoice.settings?.style || 0.0,
+              use_speaker_boost: selectedVoice.settings?.use_speaker_boost || true
+            }, {
+              onConflict: 'user_id'
+            });
+
+          if (voiceError) {
+            console.error('Error saving voice settings:', voiceError);
+            // Don't fail the entire save if voice settings fail
+          }
+        }
       }
 
       setSaveSuccess(true);
@@ -166,7 +253,7 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
     }
   };
 
-  const isFormValid = language && calendarType && selectedRituals.length > 0;
+  const isFormValid = language && calendarType && selectedRituals.length > 0 && selectedVoiceId;
 
   return (
     <div className="min-h-screen bg-spiritual-diagonal relative overflow-hidden font-sans">
@@ -322,10 +409,121 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
             </div>
           </div>
 
-          {/* Step 3: Ritual Selection */}
+          {/* Step 3: Voice Selection */}
           <div className="bg-white/90 backdrop-blur-sm rounded-card p-6 shadow-spiritual border border-spiritual-200/50 relative z-10">
             <div className="flex items-center gap-4 mb-6">
               <div className="w-8 h-8 bg-spiritual-500 text-white rounded-full flex items-center justify-center font-bold text-sm">3</div>
+              <h3 className="text-xl font-semibold text-spiritual-900 tracking-spiritual">Choose Your Voice Assistant</h3>
+            </div>
+            
+            <div className="space-y-3">
+              {availableVoices.length > 0 ? (
+                availableVoices.map((voice) => (
+                  <div
+                    key={voice.voice_id}
+                    className={`p-4 rounded-spiritual border-2 transition-all duration-300 ${
+                      selectedVoiceId === voice.voice_id
+                        ? 'border-spiritual-400 bg-spiritual-50 shadow-spiritual'
+                        : 'border-spiritual-200 bg-white/50 hover:border-spiritual-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-5 h-5 border-2 rounded flex items-center justify-center ${
+                          selectedVoiceId === voice.voice_id
+                            ? 'border-spiritual-500 bg-spiritual-500'
+                            : 'border-spiritual-300'
+                        }`}>
+                          {selectedVoiceId === voice.voice_id && (
+                            <CheckCircle className="w-3 h-3 text-white" />
+                          )}
+                        </div>
+                        <Volume2 className={`w-5 h-5 ${
+                          selectedVoiceId === voice.voice_id ? 'text-spiritual-600' : 'text-spiritual-500'
+                        }`} />
+                        <div>
+                          <h4 className="font-medium text-spiritual-900 tracking-spiritual">
+                            {voice.name}
+                          </h4>
+                          <p className="text-sm text-spiritual-700/70 tracking-spiritual">
+                            {voice.labels?.accent || 'Natural voice'}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleVoiceSample(voice.voice_id)}
+                          disabled={isPlaying}
+                          className="p-2 bg-spiritual-100 hover:bg-spiritual-200 text-spiritual-600 rounded-lg transition-colors disabled:opacity-50"
+                          title="Listen to sample"
+                        >
+                          {isPlaying ? (
+                            <Pause className="w-4 h-4" />
+                          ) : (
+                            <Play className="w-4 h-4" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleVoiceSelect(voice.voice_id)}
+                          className="px-3 py-1 bg-spiritual-600 hover:bg-spiritual-700 text-white text-sm rounded-lg transition-colors"
+                        >
+                          Select
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-4 bg-gray-50 rounded-spiritual border-2 border-gray-200">
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 text-gray-500" />
+                    <div>
+                      <p className="text-sm text-gray-600">Loading available voices...</p>
+                      <p className="text-xs text-gray-500">Please wait while we fetch voice options</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {selectedVoiceId && (
+              <div className="mt-4 p-3 bg-green-50 rounded-spiritual border border-green-200">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span className="text-sm text-green-700">
+                    Selected: {availableVoices.find(v => v.voice_id === selectedVoiceId)?.name || 'Voice'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Stop button when playing */}
+            {isPlaying && (
+              <div className="mt-4 p-3 bg-red-50 rounded-spiritual border border-red-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Volume2 className="w-4 h-4 text-red-600" />
+                    <span className="text-sm text-red-700">
+                      Playing voice sample...
+                    </span>
+                  </div>
+                  <button
+                    onClick={stopAudio}
+                    className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg transition-colors flex items-center gap-1"
+                  >
+                    <VolumeX className="w-3 h-3" />
+                    Stop
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Step 4: Ritual Selection */}
+          <div className="bg-white/90 backdrop-blur-sm rounded-card p-6 shadow-spiritual border border-spiritual-200/50 relative z-10">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-8 h-8 bg-spiritual-500 text-white rounded-full flex items-center justify-center font-bold text-sm">4</div>
               <h3 className="text-xl font-semibold text-spiritual-900 tracking-spiritual">Choose the Rituals You Want to Track</h3>
             </div>
             
@@ -367,10 +565,10 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
             </div>
           </div>
 
-          {/* Step 4: Notification Time */}
+          {/* Step 5: Notification Time */}
           <div className="bg-white/90 backdrop-blur-sm rounded-card p-6 shadow-spiritual border border-spiritual-200/50 relative z-10">
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-8 h-8 bg-spiritual-500 text-white rounded-full flex items-center justify-center font-bold text-sm">4</div>
+              <div className="w-8 h-8 bg-spiritual-500 text-white rounded-full flex items-center justify-center font-bold text-sm">5</div>
               <h3 className="text-xl font-semibold text-spiritual-900 tracking-spiritual">Select Notification Time</h3>
             </div>
             

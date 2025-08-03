@@ -1,84 +1,42 @@
-export interface GeminiRequest {
+export interface QueryClarificationRequest {
   question: string;
   context?: string;
 }
 
-export interface GeminiResponse {
+export interface QueryClarificationResponse {
   success: boolean;
-  response?: string;
+  clarifiedQuestion?: string;
+  needsClarification?: boolean;
+  clarificationPrompt?: string;
   error?: string;
-  isPanchangQuery?: boolean;
-  extractedDate?: string;
-  extractedLocation?: string;
-  queryType?: 'next_event' | 'date_specific' | 'general' | 'vague' | 'spiritual_guidance';
-  correctedSpelling?: string;
-  suggestedQueries?: string[];
 }
 
-class GeminiAPIService {
+export interface AIValidationRequest {
+  panchangData: any;
+  userQuestion: string;
+  response: string;
+}
+
+export interface AIValidationResponse {
+  success: boolean;
+  validatedResponse?: string;
+  confidence?: number;
+  suggestions?: string[];
+  error?: string;
+}
+
+// Gemini API implementation
+class GeminiAPI {
   private apiKey: string;
-  private baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+  private baseUrl: string;
 
   constructor() {
     this.apiKey = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyDeXkh_zbZxuNESQUH1FXAlXBB5YFOcV08';
+    this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
   }
 
-  async analyzeQuestion(request: GeminiRequest): Promise<GeminiResponse> {
+  async generateText(prompt: string): Promise<string> {
     try {
-      const prompt = `
-You are an AI assistant specialized in Hindu astrology and Panchang (Hindu calendar). 
-Analyze the following question and provide a structured response. Handle spelling variations and typos intelligently.
-
-Question: "${request.question}"
-
-Please analyze this question and respond in the following JSON format:
-{
-  "isPanchangQuery": true/false,
-  "queryType": "next_event|date_specific|general|vague|spiritual_guidance",
-  "extractedDate": "YYYY-MM-DD" (if date is mentioned),
-  "extractedLocation": "location" (if location is mentioned),
-  "clarifiedQuestion": "rephrased clear question",
-  "correctedSpelling": "corrected spelling if needed",
-  "suggestedQueries": ["array of suggested queries"],
-  "explanation": "brief explanation of what the user is asking",
-  "suggestedResponse": "how to respond to this query"
-}
-
-Handle common spelling variations for Hindu terms:
-- "pratipada" (correct) vs "pratipada", "pratipada", "pratipada" - 1st tithi
-- "dwitiya" (correct) vs "dwitiya", "dwitiya", "dwitiya" - 2nd tithi
-- "tritiya" (correct) vs "tritiya", "tritiya", "tritiya" - 3rd tithi
-- "chaturthi" (correct) vs "chaturthi", "chaturthi", "chaturthi" - 4th tithi
-- "panchami" (correct) vs "panchami", "panchami", "panchami" - 5th tithi
-- "shashthi" (correct) vs "shashti", "shashthi", "shashthi" - 6th tithi
-- "saptami" (correct) vs "saptami", "saptami", "saptami" - 7th tithi
-- "ashtami" (correct) vs "ashtami", "ashtami", "ashtami" - 8th tithi
-- "navami" (correct) vs "navami", "navami", "navami" - 9th tithi
-- "dashami" (correct) vs "dashami", "dashami", "dashami" - 10th tithi
-- "ekadashi" (correct) vs "ekadasi", "ekadasi", "ekadashi" - 11th tithi
-- "dwadashi" (correct) vs "dwadashi", "dwadashi", "dwadashi" - 12th tithi
-- "trayodashi" (correct) vs "trayodashi", "trayodashi", "trayodashi" - 13th tithi
-- "chaturdashi" (correct) vs "chaturdashi", "chaturdashi", "chaturdashi" - 14th tithi
-- "purnima" (correct) vs "purnima", "purnima", "purnima" - 15th tithi (full moon)
-- "amavasya" (correct) vs "amavasya", "amavasya", "amavasya" - New moon
-
-If the question is vague or unclear, provide a helpful clarification.
-If it's a Panchang-related question, identify the specific type of information needed.
-If it's not Panchang-related, suggest how to handle it appropriately.
-
-Focus on:
-- Hindu calendar events (Tithi, Nakshatra, Yoga, Karana)
-- Auspicious timings and dates
-- Fasting days and religious observances
-- Astrological guidance
-- Date-specific Panchang information
-- Spiritual practices and rituals
-- Specific festivals and vratas (Varalakshmi Vratham, etc.)
-- Paksha information (Krishna Paksha, Shukla Paksha)
-- Maasa (lunar month) information
-- Tithi-specific queries (Ashtami, Ekadashi, Purnima, Amavasya)
-`;
-
       const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
         method: 'POST',
         headers: {
@@ -94,108 +52,129 @@ Focus on:
       });
 
       if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status}`);
+        throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
       
-      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-        throw new Error('Invalid response from Gemini API');
+      if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+        return data.candidates[0].content.parts[0].text;
+      } else {
+        throw new Error('Invalid response format from Gemini API');
       }
+    } catch (error) {
+      console.error('Gemini API error:', error);
+      throw error;
+    }
+  }
+}
 
-      const responseText = data.candidates[0].content.parts[0].text;
+// Export the Gemini API instance
+export const geminiAPI = new GeminiAPI();
+
+class AIService {
+  private geminiAPI: GeminiAPI;
+
+  constructor() {
+    this.geminiAPI = geminiAPI;
+  }
+
+  // Clarify ambiguous user queries
+  async clarifyQuery(request: QueryClarificationRequest): Promise<QueryClarificationResponse> {
+    try {
+      const prompt = `
+You are a Hindu spiritual assistant. The user asked: "${request.question}"
+
+Please analyze if this question needs clarification. Consider:
+1. Is the question clear and specific?
+2. Are there multiple possible interpretations?
+3. Does it need more context (date, location, specific ritual)?
+
+If the question is clear, return the clarified version.
+If it needs clarification, provide a helpful prompt to get more details.
+
+Respond in JSON format:
+{
+  "needsClarification": boolean,
+  "clarifiedQuestion": "string (if clear)",
+  "clarificationPrompt": "string (if needs clarification)"
+}
+`;
+
+      const response = await this.geminiAPI.generateText(prompt);
       
-      // Try to parse JSON response
       try {
-        const parsedResponse = JSON.parse(responseText);
-        
+        const result = JSON.parse(response);
         return {
           success: true,
-          response: parsedResponse.clarifiedQuestion || request.question,
-          isPanchangQuery: parsedResponse.isPanchangQuery || false,
-          extractedDate: parsedResponse.extractedDate,
-          extractedLocation: parsedResponse.extractedLocation,
-          queryType: parsedResponse.queryType as any,
-          correctedSpelling: parsedResponse.correctedSpelling,
-          suggestedQueries: parsedResponse.suggestedQueries
+          needsClarification: result.needsClarification,
+          clarifiedQuestion: result.clarifiedQuestion,
+          clarificationPrompt: result.clarificationPrompt
         };
       } catch (parseError) {
-        // If JSON parsing fails, return the raw response
+        console.error('Failed to parse AI response:', parseError);
         return {
-          success: true,
-          response: responseText,
-          isPanchangQuery: true,
-          queryType: 'general'
+          success: false,
+          error: 'Failed to parse AI response'
         };
       }
-
     } catch (error) {
-      console.error('Gemini API Error:', error);
+      console.error('AI clarification error:', error);
       return {
         success: false,
-        error: `Failed to analyze question: ${error instanceof Error ? error.message : 'Unknown error'}`
+        error: 'Failed to clarify query'
       };
     }
   }
 
-  async getSpiritualGuidance(question: string): Promise<GeminiResponse> {
+  // Validate and enhance panchang responses
+  async validateResponse(request: AIValidationRequest): Promise<AIValidationResponse> {
     try {
       const prompt = `
-You are a spiritual guide specializing in Hindu philosophy and Vedic wisdom. 
-Provide guidance for the following question or concern.
+You are validating Hindu spiritual guidance. 
 
-Question: "${question}"
+User Question: "${request.userQuestion}"
+Panchang Data: ${JSON.stringify(request.panchangData, null, 2)}
+Current Response: "${request.response}"
 
-Please provide:
-1. A compassionate and wise response
-2. Relevant spiritual teachings or quotes
-3. Practical advice if applicable
-4. Encouragement and positive perspective
+Please validate and enhance this response:
+1. Is the information accurate based on the panchang data?
+2. Is the response clear and helpful?
+3. Can it be improved for clarity or completeness?
 
-Keep the response respectful, informative, and spiritually uplifting.
+Respond in JSON format:
+{
+  "validatedResponse": "improved response text",
+  "confidence": 0.95,
+  "suggestions": ["suggestion1", "suggestion2"]
+}
 `;
 
-      const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }]
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const response = await this.geminiAPI.generateText(prompt);
       
-      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-        throw new Error('Invalid response from Gemini API');
+      try {
+        const result = JSON.parse(response);
+        return {
+          success: true,
+          validatedResponse: result.validatedResponse,
+          confidence: result.confidence,
+          suggestions: result.suggestions
+        };
+      } catch (parseError) {
+        console.error('Failed to parse AI validation response:', parseError);
+        return {
+          success: false,
+          error: 'Failed to parse AI validation response'
+        };
       }
-
-      const responseText = data.candidates[0].content.parts[0].text;
-
-      return {
-        success: true,
-        response: responseText,
-        isPanchangQuery: false,
-        queryType: 'general'
-      };
-
     } catch (error) {
-      console.error('Gemini API Error:', error);
+      console.error('AI validation error:', error);
       return {
         success: false,
-        error: `Failed to get spiritual guidance: ${error instanceof Error ? error.message : 'Unknown error'}`
+        error: 'Failed to validate response'
       };
     }
   }
 }
 
-export const geminiAPI = new GeminiAPIService(); 
+export const aiService = new AIService(); 

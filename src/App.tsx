@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Globe, LogIn, UserPlus, Headphones, ChevronDown, MapPin, AlertCircle, Navigation } from 'lucide-react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { Globe, LogIn, UserPlus, Headphones, ChevronDown, MapPin, AlertCircle, Navigation, VolumeX } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import { useLocation } from './hooks/useLocation';
+import { useVoice } from './hooks/useVoice';
 import GuestOnboardingScreen from './components/GuestOnboardingScreen';
 import SignUpScreen from './components/SignUpScreen';
 import LoginScreen from './components/LoginScreen';
@@ -22,6 +23,8 @@ import AllTithisTest from './components/AllTithisTest';
 import VoiceTest from './components/VoiceTest';
 import DebugInfo from './components/DebugInfo';
 import DevelopmentModeIndicator from './components/DevelopmentModeIndicator';
+import GitLogTest from './components/GitLogTest';
+import ComprehensiveTest from './components/ComprehensiveTest';
 
 function App() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
@@ -36,8 +39,6 @@ function App() {
   const [previousScreen, setPreviousScreen] = useState<string>('home');
   const [isNavigating, setIsNavigating] = useState(false);
   const [isAppLoading, setIsAppLoading] = useState(true);
-  // Add a new state for location timeout and error
-  // const [locationTimeout, setLocationTimeout] = useState(false); // Removed as not needed with real-time tracking
   const [authTimeout, setAuthTimeout] = useState(false);
   const [authError, setAuthError] = useState('');
   const [locationWarning, setLocationWarning] = useState('');
@@ -51,6 +52,7 @@ function App() {
     startLocationTracking,
     stopLocationTracking 
   } = useLocation(user?.id);
+  const { isPlaying, stopAudio } = useVoice();
 
   const languages = [
     'English',
@@ -69,26 +71,13 @@ function App() {
     }
   }, []);
 
-  // Handle app loading with progress messages
+  // Simplified app loading - shorter timeout
   useEffect(() => {
-    const loadingSteps = [
-      { message: 'Loading VoiceVedic...', delay: 500 },
-      { message: 'Connecting to APIs...', delay: 1000 },
-      { message: 'Initializing Panchang...', delay: 1500 },
-      { message: 'Ready!', delay: 2000 }
-    ];
+    const timer = setTimeout(() => {
+      setIsAppLoading(false);
+    }, 1000); // Reduced from 2000ms to 1000ms
 
-    let currentStep = 0;
-    const interval = setInterval(() => {
-      if (currentStep < loadingSteps.length) {
-        currentStep++;
-      } else {
-        clearInterval(interval);
-        setIsAppLoading(false);
-      }
-    }, 500);
-
-    return () => clearInterval(interval);
+    return () => clearTimeout(timer);
   }, []);
 
   // Check Supabase configuration on mount
@@ -101,87 +90,55 @@ function App() {
         supabaseAnonKey === 'your_supabase_anon_key' ||
         supabaseUrl.includes('placeholder') ||
         supabaseAnonKey.includes('placeholder')) {
-      setSupabaseError('Supabase is not properly configured. Please click "Connect to Supabase" in the top right corner.');
+      setSupabaseError('Supabase is not properly configured. Please check your .env file.');
     }
   }, []);
 
-  // Auto-detect location on component mount
+  // Simplified location detection
   useEffect(() => {
-    console.log('Location hook state:', { 
-      userId: user?.id, 
-      isTracking, 
-      currentLocation: currentLocation?.location_name,
-      locationError 
-    });
-    
-    if (user?.id && !isTracking && !currentLocation) {
-      console.log('Starting location tracking...');
-      // Start real-time location tracking when user is authenticated
-      startLocationTracking();
-    } else if (!user?.id) {
-      console.log('No user logged in, using high-precision location detection');
-      // High-precision location detection for non-authenticated users
-        if ('geolocation' in navigator) {
-          navigator.geolocation.getCurrentPosition(
+    if (!user?.id) {
+      // Simple location detection for non-authenticated users
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
           async (position) => {
-                              try {
-              const { latitude, longitude, accuracy } = position.coords;
-              console.log(`High-precision location: ${latitude}, ${longitude} (accuracy: ${accuracy}m)`);
-              
-              // Use precise geocoding to get exact location name
+            try {
+              const { latitude, longitude } = position.coords;
               const locationName = await getPreciseLocationName(latitude, longitude);
-              
               setLocation(locationName);
-                  setLocationStatus('success');
-              console.log('Precise location detected:', locationName);
-              } catch (error) {
-              console.error('Precise location error:', error);
+              setLocationStatus('success');
+            } catch (error) {
+              console.error('Location error:', error);
               setLocation('India');
               setLocationStatus('success');
               setLocationWarning('Using default location (India).');
-              }
-            },
-            (error) => {
-            console.error('High-precision location error:', error);
+            }
+          },
+          (error) => {
+            console.error('Location error:', error);
             setLocation('India');
-              setLocationStatus('error');
+            setLocationStatus('success');
             setLocationWarning('Location detection failed. Using default location.');
           },
           { 
-            timeout: 15000, 
+            timeout: 10000, 
             enableHighAccuracy: true, 
             maximumAge: 0 
           }
         );
+      } else {
+        setLocation('India');
+        setLocationStatus('success');
       }
     }
-  }, [user?.id, isTracking, currentLocation, startLocationTracking, locationError]);
+  }, [user?.id]);
 
   // Update location state when real-time location changes
   useEffect(() => {
-    console.log('Location update effect:', { 
-      currentLocation: currentLocation?.location_name,
-      accuracy,
-      locationStatus 
-    });
-    
     if (currentLocation) {
-      console.log('Setting location to:', currentLocation.location_name);
       setLocation(currentLocation.location_name);
       setLocationStatus('success');
-      if (accuracy) {
-        console.log(`Location accuracy: ${accuracy} meters`);
-      }
     }
-  }, [currentLocation, accuracy, locationStatus]);
-
-  // Set loading status when tracking starts
-  useEffect(() => {
-    if (isTracking && !currentLocation) {
-      setLocationStatus('loading');
-      setLocation('Detecting location...');
-        }
-  }, [isTracking, currentLocation]);
+  }, [currentLocation]);
 
   // Handle location errors
   useEffect(() => {
@@ -189,28 +146,23 @@ function App() {
       console.error('Location tracking error:', locationError);
       setLocationWarning(locationError);
       setLocation('India');
-        setLocationStatus('error');
-      }
+      setLocationStatus('success');
+    }
   }, [locationError]);
 
   // Handle user authentication state changes
   useEffect(() => {
     if (!authLoading && user) {
-      // If user just signed up and needs to set preferences
       if (newUserNeedsPreferences) {
         setCurrentScreen('preferences');
         setNewUserNeedsPreferences(false);
-      }
-      // If user already has profile or preferences, show main experience
-      else if (userProfile || guestMode) {
+      } else if (userProfile || guestMode) {
         setCurrentScreen('main-experience');
       }
     }
     
-    // Handle authentication errors
     if (authHookError && !authLoading) {
       console.error('Authentication error:', authHookError);
-      // If authentication fails, allow user to continue as guest or retry
       setAuthError(authHookError);
     }
   }, [user, userProfile, authLoading, authHookError, newUserNeedsPreferences, guestMode]);
@@ -222,10 +174,9 @@ function App() {
       timeoutId = setTimeout(() => {
         setAuthTimeout(true);
         setAuthError('Authentication is taking too long. Please check your connection or try again.');
-      }, 10000);
+      }, 8000); // Reduced from 10000ms to 8000ms
     } else {
       setAuthTimeout(false);
-      // Don't clear authError here as it might be set by the useAuth hook
     }
     return () => clearTimeout(timeoutId);
   }, [authLoading]);
@@ -275,7 +226,6 @@ function App() {
       setGuestMode(false);
       setPreviousScreen('home');
       setIsNavigating(false);
-      // Clear URL if we're on reset-pin route
       if (window.location.pathname === '/reset-pin') {
         window.history.pushState({}, '', '/');
       }
@@ -291,13 +241,10 @@ function App() {
   };
 
   const handleSignUpComplete = () => {
-    // After successful sign-up, move to preferences screen
     setNewUserNeedsPreferences(true);
-    // The useEffect will handle moving to preferences screen
   };
 
   const handlePreferencesComplete = () => {
-    // Preferences saved successfully - move to main experience
     setIsNavigating(true);
     setTimeout(() => {
       setCurrentScreen('main-experience');
@@ -306,7 +253,6 @@ function App() {
   };
 
   const handleGuestOnboardingComplete = () => {
-    // Guest onboarding completed - move to main experience in guest mode
     setGuestMode(true);
     setIsNavigating(true);
     setTimeout(() => {
@@ -316,7 +262,6 @@ function App() {
   };
 
   const handleLoginComplete = () => {
-    // Login completed - move to main experience
     setIsNavigating(true);
     setTimeout(() => {
       setCurrentScreen('main-experience');
@@ -333,7 +278,6 @@ function App() {
   };
 
   const handleShowPreferences = () => {
-    // Store current screen as previous for proper back navigation
     setPreviousScreen(currentScreen);
     setIsNavigating(true);
     setTimeout(() => {
@@ -343,7 +287,6 @@ function App() {
   };
 
   const handleShowSettings = () => {
-    // Store current screen as previous for proper back navigation
     setPreviousScreen(currentScreen);
     setIsNavigating(true);
     setTimeout(() => {
@@ -353,21 +296,18 @@ function App() {
   };
 
   const handleResetPinComplete = () => {
-    // PIN reset completed, redirect to login
     alert('Your PIN has been reset successfully! Please log in with your new PIN.');
     setIsNavigating(true);
     setTimeout(() => {
       setCurrentScreen('login');
       setIsNavigating(false);
-      // Clear URL
       window.history.pushState({}, '', '/');
     }, 100);
   };
 
-  // High-precision location name detection
+  // Simplified location name detection
   const getPreciseLocationName = async (latitude: number, longitude: number): Promise<string> => {
     try {
-      // Use a reliable geocoding service for precise location names
       const response = await fetch(
         `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
       );
@@ -378,7 +318,6 @@ function App() {
         const state = data.principalSubdivision || '';
         const country = data.countryName || '';
         
-        // Return precise location name
         if (city && state) {
           return `${city}, ${state}, ${country}`;
         } else if (city) {
@@ -389,7 +328,7 @@ function App() {
           return country || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
         }
       } else {
-        // Fallback to coordinate-based detection for major regions
+        // Fallback to coordinate-based detection
         if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
           return 'India';
         } else if (latitude >= 24 && latitude <= 49 && longitude >= -125 && longitude <= -66) {
@@ -402,7 +341,6 @@ function App() {
       }
     } catch (error) {
       console.warn('Geocoding failed, using fallback:', error);
-      // Fallback to coordinate-based detection
       if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
         return 'India';
       } else if (latitude >= 24 && latitude <= 49 && longitude >= -125 && longitude <= -66) {
@@ -418,27 +356,16 @@ function App() {
   const handleLogout = async () => {
     try {
       setIsNavigating(true);
-      
-      // Call Supabase signOut
       await signOut();
-      
-      // Reset all state
       setGuestMode(false);
       setNewUserNeedsPreferences(false);
       setPreviousScreen('home');
-      
-      // Navigate to home screen with delay to prevent loading screen flash
       setTimeout(() => {
         setCurrentScreen('home');
         setIsNavigating(false);
       }, 300);
-      
-      // Optional: Show logout success message
-      console.log('Logged out successfully');
-      
     } catch (error) {
       console.error('Logout error:', error);
-      // Even if logout fails, still redirect to home for UX
       setTimeout(() => {
         setCurrentScreen('home');
         setIsNavigating(false);
@@ -463,13 +390,6 @@ function App() {
           <p className="text-spiritual-700 tracking-spiritual">
             {isAppLoading ? 'Initializing VoiceVedic...' : authLoading ? 'Loading...' : 'Navigating...'}
           </p>
-          {isAppLoading && (
-            <div className="mt-4 text-sm text-spiritual-600">
-              <p>Setting up Panchang API...</p>
-              <p>Connecting to Supabase...</p>
-              <p>Initializing voice features...</p>
-            </div>
-          )}
         </div>
       </div>
     );
@@ -495,29 +415,6 @@ function App() {
     );
   }
 
-  // Show error if location detection failed or timed out
-          if (locationStatus === 'error' && currentScreen === 'home') {
-    // Set default location and proceed
-    if (!locationWarning) {
-      setLocation('India');
-      setLocationStatus('success');
-      setLocationWarning('Location unavailable. Using default location: India.');
-      setCurrentScreen('main-experience');
-    }
-    // Show a quick message before proceeding
-    return (
-      <div className="min-h-screen bg-spiritual-diagonal flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-yellow-700 tracking-spiritual font-semibold mb-2">
-            Location unavailable. Using default location: India.
-          </p>
-          <p className="text-spiritual-700">You can continue using the app.</p>
-        </div>
-      </div>
-    );
-  }
-
   // Show Reset PIN screen if on that route
   if (currentScreen === 'reset-pin') {
     return <ResetPinScreen onComplete={handleResetPinComplete} onBack={handleBackToHome} />;
@@ -526,30 +423,28 @@ function App() {
   // Show Main Experience if user is authenticated or in guest mode
   if (currentScreen === 'main-experience') {
     return (
-      <Router>
-        <Routes>
-          <Route 
-            path="/" 
-            element={
-              <MainExperienceScreen 
-                onChangePreferences={handleShowPreferences}
-                onShowSettings={handleShowSettings}
-                onLogout={guestMode ? handleBackToHome : handleLogout}
-                locationWarning={locationWarning}
-              />
-            } 
-          />
-          <Route 
-            path="/ask" 
-            element={
-              <AskVoiceVedicExperience 
-                onBack={() => window.history.back()}
-              />
-            } 
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
+      <Routes>
+        <Route 
+          path="/" 
+          element={
+            <MainExperienceScreen 
+              onChangePreferences={handleShowPreferences}
+              onShowSettings={handleShowSettings}
+              onLogout={guestMode ? handleBackToHome : handleLogout}
+              locationWarning={locationWarning}
+            />
+          } 
+        />
+        <Route 
+          path="/ask" 
+          element={
+            <AskVoiceVedicExperience 
+              onBack={() => window.history.back()}
+            />
+          } 
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     );
   }
 
@@ -558,7 +453,6 @@ function App() {
   }
 
   if (currentScreen === 'preferences') {
-    // Determine the correct back handler based on previous screen
     const backHandler = previousScreen === 'main-experience' ? handleBackToMainExperience : handleBackToHome;
     return (
       <PreferencesScreen 
@@ -570,7 +464,6 @@ function App() {
   }
 
   if (currentScreen === 'settings') {
-    // Determine the correct back handler based on previous screen
     const backHandler = previousScreen === 'main-experience' ? handleBackToMainExperience : handleBackToHome;
     return (
       <SettingsScreen 
@@ -639,6 +532,18 @@ function App() {
 
       {/* Top Right Controls - Language & Location */}
       <div className={`absolute ${supabaseError && locationWarning ? 'top-32' : supabaseError || locationWarning ? 'top-20' : 'top-6'} right-6 z-20 flex items-center gap-4`}>
+        
+        {/* Global Stop TTS Button */}
+        {isPlaying && (
+          <button
+            onClick={stopAudio}
+            className="flex items-center gap-2 px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors shadow-lg"
+            title="Stop text-to-speech playback"
+          >
+            <VolumeX className="w-4 h-4" />
+            <span className="text-sm font-medium">Stop TTS</span>
+          </button>
+        )}
         
         {/* Real-Time Location Tracking */}
         <div className="group relative">
@@ -789,8 +694,6 @@ function App() {
         </div>
       )}
 
-      {/* Location Test Component - Removed to avoid obstruction */}
-
       {/* Main Content */}
       <div className={`flex flex-col items-center justify-center min-h-screen px-6 pb-24 relative z-10 ${supabaseError ? 'pt-20' : ''}`}>
         
@@ -895,6 +798,16 @@ function App() {
         <div className="mt-4 max-w-4xl">
           <AllTithisTest />
         <VoiceTest />
+        </div>
+
+        {/* Git Log Test */}
+        <div className="mt-4 max-w-4xl">
+          <GitLogTest />
+        </div>
+
+        {/* Comprehensive Feature Test */}
+        <div className="mt-4 max-w-6xl">
+          <ComprehensiveTest />
         </div>
 
         {/* Performance Monitor */}

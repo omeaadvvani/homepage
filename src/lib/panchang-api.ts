@@ -1,7 +1,7 @@
-// Panchang API Service for VoiceVedic
-// Integrates with Panchang.Click API for Hindu calendar data
-import { geminiAPI } from './gemini-api';
-import { formatDate, formatDateTime, formatTime } from './date-utils';
+import { supabase } from './supabase';
+import { aiService } from './gemini-api';
+import { formatDate, formatDateTime } from './date-utils';
+import { vedicAstroAPI } from './vedic-astro-api';
 
 export interface PanchangData {
   tithi: string;
@@ -27,6 +27,15 @@ export interface PanchangData {
   karanaTill?: string;
   vaar?: string;
   vaar_number?: number;
+  // Vedic Astro enhanced data
+  moonrise?: string;
+  moonset?: string;
+  rahu_kalam?: string;
+  gulika_kalam?: string;
+  yamaganda_kalam?: string;
+  abhijit_muhurta?: string;
+  brahma_muhurta?: string;
+  sandhya_kal?: string;
 }
 
 export interface PanchangResponse {
@@ -60,16 +69,17 @@ class PanchangAPIService {
   private userId: string;
   private authCode: string;
   private cache: Map<string, { data: PanchangData; timestamp: number }> = new Map();
-  private cacheExpiry = 5 * 60 * 1000; // 5 minutes cache expiry
+  private cacheExpiry = 30 * 24 * 60 * 60 * 1000; // 30 days cache expiry
+  private eventCache: Map<string, { event: any; timestamp: number }> = new Map();
+  private eventCacheExpiry = 30 * 24 * 60 * 60 * 1000; // 30 days cache expiry for events
 
   constructor() {
     this.supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
     this.supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-    this.userId = import.meta.env.VITE_PANCHANG_USER_ID || 'kiranku';
-    this.authCode = import.meta.env.VITE_PANCHANG_AUTH_CODE || '6d024cd3cced6e74fd1ec17acb371584';
+    this.userId = import.meta.env.VITE_PANCHANG_USER_ID || '';
+    this.authCode = import.meta.env.VITE_PANCHANG_AUTH_CODE || '';
   }
 
-  // Cache management methods
   private getCacheKey(date: string, latitude: number, longitude: number): string {
     return `${date}_${latitude}_${longitude}`;
   }
@@ -79,8 +89,14 @@ class PanchangAPIService {
     const cached = this.cache.get(key);
     
     if (cached && Date.now() - cached.timestamp < this.cacheExpiry) {
-      console.log('📦 Using cached data for:', date);
+      console.log('📦 Using cached Panchang data for:', date);
       return cached.data;
+    }
+    
+    // Remove expired entry if found
+    if (cached) {
+      this.cache.delete(key);
+      console.log('🗑️ Removed expired cache entry for:', date);
     }
     
     return null;
@@ -89,136 +105,241 @@ class PanchangAPIService {
   private setCache(date: string, latitude: number, longitude: number, data: PanchangData): void {
     const key = this.getCacheKey(date, latitude, longitude);
     this.cache.set(key, { data, timestamp: Date.now() });
-    console.log('💾 Cached data for:', date);
+    console.log('💾 Cached Panchang data for:', date);
   }
 
   private clearExpiredCache(): void {
     const now = Date.now();
+    let expiredCount = 0;
+    
     for (const [key, value] of this.cache.entries()) {
       if (now - value.timestamp > this.cacheExpiry) {
         this.cache.delete(key);
+        expiredCount++;
       }
+    }
+    
+    // Clear expired event cache
+    for (const [key, value] of this.eventCache.entries()) {
+      if (now - value.timestamp > this.eventCacheExpiry) {
+        this.eventCache.delete(key);
+      }
+    }
+    
+    if (expiredCount > 0) {
+      console.log(`🧹 Cleared ${expiredCount} expired cache entries`);
     }
   }
 
-  // Get basic Panchang data for a specific date and location
+  // Clear all cache (useful for testing)
+  clearAllCache(): void {
+    this.cache.clear();
+    this.eventCache.clear();
+    console.log('🧹 Cleared all cache entries');
+  }
+
+  // Clear cache for specific date and location
+  clearCacheForDate(date: string, latitude: number, longitude: number): void {
+    const key = this.getCacheKey(date, latitude, longitude);
+    this.cache.delete(key);
+    console.log('🗑️ Cleared cache for:', date);
+  }
+
+  // Preload cache for a date range (30 days past and future)
+  private async preloadCache(latitude: number, longitude: number): Promise<void> {
+    const today = new Date();
+    const cachePromises: Promise<void>[] = [];
+    
+    // Preload 30 days into the past and future
+    for (let i = -30; i <= 30; i++) {
+      const targetDate = new Date(today);
+      targetDate.setDate(today.getDate() + i);
+      
+      const dateStr = targetDate.toISOString().split('T')[0];
+      const cacheKey = this.getCacheKey(dateStr, latitude, longitude);
+      
+      // Only preload if not already cached
+      if (!this.cache.has(cacheKey)) {
+        cachePromises.push(
+          this.getPanchangData(dateStr, latitude, longitude)
+            .then(response => {
+              if (response.success && response.data) {
+                console.log(`📥 Preloaded data for: ${dateStr}`);
+              }
+            })
+            .catch(error => {
+              console.warn(`⚠️ Failed to preload data for ${dateStr}:`, error);
+            })
+        );
+      }
+    }
+    
+    // Execute preloading in background
+    Promise.allSettled(cachePromises).then(() => {
+      console.log('✅ Cache preloading completed');
+    });
+  }
+
   async getPanchangData(date: string, latitude: number, longitude: number): Promise<PanchangResponse> {
     try {
-      if (!this.supabaseUrl || !this.supabaseAnonKey) {
-        return {
-          success: false,
-          error: 'Supabase configuration missing'
-        };
+      // Only clear expired cache occasionally to improve performance
+      if (Math.random() < 0.1) { // 10% chance to clear expired cache
+        this.clearExpiredCache();
       }
-
+      
       // Check cache first
       const cachedData = this.getFromCache(date, latitude, longitude);
       if (cachedData) {
-        return {
-          success: true,
-          data: cachedData
-        };
+        return { success: true, data: cachedData };
       }
 
-      // Clear expired cache entries
-      this.clearExpiredCache();
-
-      // Convert date format from YYYY-MM-DD to DD/MM/YYYY
-      const [year, month, day] = date.split('-');
+      console.log('🌐 Fetching Panchang data from API...');
+      
+      // Ensure we're using the exact date requested, not a modified version
+      let targetDate = date;
+      
+      // If date is in YYYY-MM-DD format, ensure it's the exact date requested
+      if (date.includes('-')) {
+        const [year, month, day] = date.split('-');
+        // Validate the date components
+        const requestedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        const targetYear = requestedDate.getFullYear();
+        const targetMonth = String(requestedDate.getMonth() + 1).padStart(2, '0');
+        const targetDay = String(requestedDate.getDate()).padStart(2, '0');
+        targetDate = `${targetYear}-${targetMonth}-${targetDay}`;
+      }
+      
+      // Convert YYYY-MM-DD to DD/MM/YYYY format for the API
+      const [year, month, day] = targetDate.split('-');
       const formattedDate = `${day}/${month}/${year}`;
       
-      // Get current time in HH:MM:SS format
-      const now = new Date();
-      const time = now.toLocaleTimeString('en-IN', { 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        second: '2-digit' 
+      console.log('📅 Requested date:', date);
+      console.log('📅 Target date:', targetDate);
+      console.log('📅 Formatted date for API:', formattedDate);
+      
+      // Call Supabase Edge Function as proxy
+      const { data, error } = await supabase.functions.invoke('panchang-guidance', {
+        body: {
+          question: 'What is today\'s panchang?',
+          date: formattedDate,
+          time: '06:00:00',
+          timezone: '5.5', // IST timezone for panchang calculations
+          latitude: latitude.toString(),
+          longitude: longitude.toString(),
+          userId: this.userId,
+          authCode: this.authCode
+        }
       });
-      
-      // Use Supabase Edge Function as proxy to avoid CORS issues
-      const url = `${this.supabaseUrl}/functions/v1/panchang-guidance`;
-      
-      const requestBody = {
-        question: "What is today's Panchang?",
-        date: formattedDate,
-        time: time,
-        timezone: "5.5", // IST timezone
-        latitude: latitude.toString(),
-        longitude: longitude.toString()
+
+      if (error) {
+        console.error('❌ Supabase function error:', error);
+        return { success: false, error: error.message };
+      }
+
+      if (!data || !data.panchang) {
+        console.error('❌ API response error:', data?.error || 'Unknown error');
+        return { success: false, error: data?.error || 'Failed to fetch Panchang data' };
+      }
+
+      // Parse and validate time data with proper date association
+      const parseTimeWithDate = (timeString: string, baseDate: string): string => {
+        if (!timeString) return '';
+        
+        // Handle different time formats from API
+        if (timeString.includes('-')) {
+          // Format: "03-08-2025 05:54:05" or "02-08-2025 07:28:41"
+          const [datePart, timePart] = timeString.split(' ');
+          if (datePart && timePart) {
+            const [day, month, year] = datePart.split('-');
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`;
+          }
+        } else if (timeString.includes(':')) {
+          // Format: "07:43:32" - use base date
+          return `${baseDate} ${timeString}`;
+        }
+        
+        return timeString;
       };
 
-      console.log('🌐 Making API request for:', formattedDate);
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.supabaseAnonKey}`,
-          'apikey': this.supabaseAnonKey
-        },
-        body: JSON.stringify(requestBody)
-      });
-      
-      if (!response.ok) {
-        console.error('API request failed:', response.status, response.statusText);
-        return {
-          success: false,
-          error: `API request failed: ${response.status} ${response.statusText}`
-        };
+      // Helper function to format time for display
+      const formatTimeForDisplay = (timeString: string): string => {
+        if (!timeString) return '';
+        
+        // If it's already in the correct format, return as is
+        if (timeString.includes('-') && timeString.includes(':')) {
+          const [datePart, timePart] = timeString.split(' ');
+          if (datePart && timePart) {
+            const [day, month, year] = datePart.split('-');
+            const formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            return `${formattedDate} ${timePart}`;
+          }
+        }
+        
+        return timeString;
+      };
+
+      // Get enhanced data from Vedic Astro API
+      let vedicAstroData = null;
+      try {
+        const vedicAstroResponse = await vedicAstroAPI.getPanchangData(targetDate, latitude, longitude);
+        if (vedicAstroResponse.success && vedicAstroResponse.data) {
+          vedicAstroData = vedicAstroResponse.data;
+          console.log('✅ Vedic Astro data fetched successfully');
+        }
+      } catch (vedicError) {
+        console.warn('⚠️ Vedic Astro API failed, continuing with primary data:', vedicError);
       }
 
-      const data = await response.json();
+      const panchangData: PanchangData = {
+        tithi: data.panchang.tithi || '',
+        nakshatra: data.panchang.nakshatra || '',
+        yoga: data.panchang.yoga || '',
+        karana: data.panchang.karana || '',
+        rashi: data.panchang.rashi || '',
+        maasa: data.panchang.maasa || '',
+        paksha: data.panchang.paksha || '',
+        sunrise: data.panchang.sunrise || '',
+        sunset: data.panchang.sunset || '',
+        date: targetDate, // Use the exact requested date
+        time: '06:00:00',
+        location: `${latitude}, ${longitude}`,
+        tithiTill: formatTimeForDisplay(data.panchang.tithiTill),
+        tithinum: data.panchang.tithinum,
+        tithiStart: formatTimeForDisplay(data.panchang.tithiStart),
+        nakshatraStart: formatTimeForDisplay(data.panchang.nakshatraStart),
+        nakshatraTill: formatTimeForDisplay(data.panchang.nakshatraTill),
+        yogaStart: formatTimeForDisplay(data.panchang.yoga),
+        yogaTill: formatTimeForDisplay(data.panchang.yogTill),
+        karanaStart: formatTimeForDisplay(data.panchang.karana),
+        karanaTill: formatTimeForDisplay(data.panchang.karanTill),
+        vaar: data.panchang.vaar,
+        vaar_number: data.panchang.vaar_number,
+        // Enhanced data from Vedic Astro API
+        moonrise: vedicAstroData?.moonrise || '',
+        moonset: vedicAstroData?.moonset || '',
+        rahu_kalam: vedicAstroData?.rahu_kalam || '',
+        gulika_kalam: vedicAstroData?.gulika_kalam || '',
+        yamaganda_kalam: vedicAstroData?.yamaganda_kalam || '',
+        abhijit_muhurta: vedicAstroData?.abhijit_muhurta || '',
+        brahma_muhurta: vedicAstroData?.brahma_muhurta || '',
+        sandhya_kal: vedicAstroData?.sandhya_kal || ''
+      };
 
-      if (data.panchang) {
-        const panchangData = {
-          tithi: data.panchang.tithi || '',
-          nakshatra: data.panchang.nakshatra || '',
-          yoga: data.panchang.yoga || '',
-          karana: data.panchang.karana || '',
-          rashi: data.panchang.rashi || '',
-          maasa: data.panchang.maasa || '',
-          paksha: data.panchang.paksha || '',
-          sunrise: data.panchang.sunrise || '',
-          sunset: data.panchang.sunset || '',
-          date: date,
-          time: time,
-          location: `${latitude}, ${longitude}`,
-          tithiTill: data.panchang.tithiTill || '',
-          tithinum: data.panchang.tithinum || 0,
-          tithiStart: data.panchang.tithiStart || '',
-          nakshatraStart: data.panchang.nakshatraStart || '',
-          nakshatraTill: data.panchang.nakshatraTill || '',
-          yogaStart: data.panchang.yogaStart || '',
-          yogaTill: data.panchang.yogaTill || '',
-          karanaStart: data.panchang.karanaStart || '',
-          karanaTill: data.panchang.karanaTill || '',
-          vaar: data.panchang.vaar || '',
-          vaar_number: data.panchang.vaar_number || 0
-        };
+      // Cache the result
+      this.setCache(targetDate, latitude, longitude, panchangData);
 
-        // Cache the result
-        this.setCache(date, latitude, longitude, panchangData);
+      console.log('✅ Enhanced Panchang data fetched successfully');
+      return { success: true, data: panchangData };
 
-        return {
-          success: true,
-          data: panchangData
-        };
-      } else {
-        return {
-          success: false,
-          error: data.error || 'Failed to fetch Panchang data'
-        };
-      }
     } catch (error) {
-      console.error('Panchang API Error:', error);
-      return {
-        success: false,
-        error: `Network error or API unavailable: ${error instanceof Error ? error.message : 'Unknown error'}`
+      console.error('❌ Error fetching Panchang data:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to fetch Panchang data' 
       };
     }
   }
 
-  // Get spiritual guidance based on Panchang data
   async getPanchangGuidance(request: PanchangGuidanceRequest): Promise<PanchangGuidanceResponse> {
     try {
       const { question, date, time, timezone, latitude, longitude } = request;
@@ -228,7 +349,6 @@ class PanchangAPIService {
       
       // Define Tithi keywords for spelling correction - ALL 16 TITHIS
       const tithiKeywords = {
-        // All 16 Tithis (same names in both Shukla and Krishna Paksha)
         'pratipada': 'pratipada',    // 1st tithi after new/full moon
         'dwitiya': 'dwitiya',        // 2nd tithi
         'tritiya': 'tritiya',        // 3rd tithi
@@ -247,68 +367,85 @@ class PanchangAPIService {
         'amavasya': 'amavasya'       // New moon (also considered a tithi)
       };
       
-      // First, analyze the question using Gemini to understand intent
-      console.log('🤖 Analyzing question with Gemini:', question);
-      const geminiAnalysis = await geminiAPI.analyzeQuestion({ question });
+      // Define Tithi guidance for spiritual recommendations
+      const tithiGuidance = {
+        'pratipada': '🙏 Recommended: Pratipada rituals, new beginnings, and spiritual practices. First tithi after new/full moon.',
+        'dwitiya': '🙏 Recommended: Dwitiya rituals, spiritual practices, and meditation. Second tithi.',
+        'tritiya': '🙏 Recommended: Tritiya rituals, spiritual practices, and meditation. Third tithi.',
+        'chaturthi': '🙏 Recommended: Chaturthi rituals, spiritual practices, and meditation. Fourth tithi.',
+        'panchami': '🙏 Recommended: Panchami rituals, spiritual practices, and meditation. Fifth tithi.',
+        'shashthi': '🙏 Recommended: Shashthi rituals, spiritual practices, and meditation. Sixth tithi.',
+        'saptami': '🙏 Recommended: Saptami rituals, spiritual practices, and meditation. Seventh tithi.',
+        'ashtami': '🙏 Recommended: Ashtami rituals, spiritual practices, and meditation. Eighth tithi.',
+        'navami': '🙏 Recommended: Navami rituals, spiritual practices, and meditation. Ninth tithi.',
+        'dashami': '🙏 Recommended: Dashami rituals, spiritual practices, and meditation. Tenth tithi.',
+        'ekadashi': '🙏 Recommended: Ekadashi fasting, spiritual practices, and meditation. Eleventh tithi.',
+        'dwadashi': '🙏 Recommended: Dwadashi rituals, spiritual practices, and meditation. Twelfth tithi.',
+        'trayodashi': '🙏 Recommended: Trayodashi rituals, spiritual practices, and meditation. Thirteenth tithi.',
+        'chaturdashi': '🙏 Recommended: Chaturdashi rituals, spiritual practices, and meditation. Fourteenth tithi.',
+        'purnima': '🙏 Recommended: Purnima rituals, full moon meditation, and spiritual practices. Fifteenth tithi (full moon).',
+        'amavasya': '🙏 Recommended: Amavasya rituals, ancestral offerings, and spiritual purification. New moon (also considered a tithi).'
+      };
       
-      if (!geminiAnalysis.success) {
-        console.log('❌ Gemini analysis failed, falling back to direct processing');
-      } else {
-        console.log('✅ Gemini analysis successful:', geminiAnalysis);
-        
-        // Use corrected spelling if available
-        let processedQuestion = question;
-        if (geminiAnalysis.correctedSpelling) {
-          processedQuestion = question.replace(
-            new RegExp(Object.keys(tithiKeywords).join('|'), 'gi'),
-            geminiAnalysis.correctedSpelling
-          );
-          console.log('🔤 Corrected spelling:', geminiAnalysis.correctedSpelling);
-        }
-        
-        // If Gemini identified it as a vague question or spiritual guidance, get spiritual guidance
-        if (geminiAnalysis.queryType === 'vague' || geminiAnalysis.queryType === 'spiritual_guidance' || !geminiAnalysis.isPanchangQuery) {
-          console.log('🤖 Question is vague, spiritual, or non-Panchang, getting spiritual guidance');
-          const spiritualGuidance = await geminiAPI.getSpiritualGuidance(question);
-          
-          if (spiritualGuidance.success && spiritualGuidance.response) {
-            return {
-              success: true,
-              guidance: `🤖 **AI Understanding**: ${geminiAnalysis.response}\n\n${spiritualGuidance.response}`,
-              panchang: undefined
-            };
-          }
-        }
-        
-        // If Gemini extracted a date, use it
-        if (geminiAnalysis.extractedDate) {
-          console.log('📅 Gemini extracted date:', geminiAnalysis.extractedDate);
-          const targetDate = geminiAnalysis.extractedDate;
-          const panchangData = await this.getAccuratePanchangData(targetDate, lat, lng);
-          
-          if (panchangData.success && panchangData.data) {
-            const guidance = this.generateGuidance(geminiAnalysis.response || question, panchangData.data);
-            return {
-              success: true,
-              guidance,
-              panchang: panchangData.data
-            };
+      // Enhanced date extraction with multiple formats
+      let targetDate = date;
+      
+      // Multiple date format patterns
+      const datePatterns = [
+        /(\d{1,2})\/(\d{1,2})\/(\d{4})/, // DD/MM/YYYY
+        /(\d{1,2})-(\d{1,2})-(\d{4})/,   // DD-MM-YYYY
+        /(\d{4})-(\d{1,2})-(\d{1,2})/,   // YYYY-MM-DD
+        /(\d{1,2})\/(\d{1,2})\/(\d{2})/, // DD/MM/YY
+        /today/i,                          // "today"
+        /tomorrow/i,                       // "tomorrow"
+        /yesterday/i                       // "yesterday"
+      ];
+      
+      for (const pattern of datePatterns) {
+        const match = question.match(pattern);
+        if (match) {
+          if (pattern.source.includes('today')) {
+            targetDate = new Date().toISOString().split('T')[0];
+            break;
+          } else if (pattern.source.includes('tomorrow')) {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            targetDate = tomorrow.toISOString().split('T')[0];
+            break;
+          } else if (pattern.source.includes('yesterday')) {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            targetDate = yesterday.toISOString().split('T')[0];
+            break;
+          } else {
+            const [_, first, second, third] = match;
+            // Determine format based on pattern
+            if (pattern.source.includes('YYYY-MM-DD')) {
+              targetDate = `${first}-${second.padStart(2, '0')}-${third.padStart(2, '0')}`;
+            } else {
+              // Assume DD/MM/YYYY or DD-MM-YYYY
+              targetDate = `${third}-${second.padStart(2, '0')}-${first.padStart(2, '0')}`;
+            }
+            break;
           }
         }
       }
       
-      // Extract date from question if specified (fallback method)
-      let targetDate = date;
-      const dateMatch = question.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-      if (dateMatch) {
-        const [_, day, month, year] = dateMatch;
-        targetDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      // Validate the extracted date
+      const isValidDate = (dateStr: string): boolean => {
+        const date = new Date(dateStr);
+        return date instanceof Date && !isNaN(date.getTime());
+      };
+      
+      if (!targetDate || !isValidDate(targetDate)) {
+        console.log('⚠️ Invalid date extracted, using current date');
+        targetDate = new Date().toISOString().split('T')[0];
       }
       
       // Handle "next" queries for ALL Tithis
       console.log('🔍 Checking for next Tithi queries...');
       for (const [keyword, tithiType] of Object.entries(tithiKeywords)) {
-        if (questionLower.includes(`next ${keyword}`)) {
+        if (question.includes(`next ${keyword}`)) {
           console.log(`🎯 Found "next ${keyword}" query, searching for next occurrence...`);
           const nextEvent = await this.findNextEvent(tithiType as any, lat, lng);
           if (nextEvent.success && nextEvent.event) {
@@ -317,31 +454,11 @@ class PanchangAPIService {
             response += `🕉️ Tithi: ${nextEvent.event.tithi}\n`;
             response += `⏰ Start: ${formatDateTime(nextEvent.event.startTime)}\n`;
             response += `⏰ End: ${formatDateTime(nextEvent.event.endTime)}\n`;
-            response += `⭐ Nakshatra: ${nextEvent.event.nakshatra}\n`;
             response += `🌙 Paksha: ${nextEvent.event.paksha}\n`;
             response += `📅 Maasa: ${nextEvent.event.maasa}\n`;
             response += `📆 Varam: ${nextEvent.event.vaar}\n\n`;
             
-            // Add specific guidance for each Tithi
-            const tithiGuidance = {
-              'pratipada': '🙏 Recommended: Pratipada rituals, new month celebrations, and auspicious beginnings. First tithi after new/full moon.',
-              'dwitiya': '🙏 Recommended: Dwitiya rituals, spiritual practices, and meditation. Second tithi.',
-              'tritiya': '🙏 Recommended: Tritiya rituals, spiritual practices, and prayer. Third tithi.',
-              'chaturthi': '🙏 Recommended: Ganesh Chaturthi, Vinayaka worship, and obstacle removal. Fourth tithi.',
-              'panchami': '🙏 Recommended: Panchami rituals, spiritual practices, and meditation. Fifth tithi.',
-              'shashthi': '🙏 Recommended: Shashthi rituals, spiritual practices, and prayer. Sixth tithi (Shashti).',
-              'saptami': '🙏 Recommended: Saptami rituals, spiritual practices, and meditation. Seventh tithi.',
-              'ashtami': '🙏 Recommended: Durga Puja, fasting, spiritual practices, and strength rituals. Eighth tithi.',
-              'navami': '🙏 Recommended: Siddhi Vinayaka Puja, spiritual practices, and success rituals. Ninth tithi.',
-              'dashami': '🙏 Recommended: Vijayadashami celebrations, new beginnings, and victory rituals. Tenth tithi.',
-              'ekadashi': '🙏 Recommended: Light fast, avoid grains, focus on prayers and meditation. Eleventh tithi.',
-              'dwadashi': '🙏 Recommended: Dwadashi rituals, spiritual practices, and prayer. Twelfth tithi.',
-              'trayodashi': '🙏 Recommended: Pradosh Vrat, Shiva worship, and spiritual practices. Thirteenth tithi.',
-              'chaturdashi': '🙏 Recommended: Chaturdashi rituals, spiritual practices, and meditation. Fourteenth tithi.',
-              'purnima': '🙏 Recommended: Purnima rituals, full moon meditation, and spiritual practices. Fifteenth tithi (full moon).',
-              'amavasya': '🙏 Recommended: Amavasya rituals, ancestral offerings, and spiritual purification. New moon (also considered a tithi).'
-            };
-            
+            // Add spiritual guidance for this Tithi
             response += tithiGuidance[tithiType as keyof typeof tithiGuidance] || '🙏 Recommended: Spiritual practices and meditation.';
             response += `\n\n💡 Spiritual tip: Use this time for meditation, prayer, and connecting with your inner self.`;
             
@@ -372,7 +489,7 @@ class PanchangAPIService {
       
       // Fallback: Check for any Tithi mention without "next"
       for (const [keyword, tithiType] of Object.entries(tithiKeywords)) {
-        if (questionLower.includes(keyword) && !questionLower.includes('next')) {
+        if (question.includes(keyword) && !question.includes('next')) {
           console.log(`🎯 Found "${keyword}" query, providing current information...`);
           // Get today's data for this Tithi
           const today = new Date().toISOString().split('T')[0];
@@ -390,7 +507,7 @@ class PanchangAPIService {
       }
       
       // Handle Krishna Paksha queries
-      if (questionLower.includes('krishna paksha')) {
+              if (question.includes('krishna paksha')) {
         const today = new Date().toISOString().split('T')[0];
         const panchangData = await this.getAccuratePanchangData(today, lat, lng);
         
@@ -434,22 +551,22 @@ class PanchangAPIService {
       }
       
       // Handle Maasa queries
-      if (questionLower.includes('maasa') || questionLower.includes('month')) {
+              if (question.includes('maasa') || question.includes('month')) {
         const today = new Date().toISOString().split('T')[0];
         const panchangData = await this.getAccuratePanchangData(today, lat, lng);
         
         if (panchangData.success && panchangData.data) {
           let response = `📅 Current Maasa Information:\n\n`;
           response += `📅 Date: ${formatDate(panchangData.data.date)}\n`;
+          response += `🕉️ Current Tithi: ${panchangData.data.tithi}\n`;
+          response += `🌙 Current Paksha: ${panchangData.data.paksha}\n`;
           response += `📅 Maasa: ${panchangData.data.maasa}\n`;
-          response += `🕉️ Tithi: ${panchangData.data.tithi}\n`;
-          response += `🌙 Paksha: ${panchangData.data.paksha}\n`;
           response += `📆 Varam: ${panchangData.data.vaar}\n\n`;
           
           response += `📖 **About ${panchangData.data.maasa} Maasa:**\n`;
           response += `• Each Hindu month has specific spiritual significance\n`;
           response += `• Different months are auspicious for different practices\n`;
-          response += `• Current month: ${panchangData.data.maasa}\n\n`;
+          response += `• The current month influences the energy of your spiritual practices\n\n`;
           response += `🙏 Recommended practices for this month:\n`;
           response += `• Follow the specific rituals for ${panchangData.data.maasa}\n`;
           response += `• Practice meditation and prayer\n`;
@@ -465,22 +582,24 @@ class PanchangAPIService {
       }
       
       // Handle Varalakshmi Vratham queries
-      if (questionLower.includes('varalakshmi') || questionLower.includes('vratham')) {
+              if (question.includes('varalakshmi') || question.includes('vratham')) {
         let response = `🕉️ Varalakshmi Vratham Information:\n\n`;
-        response += `📅 **Varalakshmi Vratham** is a sacred Hindu festival\n`;
-        response += `• Celebrated on the Friday before Purnima in Shravan month\n`;
-        response += `• Dedicated to Goddess Lakshmi for prosperity and well-being\n`;
-        response += `• Usually falls in July-August (Shravan month)\n\n`;
+        response += `📅 **About Varalakshmi Vratham:**\n`;
+        response += `• Varalakshmi Vratham is a sacred Hindu festival\n`;
+        response += `• It is observed on the Friday before Purnima in the month of Shravana\n`;
+        response += `• This vratham is dedicated to Goddess Lakshmi\n`;
+        response += `• It is believed to bring prosperity and well-being to the family\n\n`;
         response += `🙏 **Rituals and Practices:**\n`;
-        response += `• Women observe fasting and perform special puja\n`;
-        response += `• Decorate homes with rangoli and flowers\n`;
-        response += `• Offer prayers to Goddess Lakshmi\n`;
+        response += `• Wake up early and take a holy bath\n`;
+        response += `• Decorate the house with rangoli and flowers\n`;
+        response += `• Prepare special offerings to Goddess Lakshmi\n`;
+        response += `• Perform the vratham with devotion and faith\n`;
         response += `• Distribute prasad to family and friends\n\n`;
         response += `💡 **Spiritual Significance:**\n`;
-        response += `• Brings prosperity and abundance\n`;
-        response += `• Strengthens family bonds\n`;
-        response += `• Removes obstacles and negative energy\n`;
-        response += `• Fulfills wishes and desires`;
+        response += `• This vratham is especially beneficial for married women\n`;
+        response += `• It is believed to bring harmony and prosperity to the family\n`;
+        response += `• The vratham should be performed with pure intentions\n`;
+        response += `• Regular observance can bring lasting benefits`;
         
         return {
           success: true,
@@ -490,6 +609,7 @@ class PanchangAPIService {
       }
       
       // Default: Get today's Panchang data
+      console.log('📅 Getting today\'s Panchang data as default response');
       const today = new Date().toISOString().split('T')[0];
       const panchangData = await this.getAccuratePanchangData(today, lat, lng);
       
@@ -504,365 +624,283 @@ class PanchangAPIService {
       
       return {
         success: false,
-        error: 'Unable to get Panchang data. Please try again.'
+        error: 'Unable to process your question. Please try asking about specific Tithis, dates, or spiritual topics.'
       };
-      
+
     } catch (error) {
-      console.error('Error in getPanchangGuidance:', error);
+      console.error('❌ Error in getPanchangGuidance:', error);
       return {
         success: false,
-        error: 'An error occurred while processing your request. Please try again.'
+        error: error instanceof Error ? error.message : 'Failed to get Panchang guidance'
       };
     }
   }
 
-  // Generate intelligent response based on question and Panchang data
   private generateGuidance(question: string, panchang: PanchangData): string {
-    const questionLower = question.toLowerCase();
-    let response = '';
-
-    // Handle specific date queries
-    if (questionLower.includes('date') || questionLower.includes('when')) {
-      const dateMatch = question.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-      if (dateMatch) {
-        const [_, day, month, year] = dateMatch;
-        response += `📅 Detailed Panchang for ${day}/${month}/${year}:\n\n`;
-        response += `🕉️ Tithi: ${panchang.tithi}\n`;
-        if (panchang.tithiStart) response += `   ⏰ Start: ${formatDateTime(panchang.tithiStart)}\n`;
-        if (panchang.tithiTill) response += `   ⏰ End: ${formatDateTime(panchang.tithiTill)}\n`;
-        response += `⭐ Nakshatra: ${panchang.nakshatra}\n`;
-        if (panchang.nakshatraStart) response += `   ⏰ Start: ${formatDateTime(panchang.nakshatraStart)}\n`;
-        if (panchang.nakshatraTill) response += `   ⏰ End: ${formatDateTime(panchang.nakshatraTill)}\n`;
-        response += `🌙 Paksha: ${panchang.paksha}\n`;
-        response += `🧘 Yoga: ${panchang.yoga}\n`;
-        if (panchang.yogaStart) response += `   ⏰ Start: ${formatDateTime(panchang.yogaStart)}\n`;
-        if (panchang.yogaTill) response += `   ⏰ End: ${formatDateTime(panchang.yogaTill)}\n`;
-        response += `🔮 Karana: ${panchang.karana}\n`;
-        if (panchang.karanaStart) response += `   ⏰ Start: ${formatDateTime(panchang.karanaStart)}\n`;
-        if (panchang.karanaTill) response += `   ⏰ End: ${formatDateTime(panchang.karanaTill)}\n`;
-        response += `🌅 Sunrise: ${formatTime(panchang.sunrise)}\n`;
-        response += `🌇 Sunset: ${formatTime(panchang.sunset)}\n`;
-        response += `📅 Date: ${panchang.date}\n`;
-        response += `📅 Maasa: ${panchang.maasa}\n`;
-        response += `📆 Varam: ${panchang.vaar}\n`;
-        return response;
-      }
+    let response = `🕉️ Panchang Information:\n\n`;
+    response += `📅 Date: ${formatDate(panchang.date)}\n`;
+    response += `🕉️ Tithi: ${panchang.tithi}\n`;
+    response += `⭐ Nakshatra: ${panchang.nakshatra}\n`;
+    response += `🌙 Paksha: ${panchang.paksha}\n`;
+    response += `📅 Maasa: ${panchang.maasa}\n`;
+    response += `📆 Varam: ${panchang.vaar}\n`;
+    
+    if (panchang.tithiStart && panchang.tithiTill) {
+      response += `⏰ Tithi Start: ${formatDateTime(panchang.tithiStart)}\n`;
+      response += `⏰ Tithi End: ${formatDateTime(panchang.tithiTill)}\n`;
     }
-
-    // Handle "next Ekadashi" queries
-    if (questionLower.includes('next ekadashi') || questionLower.includes('when is ekadashi')) {
-      response += `🕉️ Next Ekadashi Information:\n\n`;
-      response += `Today is ${panchang.tithi} Tithi.\n\n`;
-      
-      if (panchang.tithi.toLowerCase().includes('ekadashi')) {
-        response += `🎉 Today is Ekadashi! It's an auspicious day for fasting and spiritual practices.\n\n`;
-        response += `📅 Date: ${formatDate(panchang.date)}\n`;
-        response += `🕉️ Tithi: ${panchang.tithi}\n`;
-        if (panchang.tithiStart) response += `⏰ Start: ${formatDateTime(panchang.tithiStart)}\n`;
-        if (panchang.tithiTill) response += `⏰ End: ${formatDateTime(panchang.tithiTill)}\n`;
-        response += `⭐ Nakshatra: ${panchang.nakshatra}\n`;
-        if (panchang.nakshatraStart) response += `⏰ Nakshatra Start: ${formatDateTime(panchang.nakshatraStart)}\n`;
-        if (panchang.nakshatraTill) response += `⏰ Nakshatra End: ${formatDateTime(panchang.nakshatraTill)}\n`;
-        response += `🌙 Paksha: ${panchang.paksha}\n`;
-        response += `📅 Maasa: ${panchang.maasa}\n`;
-        response += `📆 Varam: ${panchang.vaar}\n\n`;
-        response += `🙏 Recommended: Light fast, avoid grains, focus on prayers and meditation.`;
-      } else {
-        response += `📅 Next Ekadashi will be found by searching upcoming dates...\n`;
-        response += `💡 Tip: The system will search for the exact date and timing.`;
-      }
-      return response;
+    
+    if (panchang.nakshatraStart && panchang.nakshatraTill) {
+      response += `⭐ Nakshatra Start: ${formatDateTime(panchang.nakshatraStart)}\n`;
+      response += `⭐ Nakshatra End: ${formatDateTime(panchang.nakshatraTill)}\n`;
     }
-
-    // Handle "next Purnima" queries
-    if (questionLower.includes('next purnima') || questionLower.includes('when is purnima')) {
-      response += `🌕 Next Purnima Information:\n\n`;
-      response += `Today is ${panchang.tithi} Tithi.\n\n`;
-      
-      if (panchang.tithi.toLowerCase().includes('purnima')) {
-        response += `🎉 Today is Purnima! It's a full moon day, excellent for spiritual practices.\n\n`;
-        response += `📅 Date: ${formatDate(panchang.date)}\n`;
-        response += `🕉️ Tithi: ${panchang.tithi}\n`;
-        if (panchang.tithiStart) response += `⏰ Start: ${formatDateTime(panchang.tithiStart)}\n`;
-        if (panchang.tithiTill) response += `⏰ End: ${formatDateTime(panchang.tithiTill)}\n`;
-        response += `⭐ Nakshatra: ${panchang.nakshatra}\n`;
-        if (panchang.nakshatraStart) response += `⏰ Nakshatra Start: ${formatDateTime(panchang.nakshatraStart)}\n`;
-        if (panchang.nakshatraTill) response += `⏰ Nakshatra End: ${formatDateTime(panchang.nakshatraTill)}\n`;
-        response += `🌙 Paksha: ${panchang.paksha}\n`;
-        response += `📅 Maasa: ${panchang.maasa}\n`;
-        response += `📆 Varam: ${panchang.vaar}\n\n`;
-        response += `🙏 Recommended: Moon worship, meditation, and charitable activities.`;
-      } else {
-        response += `📅 Next Purnima will be found by searching upcoming dates...\n`;
-        response += `💡 Tip: The system will search for the exact date and timing.`;
-      }
-      return response;
-    }
-
-    // Handle "next Amavasya" queries
-    if (questionLower.includes('next amavasya') || questionLower.includes('when is amavasya')) {
-      response += `🌑 Next Amavasya Information:\n\n`;
-      response += `Today is ${panchang.tithi} Tithi.\n\n`;
-      
-      if (panchang.tithi.toLowerCase().includes('amavasya')) {
-        response += `🎉 Today is Amavasya! It's a new moon day, good for ancestral rituals.\n\n`;
-        response += `📅 Date: ${formatDate(panchang.date)}\n`;
-        response += `🕉️ Tithi: ${panchang.tithi}\n`;
-        if (panchang.tithiStart) response += `⏰ Start: ${formatDateTime(panchang.tithiStart)}\n`;
-        if (panchang.tithiTill) response += `⏰ End: ${formatDateTime(panchang.tithiTill)}\n`;
-        response += `⭐ Nakshatra: ${panchang.nakshatra}\n`;
-        if (panchang.nakshatraStart) response += `⏰ Nakshatra Start: ${formatDateTime(panchang.nakshatraStart)}\n`;
-        if (panchang.nakshatraTill) response += `⏰ Nakshatra End: ${formatDateTime(panchang.nakshatraTill)}\n`;
-        response += `🌙 Paksha: ${panchang.paksha}\n`;
-        response += `📅 Maasa: ${panchang.maasa}\n`;
-        response += `📆 Varam: ${panchang.vaar}\n\n`;
-        response += `🙏 Recommended: Pitru tarpan, meditation, and spiritual practices.`;
-      } else {
-        response += `📅 Next Amavasya will be found by searching upcoming dates...\n`;
-        response += `💡 Tip: The system will search for the exact date and timing.`;
-      }
-      return response;
-    }
-
-    // Handle specific Tithi queries
-    if (questionLower.includes('tithi') && !questionLower.includes('next')) {
-      response += `📅 Today's Detailed Panchang Information:\n\n`;
-      response += `🕉️ Tithi: ${panchang.tithi}\n`;
-      if (panchang.tithiStart) response += `⏰ Start: ${panchang.tithiStart}\n`;
-      if (panchang.tithiTill) response += `⏰ End: ${panchang.tithiTill}\n`;
-      response += `⭐ Nakshatra: ${panchang.nakshatra}\n`;
-      if (panchang.nakshatraStart) response += `⏰ Start: ${panchang.nakshatraStart}\n`;
-      if (panchang.nakshatraTill) response += `⏰ End: ${panchang.nakshatraTill}\n`;
-      response += `🌙 Paksha: ${panchang.paksha}\n`;
-      response += `🧘 Yoga: ${panchang.yoga}\n`;
-      if (panchang.yogaStart) response += `⏰ Start: ${panchang.yogaStart}\n`;
-      if (panchang.yogaTill) response += `⏰ End: ${panchang.yogaTill}\n`;
-      response += `🔮 Karana: ${panchang.karana}\n`;
-      if (panchang.karanaStart) response += `⏰ Start: ${panchang.karanaStart}\n`;
-      if (panchang.karanaTill) response += `⏰ End: ${panchang.karanaTill}\n`;
+    
+    if (panchang.sunrise && panchang.sunset) {
       response += `🌅 Sunrise: ${panchang.sunrise}\n`;
       response += `🌇 Sunset: ${panchang.sunset}\n`;
-      response += `📅 Date: ${panchang.date}\n`;
-      response += `📅 Maasa: ${panchang.maasa}\n`;
-      response += `📆 Varam: ${panchang.vaar}\n`;
-      return response;
     }
-
-    // Handle general spiritual guidance
-    if (questionLower.includes('fast') || questionLower.includes('vrat')) {
-      if (panchang.tithi.toLowerCase().includes('ekadashi')) {
-        response += `🎉 Today is ${panchang.tithi}, an auspicious day for fasting!\n\n`;
-        response += `📅 Date: ${panchang.date}\n`;
-        response += `🕉️ Tithi: ${panchang.tithi}\n`;
-        if (panchang.tithiStart) response += `⏰ Start: ${panchang.tithiStart}\n`;
-        if (panchang.tithiTill) response += `⏰ End: ${panchang.tithiTill}\n`;
-        response += `⭐ Nakshatra: ${panchang.nakshatra}\n`;
-        response += `🌙 Paksha: ${panchang.paksha}\n`;
-        response += `📅 Maasa: ${panchang.maasa}\n`;
-        response += `📆 Varam: ${panchang.vaar}\n\n`;
-        response += `🙏 Recommended practices:\n`;
-        response += `• Light fast (avoid grains)\n`;
-        response += `• Focus on prayers and meditation\n`;
-        response += `• Read spiritual texts\n`;
-        response += `• Practice self-discipline`;
-      } else {
-        response += `Today is ${panchang.tithi} Tithi.\n\n`;
-        response += `💡 While not Ekadashi, you can still observe spiritual practices.\n`;
-        response += `🙏 Consider fasting on the next Ekadashi for maximum spiritual benefits.`;
-      }
-      return response;
-    }
-
-    // Default response with current Panchang
-    response += `🕉️ Today's Detailed Panchang: ${panchang.tithi} Tithi, ${panchang.nakshatra} Nakshatra\n\n`;
-    response += `📅 Date: ${formatDate(panchang.date)}\n`;
-    if (panchang.tithiStart) response += `⏰ Tithi Start: ${formatDateTime(panchang.tithiStart)}\n`;
-    if (panchang.tithiTill) response += `⏰ Tithi End: ${formatDateTime(panchang.tithiTill)}\n`;
-    response += `🌅 Sunrise: ${formatTime(panchang.sunrise)}\n`;
-    response += `🌇 Sunset: ${formatTime(panchang.sunset)}\n`;
-    response += `🌙 Paksha: ${panchang.paksha}\n`;
-    response += `🧘 Yoga: ${panchang.yoga}\n`;
-    response += `📅 Maasa: ${panchang.maasa}\n`;
-    response += `📆 Varam: ${panchang.vaar}\n\n`;
-    response += `💡 Spiritual tip: Use this time for meditation, prayer, and connecting with your inner self.`;
-
+    
+    response += `📍 Location: ${panchang.location}\n\n`;
+    
+    // Add spiritual guidance based on Tithi
+    const tithiGuidance = {
+      'Pratipada': '🙏 Recommended: New beginnings, spiritual practices, and meditation. First tithi after new/full moon.',
+      'Dwitiya': '🙏 Recommended: Dwitiya rituals, spiritual practices, and meditation. Second tithi.',
+      'Tritiya': '🙏 Recommended: Tritiya rituals, spiritual practices, and meditation. Third tithi.',
+      'Chaturthi': '🙏 Recommended: Chaturthi rituals, spiritual practices, and meditation. Fourth tithi.',
+      'Panchami': '🙏 Recommended: Panchami rituals, spiritual practices, and meditation. Fifth tithi.',
+      'Shashthi': '🙏 Recommended: Shashthi rituals, spiritual practices, and meditation. Sixth tithi.',
+      'Saptami': '🙏 Recommended: Saptami rituals, spiritual practices, and meditation. Seventh tithi.',
+      'Ashtami': '🙏 Recommended: Ashtami rituals, spiritual practices, and meditation. Eighth tithi.',
+      'Navami': '🙏 Recommended: Navami rituals, spiritual practices, and meditation. Ninth tithi.',
+      'Dashami': '🙏 Recommended: Dashami rituals, spiritual practices, and meditation. Tenth tithi.',
+      'Ekadashi': '🙏 Recommended: Ekadashi fasting, spiritual practices, and meditation. Eleventh tithi.',
+      'Dwadashi': '🙏 Recommended: Dwadashi rituals, spiritual practices, and meditation. Twelfth tithi.',
+      'Trayodashi': '🙏 Recommended: Trayodashi rituals, spiritual practices, and meditation. Thirteenth tithi.',
+      'Chaturdashi': '🙏 Recommended: Chaturdashi rituals, spiritual practices, and meditation. Fourteenth tithi.',
+      'Purnima': '🙏 Recommended: Purnima rituals, full moon meditation, and spiritual practices. Fifteenth tithi (full moon).',
+      'Amavasya': '🙏 Recommended: Amavasya rituals, ancestral offerings, and spiritual purification. New moon (also considered a tithi).'
+    };
+    
+    response += tithiGuidance[panchang.tithi as keyof typeof tithiGuidance] || '🙏 Recommended: Spiritual practices and meditation.';
+    response += `\n\n💡 Spiritual tip: Use this time for meditation, prayer, and connecting with your inner self.`;
+    
     return response;
   }
 
-  // Get accurate Panchang data for a specific date (now uses caching)
   async getAccuratePanchangData(targetDate: string, latitude: number, longitude: number): Promise<PanchangResponse> {
-    // Use the cached getPanchangData method which already includes caching
-    return await this.getPanchangData(targetDate, latitude, longitude);
+    return this.getPanchangData(targetDate, latitude, longitude);
   }
 
-  // Find next specific event with smart calculations and minimal API calls
   async findNextEvent(eventType: 'pratipada' | 'dwitiya' | 'tritiya' | 'chaturthi' | 'panchami' | 'shashthi' | 'saptami' | 'ashtami' | 'navami' | 'dashami' | 'ekadashi' | 'dwadashi' | 'trayodashi' | 'chaturdashi' | 'purnima' | 'amavasya', latitude: number, longitude: number): Promise<{ success: boolean; event?: any; error?: string }> {
     try {
-      // First, get today's Panchang to understand current position
-      const today = new Date().toISOString().split('T')[0];
-      const todayData = await this.getPanchangData(today, latitude, longitude);
+      console.log(`🔍 Finding next ${eventType} event...`);
       
-      if (!todayData.success || !todayData.data) {
-        return {
-          success: false,
-          error: 'Failed to get today\'s Panchang data'
-        };
-      }
-
-      const currentTithiNum = todayData.data.tithinum || 0;
-      let targetDays = 0;
-
-      // Smart calculation based on current tithi
-      if (eventType === 'ekadashi') {
-        // Ekadashi occurs on 11th and 26th tithi
-        const daysToNextEkadashi = currentTithiNum <= 11 ? 11 - currentTithiNum : 26 - currentTithiNum;
-        if (daysToNextEkadashi <= 0) {
-          targetDays = 11; // Next cycle
-        } else {
-          targetDays = daysToNextEkadashi;
-        }
-      } else if (eventType === 'purnima') {
-        // Purnima occurs on 15th tithi
-        const daysToNextPurnima = 15 - currentTithiNum;
-        if (daysToNextPurnima <= 0) {
-          targetDays = 15; // Next cycle
-        } else {
-          targetDays = daysToNextPurnima;
-        }
-      } else if (eventType === 'amavasya') {
-        // Amavasya occurs on 30th tithi (or 0th of next cycle)
-        const daysToNextAmavasya = 30 - currentTithiNum;
-        if (daysToNextAmavasya <= 0) {
-          targetDays = 30; // Next cycle
-        } else {
-          targetDays = daysToNextAmavasya;
-        }
-      } else if (eventType === 'ashtami') {
-        // Ashtami occurs on 8th and 23rd tithi
-        const daysToNextAshtami = currentTithiNum <= 8 ? 8 - currentTithiNum : 23 - currentTithiNum;
-        if (daysToNextAshtami <= 0) {
-          targetDays = 8; // Next cycle
-        } else {
-          targetDays = daysToNextAshtami;
-        }
-      }
-
-      // Calculate target date
-      const targetDate = new Date(today);
-      targetDate.setDate(targetDate.getDate() + targetDays);
-      const targetDateStr = targetDate.toISOString().split('T')[0];
-
-      // Get Panchang data for the calculated target date
-      const targetData = await this.getPanchangData(targetDateStr, latitude, longitude);
-      
-      if (!targetData.success || !targetData.data) {
-        return {
-          success: false,
-          error: `Failed to get Panchang data for calculated ${eventType} date`
-        };
-      }
-
-      const tithi = targetData.data.tithi.toLowerCase();
-      
-      // Verify if the calculated date has the target event
-      if ((eventType === 'ekadashi' && tithi.includes('ekadashi')) ||
-          (eventType === 'purnima' && tithi.includes('purnima')) ||
-          (eventType === 'amavasya' && tithi.includes('amavasya')) ||
-          (eventType === 'ashtami' && tithi.includes('ashtami'))) {
-        
-        return {
-          success: true,
-          event: {
-            type: eventType.charAt(0).toUpperCase() + eventType.slice(1),
-            date: targetDateStr,
-            tithi: targetData.data.tithi,
-            startTime: targetData.data.tithiStart,
-            endTime: targetData.data.tithiTill,
-            nakshatra: targetData.data.nakshatra,
-            paksha: targetData.data.paksha,
-            maasa: targetData.data.maasa,
-            vaar: targetData.data.vaar
-          }
-        };
-      }
-
-      // If calculated date doesn't match, do a limited search (max 5 days around calculated date)
-      const searchRange = 5;
-      for (let i = -searchRange; i <= searchRange; i++) {
-        const searchDate = new Date(targetDate);
-        searchDate.setDate(targetDate.getDate() + i);
-        const searchDateStr = searchDate.toISOString().split('T')[0];
-        
-        const searchData = await this.getPanchangData(searchDateStr, latitude, longitude);
-        
-        if (searchData.success && searchData.data) {
-          const searchTithi = searchData.data.tithi.toLowerCase();
-          
-          if ((eventType === 'ekadashi' && searchTithi.includes('ekadashi')) ||
-              (eventType === 'purnima' && searchTithi.includes('purnima')) ||
-              (eventType === 'amavasya' && searchTithi.includes('amavasya')) ||
-              (eventType === 'ashtami' && searchTithi.includes('ashtami'))) {
-            
-            return {
-              success: true,
-              event: {
-                type: eventType.charAt(0).toUpperCase() + eventType.slice(1),
-                date: searchDateStr,
-                tithi: searchData.data.tithi,
-                startTime: searchData.data.tithiStart,
-                endTime: searchData.data.tithiTill,
-                nakshatra: searchData.data.nakshatra,
-                paksha: searchData.data.paksha,
-                maasa: searchData.data.maasa,
-                vaar: searchData.data.vaar
-              }
-            };
-          }
-        }
+      // Check event cache first
+      const eventCacheKey = `${eventType}_${latitude}_${longitude}`;
+      const cachedEvent = this.eventCache.get(eventCacheKey);
+      if (cachedEvent && Date.now() - cachedEvent.timestamp < this.eventCacheExpiry) {
+        console.log('📦 Using cached event data');
+        return { success: true, event: cachedEvent.event };
       }
       
-      return {
-        success: false,
-        error: `No ${eventType} found in the calculated range`
+      // Map event types to their Tithi numbers for efficient searching
+      const tithiMap: Record<string, number> = {
+        'pratipada': 1,
+        'dwitiya': 2,
+        'tritiya': 3,
+        'chaturthi': 4,
+        'panchami': 5,
+        'shashthi': 6,
+        'saptami': 7,
+        'ashtami': 8,
+        'navami': 9,
+        'dashami': 10,
+        'ekadashi': 11,
+        'dwadashi': 12,
+        'trayodashi': 13,
+        'chaturdashi': 14,
+        'purnima': 15,
+        'amavasya': 30 // Special case for new moon
       };
+      
+      const targetTithiNum = tithiMap[eventType];
+      if (!targetTithiNum) {
+        return { success: false, error: `Invalid event type: ${eventType}` };
+      }
+      
+      // Smart search algorithm: Get current Tithi and calculate approximate next occurrence
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+      const [year, month, day] = todayStr.split('-');
+      const formattedDate = `${day}/${month}/${year}`;
+      
+      console.log(`🔍 Getting current Tithi to calculate next ${eventType}...`);
+      
+      // Get current day's Panchang data
+      const { data, error } = await supabase.functions.invoke('panchang-guidance', {
+        body: {
+          question: `What is the panchang for ${formattedDate}?`,
+          date: formattedDate,
+          time: '06:00:00',
+          timezone: '5.5',
+          latitude: latitude.toString(),
+          longitude: longitude.toString(),
+          userId: this.userId,
+          authCode: this.authCode
+        }
+      });
+
+      if (error || !data || !data.panchang) {
+        console.error('❌ Failed to get current Panchang data:', error || data?.error);
+        return { success: false, error: 'Failed to get current Panchang data' };
+      }
+
+      const currentTithiNum = data.panchang.tithinum;
+      const currentTithi = data.panchang.tithi;
+      
+      console.log(`📅 Current Tithi: ${currentTithi} (${currentTithiNum}), Target: ${eventType} (${targetTithiNum})`);
+      
+      // Calculate days to next occurrence
+      let daysToAdd = 0;
+      
+      if (targetTithiNum === 30) { // Amavasya (new moon)
+        // Amavasya occurs every ~29.5 days, so search around that interval
+        daysToAdd = 29;
+      } else if (targetTithiNum === 15) { // Purnima (full moon)
+        // Purnima occurs every ~29.5 days, so search around that interval
+        daysToAdd = 29;
+      } else {
+        // For regular Tithis, calculate based on current Tithi
+        if (currentTithiNum <= targetTithiNum) {
+          daysToAdd = targetTithiNum - currentTithiNum;
+        } else {
+          // Target Tithi is in next cycle (after Purnima/Amavasya)
+          daysToAdd = (30 - currentTithiNum) + targetTithiNum;
+        }
+      }
+      
+      // Add some buffer days to ensure we find it
+      daysToAdd = Math.max(daysToAdd - 2, 0); // Start 2 days earlier
+      
+      console.log(`🚀 Calculating next ${eventType} in approximately ${daysToAdd} days...`);
+      
+      // Search in a small window around the calculated date
+      const searchStartDate = new Date(today);
+      searchStartDate.setDate(searchStartDate.getDate() + daysToAdd);
+      
+      // Search in a 5-day window around the calculated date
+      for (let i = 0; i < 5; i++) {
+        const searchDate = new Date(searchStartDate);
+        searchDate.setDate(searchDate.getDate() + i);
+        
+        const dateStr = searchDate.toISOString().split('T')[0];
+        const [searchYear, searchMonth, searchDay] = dateStr.split('-');
+        const searchFormattedDate = `${searchDay}/${searchMonth}/${searchYear}`;
+        
+        console.log(`🔍 Checking date: ${searchFormattedDate} for ${eventType}...`);
+        
+        try {
+          const searchData = await supabase.functions.invoke('panchang-guidance', {
+            body: {
+              question: `What is the panchang for ${searchFormattedDate}?`,
+              date: searchFormattedDate,
+              time: '06:00:00',
+              timezone: '5.5',
+              latitude: latitude.toString(),
+              longitude: longitude.toString(),
+              userId: this.userId,
+              authCode: this.authCode
+            }
+          });
+
+          if (searchData.error || !searchData.data || !searchData.data.panchang) {
+            console.error('❌ Search API error:', searchData.error);
+            continue;
+          }
+
+          const searchTithiNum = searchData.data.panchang.tithinum;
+          const searchTithi = searchData.data.panchang.tithi;
+          
+          console.log(`📅 Date: ${searchFormattedDate}, Tithi: ${searchTithi} (${searchTithiNum})`);
+          
+          // Check if this is the target Tithi
+          if (searchTithiNum === targetTithiNum || 
+              (eventType === 'amavasya' && searchTithiNum === 30) ||
+              (eventType === 'purnima' && searchTithiNum === 15)) {
+            
+            // Found the target Tithi!
+            const eventData = {
+              date: searchFormattedDate,
+              tithi: searchData.data.panchang.tithi,
+              nakshatra: searchData.data.panchang.nakshatra,
+              paksha: searchData.data.panchang.paksha,
+              maasa: searchData.data.panchang.maasa,
+              vaar: searchData.data.panchang.vaar,
+              startTime: searchData.data.panchang.tithiStart,
+              endTime: searchData.data.panchang.tithiTill
+            };
+
+            console.log('✅ Next event found:', eventData);
+            
+            // Cache the event result
+            this.eventCache.set(eventCacheKey, { event: eventData, timestamp: Date.now() });
+            
+            return { success: true, event: eventData };
+          }
+          
+        } catch (error) {
+          console.error(`❌ Error checking date ${searchFormattedDate}:`, error);
+        }
+      }
+      
+      return { success: false, error: `Could not find next ${eventType} in the calculated window` };
+
     } catch (error) {
-      return {
-        success: false,
-        error: `Error finding next ${eventType}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      console.error('❌ Error finding next event:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to find next event' 
       };
     }
   }
 
-  // Validate API credentials
   async validateCredentials(): Promise<boolean> {
     try {
-      // First check if Supabase configuration is set
-      if (!this.supabaseUrl || !this.supabaseAnonKey) {
-        console.error('Supabase configuration not set:', { 
-          supabaseUrl: this.supabaseUrl ? 'Set' : 'Missing',
-          supabaseAnonKey: this.supabaseAnonKey ? 'Set' : 'Missing'
-        });
+      console.log('🔐 Validating Panchang API credentials...');
+      
+      // Use a simple test call to validate credentials
+      const { data, error } = await supabase.functions.invoke('panchang-guidance', {
+        body: {
+          question: 'test',
+          date: '27/07/2025',
+          time: '06:00:00',
+          timezone: '5.5',
+          latitude: '28.6139',
+          longitude: '77.2090',
+          userId: this.userId,
+          authCode: this.authCode
+        }
+      });
+
+      if (error) {
+        console.error('❌ Supabase function error:', error);
         return false;
       }
 
-      // Make a test API call through Supabase Edge Function
-      const today = new Date().toISOString().split('T')[0];
-      console.log('Validating Panchang API through Supabase Edge Function with:', {
-        supabaseUrl: this.supabaseUrl,
-        date: today,
-        coordinates: [28.6139, 77.2090]
-      });
+      if (!data || !data.panchang) {
+        console.error('❌ Credential validation failed:', data?.error || 'Unknown error');
+        return false;
+      }
 
-      const result = await this.getPanchangData(today, 28.6139, 77.2090);
-      console.log('Validation result:', result);
-      
-      return result.success;
+      console.log('✅ Credentials validated successfully');
+      return true;
+
     } catch (error) {
-      console.error('Credential validation failed:', error);
+      console.error('❌ Error validating credentials:', error);
       return false;
     }
   }
 }
 
-// Export singleton instance
 export const panchangAPI = new PanchangAPIService(); 

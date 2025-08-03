@@ -15,7 +15,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { usePanchang } from '../hooks/usePanchang';
-import VoiceInterface from './VoiceInterface';
+import { aiService } from '../lib/gemini-api';
 // Removed unused imports to fix linting errors
 // Removed complex API dependencies - using simple local responses
 // Removed ElevenLabs dependency - using browser speech synthesis instead
@@ -327,60 +327,95 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   // Enhanced Text-to-Speech function with ElevenLabs integration
   const speak = async (text: string) => {
     try {
-      if (!text || text.trim() === "") return;
-
       setIsSpeaking(true);
       setVoiceError(null);
-      
-      // Use browser speech synthesis (simple and reliable)
-      const synth = window.speechSynthesis;
-      synth.cancel(); // Stop any current speech
-      
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "en-IN";
-      utterance.rate = 0.85;
-      utterance.pitch = 1.1;
 
+      const synth = window.speechSynthesis;
+      
+      // Stop any currently speaking
+      synth.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      
+      // Enhanced voice selection with Indian accents
       const setVoice = () => {
         const voices = synth.getVoices();
+        console.log('Available voices:', voices.length);
         
-        // Prioritize Catherine (en-AU) voice
-        let selectedVoice = voices.find(voice => 
-          voice.name.toLowerCase().includes('catherine') && 
-          voice.lang.toLowerCase().includes('en-au')
-        );
+        // Priority order for voice selection
+        const voicePreferences = [
+          // Indian English voices (if available)
+          { name: 'Google हिन्दी', lang: 'hi-IN' },
+          { name: 'Google हिन्दी', lang: 'en-IN' },
+          { name: 'Microsoft Neeru - Hindi', lang: 'hi-IN' },
+          { name: 'Microsoft Neeru - Hindi', lang: 'en-IN' },
+          // General Indian English
+          { lang: 'en-IN' },
+          // Female voices
+          { name: 'Google UK English Female', lang: 'en-GB' },
+          { name: 'Microsoft Zira - English (United States)', lang: 'en-US' },
+          // Male voices
+          { name: 'Google UK English Male', lang: 'en-GB' },
+          { name: 'Microsoft David - English (United States)', lang: 'en-US' },
+          // Fallback to any available voice
+          { lang: 'en' }
+        ];
+
+        let selectedVoice = null;
         
-        // Fallback to other good voices if Catherine not found
-        if (!selectedVoice) {
-          selectedVoice = voices.find((v) =>
-            v.name === "Google UK English Female" ||
-            v.name === "Microsoft Zira Desktop - English (United States)" ||
-            v.name === "Samantha" ||
-            v.name === "Karen" ||
-            v.name.toLowerCase().includes("female") ||
-            v.name.toLowerCase().includes("google")
-          ) || voices[0];
+        // Try to find a preferred voice
+        for (const preference of voicePreferences) {
+          selectedVoice = voices.find(voice => {
+            if (preference.name && preference.lang) {
+              return voice.name.includes(preference.name) && voice.lang.startsWith(preference.lang);
+            } else if (preference.name) {
+              return voice.name.includes(preference.name);
+            } else if (preference.lang) {
+              return voice.lang.startsWith(preference.lang);
+            }
+            return false;
+          });
+          
+          if (selectedVoice) {
+            console.log('Selected voice:', selectedVoice.name, selectedVoice.lang);
+            break;
+          }
         }
 
         if (selectedVoice) {
           utterance.voice = selectedVoice;
+        } else if (voices.length > 0) {
+          // Fallback to first available voice
+          utterance.voice = voices[0];
+          console.log('Using fallback voice:', voices[0].name);
         }
-
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = (event) => {
-          console.error('Speech synthesis error:', event);
-          setVoiceError('Voice synthesis failed');
-          setIsSpeaking(false);
-        };
-
-        synth.speak(utterance);
       };
 
+      // Configure speech parameters
+      utterance.rate = 0.9; // Slightly slower for clarity
+      utterance.pitch = 1.0; // Normal pitch
+      utterance.volume = 1.0; // Full volume
+      utterance.lang = 'en-IN'; // Indian English
+
+      utterance.onend = () => {
+        console.log('Speech ended');
+        setIsSpeaking(false);
+      };
+      
+      utterance.onerror = (event) => {
+        console.error('Speech synthesis error:', event);
+        setVoiceError('Voice synthesis failed');
+        setIsSpeaking(false);
+      };
+
+      // Set voice and start speaking
       if (synth.getVoices().length === 0) {
         synth.onvoiceschanged = () => setVoice();
       } else {
         setVoice();
       }
+      
+      synth.speak(utterance);
       
     } catch (error) {
       console.error('❌ Error in text-to-speech:', error);
@@ -405,12 +440,36 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     setQuestion('');
 
     try {
-      // Use our new Panchang API service
+      // Step 1: Clarify the query using AI
+      const clarificationResponse = await aiService.clarifyQuery({
+        question: userMessage.content
+      });
+
+      let finalQuestion = userMessage.content;
+      let needsClarification = false;
+
+      if (clarificationResponse.success) {
+        if (clarificationResponse.needsClarification && clarificationResponse.clarificationPrompt) {
+          // Show clarification prompt to user
+          const clarificationMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            type: 'assistant',
+            content: `🤔 ${clarificationResponse.clarificationPrompt}\n\nPlease provide more details so I can give you the most accurate information.`,
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, clarificationMessage]);
+          setIsAsking(false);
+          return;
+        } else if (clarificationResponse.clarifiedQuestion) {
+          finalQuestion = clarificationResponse.clarifiedQuestion;
+        }
+      }
+
+      // Step 2: Get Panchang guidance
       const { panchangAPI } = await import('../lib/panchang-api');
       
-      // Get Panchang guidance with your credentials
       const guidanceResponse = await panchangAPI.getPanchangGuidance({
-        question: userMessage.content,
+        question: finalQuestion,
         date: new Date().toISOString().split('T')[0],
         time: new Date().toLocaleTimeString('en-IN'),
         latitude: 28.6139, // Default to Delhi
@@ -428,22 +487,35 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         responseText = 'Unable to generate guidance at this time. Please try again.';
         console.log("⚠️ Using fallback response");
       }
+
+      // Step 3: Validate and enhance the response using AI
+      const validationResponse = await aiService.validateResponse({
+        panchangData: guidanceResponse.panchang || {},
+        userQuestion: finalQuestion,
+        response: responseText
+      });
+
+      let finalResponse = responseText;
+      if (validationResponse.success && validationResponse.validatedResponse) {
+        finalResponse = validationResponse.validatedResponse;
+        console.log("✅ AI validation completed");
+      }
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
-        content: responseText,
+        content: finalResponse,
         timestamp: new Date()
       };
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      // Text-to-speech temporarily disabled
-      // if (responseText && responseText.trim() !== "") {
-      //   setTimeout(() => {
-      //     speak(responseText);
-      //   }, 300);
-      // }
+      // Enable text-to-speech for responses
+      if (finalResponse && finalResponse.trim() !== "") {
+        setTimeout(() => {
+          speak(finalResponse);
+        }, 300);
+      }
 
     } catch (error: unknown) {
       console.error('Ask VoiceVedic error:', error);
@@ -476,19 +548,19 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       };
 
       setMessages(prev => [...prev, fallbackMessage]);
+      
+      // Enable text-to-speech for fallback responses
+      if (fallbackText && fallbackText.trim() !== "") {
+        setTimeout(() => {
+          speak(fallbackText);
+        }, 300);
+      }
     } finally {
       setIsAsking(false);
     }
   };
 
   const startVoiceCapture = () => {
-    // Voice capture temporarily disabled
-    console.log('🔇 Voice capture is currently disabled');
-    alert('Voice capture is temporarily disabled. Please use text input instead.');
-    return;
-    
-    // Original code commented out
-    /*
     try {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -581,11 +653,23 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
             alert("Network error occurred. Please check your internet connection.");
             break;
           default:
-            console.warn("❌ Voice recognition error:", event.error);
-            alert("Voice recognition failed. Please try again.");
+            console.error("Unknown speech recognition error:", event.error);
         }
       };
-    */
+
+      recognition.onend = () => {
+        console.log("🎙️ Voice recognition ended");
+        setIsListening(false);
+        document.body.style.cursor = 'default';
+      };
+
+      recognition.start();
+      
+    } catch (error) {
+      console.error("❌ Error starting voice capture:", error);
+      setIsListening(false);
+      alert("Failed to start voice capture. Please try again.");
+    }
   };
 
   const handleReplayAudio = (content: string) => {
@@ -1056,41 +1140,6 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
               </div>
             </div>
           )}
-          {/* Voice Interface Section */}
-          <div className="mt-8 p-6 bg-gradient-to-br from-spiritual-50 to-spiritual-100 rounded-spiritual border border-spiritual-200/50">
-            <div className="text-center mb-6">
-              <h3 className="text-lg font-semibold text-spiritual-900 mb-2 tracking-spiritual">
-                🎤 Voice Interface
-              </h3>
-              <p className="text-sm text-spiritual-700/80 tracking-spiritual">
-                Speak your questions and get voice responses automatically
-              </p>
-            </div>
-            
-            <VoiceInterface 
-              onUserQuestion={(question) => {
-                // Add the user's spoken question to messages
-                const userMessage: Message = {
-                  id: Date.now().toString(),
-                  type: 'user',
-                  content: question,
-                  timestamp: new Date()
-                };
-                setMessages(prev => [...prev, userMessage]);
-              }}
-              onResponse={(response) => {
-                // Add the response to messages
-                const newMessage: Message = {
-                  id: Date.now().toString(),
-                  type: 'assistant',
-                  content: response,
-                  timestamp: new Date()
-                };
-                setMessages(prev => [...prev, newMessage]);
-              }}
-              className="max-w-md mx-auto"
-            />
-          </div>
 
           {/* Helper Text */}
           <div className="mt-3 text-center">
