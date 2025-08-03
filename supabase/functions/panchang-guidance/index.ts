@@ -54,6 +54,60 @@ function getFormattedLocalDate(dateString: string, timezoneOffset: number) {
   });
 }
 
+// Function to fix incorrect years in Panchang data
+function fixIncorrectYears(panchangData: PanchangData): PanchangData {
+  const currentYear = new Date().getFullYear().toString();
+  
+  // Helper function to fix year in datetime string
+  const fixYearInDateTime = (dateTimeString: string): string => {
+    if (!dateTimeString || typeof dateTimeString !== 'string') return dateTimeString;
+    
+    // Handle various date formats
+    // Format 1: "02-08-1909 15:37:00" (DD-MM-YYYY HH:MM:SS)
+    // Format 2: "15-02-1910 03:37:00" (DD-MM-YYYY HH:MM:SS)
+    // Format 3: "2025-08-02 15:37:00" (YYYY-MM-DD HH:MM:SS)
+    
+    const parts = dateTimeString.split(' ');
+    if (parts.length === 2) {
+      const [datePart, timePart] = parts;
+      const dateComponents = datePart.split('-');
+      
+      if (dateComponents.length === 3) {
+        let day, month, year;
+        
+        // Determine format based on first component length
+        if (dateComponents[0].length === 4) {
+          // Format: YYYY-MM-DD
+          [year, month, day] = dateComponents;
+        } else {
+          // Format: DD-MM-YYYY
+          [day, month, year] = dateComponents;
+        }
+        
+        // Always use current year (2025) regardless of what the API returns
+        const correctedYear = currentYear;
+        const correctedMonth = month.padStart(2, '0');
+        const correctedDay = day.padStart(2, '0');
+        
+        return `${correctedYear}-${correctedMonth}-${correctedDay} ${timePart}`;
+      }
+    }
+    
+    return dateTimeString;
+  };
+  
+  // Fix years in all datetime fields
+  return {
+    ...panchangData,
+    tithiStart: fixYearInDateTime(panchangData.tithiStart),
+    tithiTill: fixYearInDateTime(panchangData.tithiTill),
+    nakshatraStart: fixYearInDateTime(panchangData.nakshatraStart),
+    nakshatraTill: fixYearInDateTime(panchangData.nakshatraTill),
+    yogTill: fixYearInDateTime(panchangData.yogTill),
+    karanTill: fixYearInDateTime(panchangData.karanTill)
+  };
+}
+
 function buildTodayMessage(panchang: PanchangData, timezone: string) {
   const tz = parseFloat(timezone) || 5.5;
   const normalDate = getFormattedLocalDate(panchang.reqdate, tz);
@@ -557,7 +611,10 @@ async function fetchPanchangData(
       return null
     }
 
-    return data
+    // Fix incorrect years in the response data
+    const fixedData = fixIncorrectYears(data)
+    
+    return fixedData
   } catch (error) {
     console.error('Error fetching Panchang data:', error)
     return null

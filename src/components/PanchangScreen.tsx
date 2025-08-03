@@ -21,7 +21,32 @@ const PanchangScreen: React.FC = () => {
 
   const formatTime = (timeString: string) => {
     if (!timeString) return 'N/A';
-    return timeString.replace(/(\d{2}):(\d{2}):(\d{2})/, '$1:$2');
+    
+    // Handle full datetime format like "2025-08-02 15:37:00"
+    if (timeString.includes('-') && timeString.includes(':')) {
+      const [datePart, timePart] = timeString.split(' ');
+      if (datePart && timePart) {
+        const [year, month, day] = datePart.split('-');
+        const [hours, minutes] = timePart.split(':');
+        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        const formattedDate = date.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric',
+          year: 'numeric'
+        });
+        const formattedTime = `${hours}:${minutes} ${parseInt(hours) >= 12 ? 'PM' : 'AM'}`;
+        return `${formattedDate} at ${formattedTime}`;
+      }
+    }
+    
+    // Handle time-only format like "15:37:00"
+    if (timeString.includes(':')) {
+      const [hours, minutes] = timeString.split(':');
+      const formattedTime = `${hours}:${minutes} ${parseInt(hours) >= 12 ? 'PM' : 'AM'}`;
+      return formattedTime;
+    }
+    
+    return timeString;
   };
 
   const getTithiEmoji = (tithi: string) => {

@@ -141,6 +141,12 @@ class ElevenLabsService {
   // Convert text to speech
   async textToSpeech(request: TextToSpeechRequest): Promise<ArrayBuffer | null> {
     try {
+      console.log('📡 ElevenLabs API call:', {
+        voiceId: request.voice_id,
+        textLength: request.text.length,
+        hasApiKey: !!this.apiKey
+      });
+      
       const response = await fetch(`${this.baseUrl}/text-to-speech/${request.voice_id}`, {
         method: 'POST',
         headers: {
@@ -159,13 +165,19 @@ class ElevenLabsService {
         })
       });
 
+      console.log('📡 Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('❌ ElevenLabs API error:', response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
 
-      return await response.arrayBuffer();
+      const arrayBuffer = await response.arrayBuffer();
+      console.log('✅ ElevenLabs API success, buffer size:', arrayBuffer.byteLength);
+      return arrayBuffer;
     } catch (error) {
-      console.error('Error in text-to-speech:', error);
+      console.error('❌ Error in text-to-speech:', error);
       return null;
     }
   }

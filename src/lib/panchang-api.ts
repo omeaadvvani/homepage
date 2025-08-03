@@ -203,7 +203,7 @@ class PanchangAPIService {
         const [year, month, day] = date.split('-');
         // Validate the date components
         const requestedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-        const targetYear = requestedDate.getFullYear();
+        const targetYear = requestedDate.getFullYear().toString();
         const targetMonth = String(requestedDate.getMonth() + 1).padStart(2, '0');
         const targetDay = String(requestedDate.getDate()).padStart(2, '0');
         targetDate = `${targetYear}-${targetMonth}-${targetDay}`;
@@ -236,7 +236,7 @@ class PanchangAPIService {
         return { success: false, error: error.message };
       }
 
-      if (!data || !data.panchang) {
+      if (!data || data.status !== 'ok') {
         console.error('❌ API response error:', data?.error || 'Unknown error');
         return { success: false, error: data?.error || 'Failed to fetch Panchang data' };
       }
@@ -251,7 +251,9 @@ class PanchangAPIService {
           const [datePart, timePart] = timeString.split(' ');
           if (datePart && timePart) {
             const [day, month, year] = datePart.split('-');
-            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`;
+            // Ensure we use the correct year (2025) instead of any incorrect year from API
+            const currentYear = new Date().getFullYear().toString();
+            return `${currentYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`;
           }
         } else if (timeString.includes(':')) {
           // Format: "07:43:32" - use base date
@@ -259,6 +261,61 @@ class PanchangAPIService {
         }
         
         return timeString;
+      };
+
+      // Function to fix incorrect years in Panchang data
+      const fixIncorrectYears = (data: any): any => {
+        const currentYear = new Date().getFullYear().toString();
+        
+        // Helper function to fix year in datetime string
+        const fixYearInDateTime = (dateTimeString: string): string => {
+          if (!dateTimeString || typeof dateTimeString !== 'string') return dateTimeString;
+          
+          // Handle various date formats
+          // Format 1: "02-08-1909 15:37:00" (DD-MM-YYYY HH:MM:SS)
+          // Format 2: "15-02-1910 03:37:00" (DD-MM-YYYY HH:MM:SS)
+          // Format 3: "2025-08-02 15:37:00" (YYYY-MM-DD HH:MM:SS)
+          
+          const parts = dateTimeString.split(' ');
+          if (parts.length === 2) {
+            const [datePart, timePart] = parts;
+            const dateComponents = datePart.split('-');
+            
+            if (dateComponents.length === 3) {
+              let day, month, year;
+              
+              // Determine format based on first component length
+              if (dateComponents[0].length === 4) {
+                // Format: YYYY-MM-DD
+                [year, month, day] = dateComponents;
+              } else {
+                // Format: DD-MM-YYYY
+                [day, month, year] = dateComponents;
+              }
+              
+              // Always use current year (2025) regardless of what the API returns
+              const correctedYear = currentYear;
+              const correctedMonth = month.padStart(2, '0');
+              const correctedDay = day.padStart(2, '0');
+              
+              return `${correctedYear}-${correctedMonth}-${correctedDay} ${timePart}`;
+            }
+          }
+          
+          return dateTimeString;
+        };
+        
+        // Fix years in all datetime fields
+        if (data.panchang) {
+          data.panchang.tithiStart = fixYearInDateTime(data.panchang.tithiStart);
+          data.panchang.tithiTill = fixYearInDateTime(data.panchang.tithiTill);
+          data.panchang.nakshatraStart = fixYearInDateTime(data.panchang.nakshatraStart);
+          data.panchang.nakshatraTill = fixYearInDateTime(data.panchang.nakshatraTill);
+          data.panchang.yogTill = fixYearInDateTime(data.panchang.yogTill);
+          data.panchang.karanTill = fixYearInDateTime(data.panchang.karanTill);
+        }
+        
+        return data;
       };
 
       // Helper function to format time for display
@@ -269,14 +326,35 @@ class PanchangAPIService {
         if (timeString.includes('-') && timeString.includes(':')) {
           const [datePart, timePart] = timeString.split(' ');
           if (datePart && timePart) {
-            const [day, month, year] = datePart.split('-');
-            const formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-            return `${formattedDate} ${timePart}`;
+            const dateComponents = datePart.split('-');
+            
+            if (dateComponents.length === 3) {
+              let day, month;
+              
+              // Determine format based on first component length
+              if (dateComponents[0].length === 4) {
+                // Format: YYYY-MM-DD
+                [, month, day] = dateComponents;
+              } else {
+                // Format: DD-MM-YYYY
+                [day, month] = dateComponents;
+              }
+              
+              // Always use current year (2025) regardless of what the API returns
+              const currentYear = new Date().getFullYear().toString();
+              const correctedMonth = month.padStart(2, '0');
+              const correctedDay = day.padStart(2, '0');
+              
+              return `${currentYear}-${correctedMonth}-${correctedDay} ${timePart}`;
+            }
           }
         }
         
         return timeString;
       };
+
+      // Fix incorrect years in the API response
+      const fixedData = fixIncorrectYears(data);
 
       // Get enhanced data from Vedic Astro API
       let vedicAstroData = null;
@@ -291,29 +369,29 @@ class PanchangAPIService {
       }
 
       const panchangData: PanchangData = {
-        tithi: data.panchang.tithi || '',
-        nakshatra: data.panchang.nakshatra || '',
-        yoga: data.panchang.yoga || '',
-        karana: data.panchang.karana || '',
-        rashi: data.panchang.rashi || '',
-        maasa: data.panchang.maasa || '',
-        paksha: data.panchang.paksha || '',
-        sunrise: data.panchang.sunrise || '',
-        sunset: data.panchang.sunset || '',
+        tithi: fixedData.panchang.tithi || '',
+        nakshatra: fixedData.panchang.nakshatra || '',
+        yoga: fixedData.panchang.yoga || '',
+        karana: fixedData.panchang.karana || '',
+        rashi: fixedData.panchang.rashi || '',
+        maasa: fixedData.panchang.maasa || '',
+        paksha: fixedData.panchang.paksha || '',
+        sunrise: fixedData.panchang.sunrise || '',
+        sunset: fixedData.panchang.sunset || '',
         date: targetDate, // Use the exact requested date
         time: '06:00:00',
         location: `${latitude}, ${longitude}`,
-        tithiTill: formatTimeForDisplay(data.panchang.tithiTill),
-        tithinum: data.panchang.tithinum,
-        tithiStart: formatTimeForDisplay(data.panchang.tithiStart),
-        nakshatraStart: formatTimeForDisplay(data.panchang.nakshatraStart),
-        nakshatraTill: formatTimeForDisplay(data.panchang.nakshatraTill),
-        yogaStart: formatTimeForDisplay(data.panchang.yoga),
-        yogaTill: formatTimeForDisplay(data.panchang.yogTill),
-        karanaStart: formatTimeForDisplay(data.panchang.karana),
-        karanaTill: formatTimeForDisplay(data.panchang.karanTill),
-        vaar: data.panchang.vaar,
-        vaar_number: data.panchang.vaar_number,
+        tithiTill: formatTimeForDisplay(fixedData.panchang.tithiTill),
+        tithinum: fixedData.panchang.tithinum,
+        tithiStart: formatTimeForDisplay(fixedData.panchang.tithiStart),
+        nakshatraStart: formatTimeForDisplay(fixedData.panchang.nakshatraStart),
+        nakshatraTill: formatTimeForDisplay(fixedData.panchang.nakshatraTill),
+        yogaStart: formatTimeForDisplay(fixedData.panchang.yoga),
+        yogaTill: formatTimeForDisplay(fixedData.panchang.yogTill),
+        karanaStart: formatTimeForDisplay(fixedData.panchang.karana),
+        karanaTill: formatTimeForDisplay(fixedData.panchang.karanTill),
+        vaar: fixedData.panchang.vaar,
+        vaar_number: fixedData.panchang.vaar_number,
         // Enhanced data from Vedic Astro API
         moonrise: vedicAstroData?.moonrise || '',
         moonset: vedicAstroData?.moonset || '',
@@ -637,6 +715,59 @@ class PanchangAPIService {
   }
 
   private generateGuidance(question: string, panchang: PanchangData): string {
+    let response = `Panchang Information:\n\n`;
+    response += `Date: ${formatDate(panchang.date)}\n`;
+    response += `Tithi: ${panchang.tithi}\n`;
+    response += `Nakshatra: ${panchang.nakshatra}\n`;
+    response += `Paksha: ${panchang.paksha}\n`;
+    response += `Maasa: ${panchang.maasa}\n`;
+    response += `Varam: ${panchang.vaar}\n`;
+    
+    if (panchang.tithiStart && panchang.tithiTill) {
+      response += `Tithi Start: ${formatDateTime(panchang.tithiStart)}\n`;
+      response += `Tithi End: ${formatDateTime(panchang.tithiTill)}\n`;
+    }
+    
+    if (panchang.nakshatraStart && panchang.nakshatraTill) {
+      response += `Nakshatra Start: ${formatDateTime(panchang.nakshatraStart)}\n`;
+      response += `Nakshatra End: ${formatDateTime(panchang.nakshatraTill)}\n`;
+    }
+    
+    if (panchang.sunrise && panchang.sunset) {
+      response += `Sunrise: ${panchang.sunrise}\n`;
+      response += `Sunset: ${panchang.sunset}\n`;
+    }
+    
+    response += `Location: ${panchang.location}\n\n`;
+    
+    // Add spiritual guidance based on Tithi
+    const tithiGuidance = {
+      'Pratipada': 'Recommended: New beginnings, spiritual practices, and meditation. First tithi after new or full moon.',
+      'Dwitiya': 'Recommended: Dwitiya rituals, spiritual practices, and meditation. Second tithi.',
+      'Tritiya': 'Recommended: Tritiya rituals, spiritual practices, and meditation. Third tithi.',
+      'Chaturthi': 'Recommended: Chaturthi rituals, spiritual practices, and meditation. Fourth tithi.',
+      'Panchami': 'Recommended: Panchami rituals, spiritual practices, and meditation. Fifth tithi.',
+      'Shashthi': 'Recommended: Shashthi rituals, spiritual practices, and meditation. Sixth tithi.',
+      'Saptami': 'Recommended: Saptami rituals, spiritual practices, and meditation. Seventh tithi.',
+      'Ashtami': 'Recommended: Ashtami rituals, spiritual practices, and meditation. Eighth tithi.',
+      'Navami': 'Recommended: Navami rituals, spiritual practices, and meditation. Ninth tithi.',
+      'Dashami': 'Recommended: Dashami rituals, spiritual practices, and meditation. Tenth tithi.',
+      'Ekadashi': 'Recommended: Ekadashi fasting, spiritual practices, and meditation. Eleventh tithi.',
+      'Dwadashi': 'Recommended: Dwadashi rituals, spiritual practices, and meditation. Twelfth tithi.',
+      'Trayodashi': 'Recommended: Trayodashi rituals, spiritual practices, and meditation. Thirteenth tithi.',
+      'Chaturdashi': 'Recommended: Chaturdashi rituals, spiritual practices, and meditation. Fourteenth tithi.',
+      'Purnima': 'Recommended: Purnima rituals, full moon meditation, and spiritual practices. Fifteenth tithi, full moon.',
+      'Amavasya': 'Recommended: Amavasya rituals, ancestral offerings, and spiritual purification. New moon.'
+    };
+    
+    response += tithiGuidance[panchang.tithi as keyof typeof tithiGuidance] || 'Recommended: Spiritual practices and meditation.';
+    response += `\n\nSpiritual tip: Use this time for meditation, prayer, and connecting with your inner self.`;
+    
+    return response;
+  }
+
+  // Generate visual version with icons for display
+  private generateVisualGuidance(question: string, panchang: PanchangData): string {
     let response = `🕉️ Panchang Information:\n\n`;
     response += `📅 Date: ${formatDate(panchang.date)}\n`;
     response += `🕉️ Tithi: ${panchang.tithi}\n`;

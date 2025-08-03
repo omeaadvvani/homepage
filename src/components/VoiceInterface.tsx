@@ -93,9 +93,26 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ onResponse, onUserQuest
   // Auto-process when transcription is complete
   useEffect(() => {
     if (transcribedText && !isListening && !isProcessing && isAutoMode) {
-      processInputWithAPI(transcribedText);
+      // Add a small delay to ensure transcription is fully complete
+      const timer = setTimeout(() => {
+        console.log('Auto-processing transcribed text:', transcribedText);
+        processInputWithAPI(transcribedText);
+      }, 500); // 500ms delay to ensure transcription is stable
+      
+      return () => clearTimeout(timer);
     }
   }, [transcribedText, isListening, isProcessing, isAutoMode]);
+
+  // Auto-process when speech recognition ends with final transcript
+  useEffect(() => {
+    if (transcribedText && !isListening && isAutoMode && !isProcessing) {
+      // Check if we have a meaningful transcript (not just interim results)
+      if (transcribedText.trim().length > 2) {
+        console.log('Speech recognition ended, auto-processing:', transcribedText);
+        processInputWithAPI(transcribedText);
+      }
+    }
+  }, [isListening, transcribedText, isAutoMode, isProcessing]);
 
   // Keyboard shortcut to stop TTS playback
   useEffect(() => {
@@ -156,6 +173,14 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ onResponse, onUserQuest
             <span className="text-sm font-medium">{error}</span>
           </div>
         )}
+
+        {/* Auto-send indicator */}
+        {isAutoMode && (
+          <div className="flex items-center gap-2 text-green-600">
+            <CheckCircle className="w-4 h-4" />
+            <span className="text-sm font-medium">Auto-send enabled</span>
+          </div>
+        )}
       </div>
 
       {/* Transcribed Text Display */}
@@ -171,7 +196,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ onResponse, onUserQuest
 
       {/* Input Mode Toggle */}
       <div className="flex justify-center mb-4">
-        <div className="flex bg-gray-100 rounded-lg p-1">
+        <div className="bg-gray-100 rounded-lg p-1 flex">
           <button
             onClick={() => setIsTextMode(false)}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -195,6 +220,24 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ onResponse, onUserQuest
             Text
           </button>
         </div>
+        
+        {/* Auto-send toggle for voice mode */}
+        {!isTextMode && (
+          <div className="ml-4 flex items-center gap-2">
+            <button
+              onClick={() => setIsAutoMode(!isAutoMode)}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                isAutoMode 
+                  ? 'bg-green-100 text-green-700 border border-green-300' 
+                  : 'bg-gray-100 text-gray-700 border border-gray-300'
+              }`}
+              title={isAutoMode ? 'Auto-send enabled' : 'Auto-send disabled'}
+            >
+              <CheckCircle className={`w-4 h-4 inline mr-1 ${isAutoMode ? 'text-green-600' : 'text-gray-500'}`} />
+              Auto-send
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Stop TTS Button - Only show when playing */}
@@ -272,15 +315,17 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ onResponse, onUserQuest
         <p className="text-sm text-gray-600 mb-2">
           {isTextMode 
             ? 'Type your question and press Enter or click Send'
-            : isListening 
-              ? 'Speak your question now...' 
-              : 'Click the microphone to start speaking'
+            : isAutoMode 
+              ? 'Click the microphone and speak your question - it will automatically send when you finish speaking'
+              : 'Click the microphone and speak your question, then click Send when done'
           }
         </p>
-        
-        {isAutoMode && !isTextMode && (
+        {!isTextMode && (
           <p className="text-xs text-gray-500">
-            Auto-processing enabled - your question will be processed automatically
+            {isAutoMode 
+              ? 'Auto-send is enabled - your question will be processed automatically'
+              : 'Auto-send is disabled - click Send after speaking'
+            }
           </p>
         )}
       </div>

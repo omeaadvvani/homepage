@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Settings, 
   Globe, 
@@ -44,6 +44,7 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
   const [showSacredText, setShowSacredText] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [samplingVoiceId, setSamplingVoiceId] = useState<string>('');
 
   const { upsertPreferences, loading } = useUserPreferences();
   const { 
@@ -52,10 +53,13 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
     speakText, 
     stopAudio, 
     isPlaying,
-    loadAvailableVoices 
+    loadAvailableVoices
   } = useVoice();
 
   const { user } = useAuth();
+
+  // Create local audio ref for voice samples
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   const languages = [
     'English', 'Hindi', 'Tamil', 'Telugu', 'Malayalam', 'Kannada'
@@ -145,16 +149,59 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
   };
 
   const handleVoiceSample = async (voiceId: string) => {
+    console.log('🎤 Starting voice sample for voice ID:', voiceId);
     const voice = availableVoices.find(v => v.voice_id === voiceId);
     if (voice) {
-      // Stop any current playback
-      if (isPlaying) {
-        stopAudio();
+      console.log('✅ Found voice:', voice.name);
+      try {
+        // Set the sampling state
+        setSamplingVoiceId(voiceId);
+        
+        // Stop any current playback
+        if (isPlaying) {
+          console.log('🛑 Stopping current playback');
+          stopAudio();
+          // Small delay to ensure previous audio stops
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+        
+        // Create sample texts based on voice characteristics
+        let sampleText = "Namaste. Welcome to VoiceVedic. I am your spiritual guide, ready to share ancient wisdom and sacred knowledge with you. This is how I will sound when reading your daily Panchang and spiritual guidance.";
+        
+        // Customize sample text based on voice characteristics
+        if (voice.name.toLowerCase().includes('indian') || voice.labels?.accent?.toLowerCase().includes('indian')) {
+          sampleText = "Namaste. Welcome to VoiceVedic. I am here to guide you through your spiritual journey with wisdom and compassion. I will share sacred knowledge, daily Panchang readings, and spiritual insights with you in a voice that resonates with your soul.";
+        } else if (voice.name.toLowerCase().includes('gentle') || voice.name.toLowerCase().includes('soft') || voice.labels?.style?.toLowerCase().includes('gentle')) {
+          sampleText = "Hello. Welcome to VoiceVedic. I am here to provide you with gentle spiritual guidance and peaceful wisdom. I will read your daily Panchang with a calm, soothing voice that brings tranquility to your spiritual practice.";
+        } else if (voice.name.toLowerCase().includes('wise') || voice.name.toLowerCase().includes('spiritual') || voice.labels?.style?.toLowerCase().includes('wise')) {
+          sampleText = "Greetings. Welcome to VoiceVedic. I am here to share ancient wisdom and spiritual insights with you. I will read your daily Panchang and sacred teachings with a voice that carries the depth of spiritual knowledge.";
+        } else if (voice.labels?.gender?.toLowerCase() === 'female') {
+          sampleText = "Namaste. Welcome to VoiceVedic. I am your spiritual companion, ready to guide you through your daily spiritual practices. I will read your Panchang readings and spiritual guidance with clarity and warmth.";
+        } else if (voice.labels?.gender?.toLowerCase() === 'male') {
+          sampleText = "Namaste. Welcome to VoiceVedic. I am your spiritual guide, here to share sacred knowledge and daily wisdom with you. I will read your Panchang and spiritual teachings with a voice of authority and wisdom.";
+        }
+        
+        console.log('📝 Sample text:', sampleText);
+        console.log('🎵 Audio ref exists:', !!audioRef.current);
+        
+        // Add a brief pause and then play the sample
+        await new Promise(resolve => setTimeout(resolve, 100));
+        console.log('🚀 Calling speakText...');
+        await speakText(sampleText, voice, audioRef);
+        console.log('✅ speakText completed');
+        
+      } catch (error) {
+        console.error('❌ Error playing voice sample:', error);
+        // Provide fallback sample text
+        const fallbackText = "Namaste. Welcome to VoiceVedic. This is a sample of my voice for your spiritual guidance and daily Panchang readings.";
+        await speakText(fallbackText, voice, audioRef);
+      } finally {
+        // Clear the sampling state when done
+        setSamplingVoiceId('');
+        console.log('🏁 Voice sample process completed');
       }
-      
-      // Play sample text
-      const sampleText = "Namaste. Welcome to VoiceVedic. This is a sample of how I will sound when reading your spiritual guidance.";
-      await speakText(sampleText, voice);
+    } else {
+      console.error('❌ Voice not found:', voiceId);
     }
   };
 
@@ -169,6 +216,13 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
       setSelectedVoiceId(selectedVoice.voice_id);
     }
   }, [selectedVoice, selectedVoiceId]);
+
+  // Clear sampling state when audio stops
+  useEffect(() => {
+    if (!isPlaying && samplingVoiceId) {
+      setSamplingVoiceId('');
+    }
+  }, [isPlaying, samplingVoiceId]);
 
   // Keyboard shortcut to stop voice sample playback
   useEffect(() => {
@@ -254,6 +308,23 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
   };
 
   const isFormValid = language && calendarType && selectedRituals.length > 0 && selectedVoiceId;
+
+  // Enhanced validation with detailed feedback
+  const getValidationStatus = () => {
+    const issues = [];
+    
+    if (!language) issues.push('Please select a language');
+    if (!calendarType) issues.push('Please select a calendar type');
+    if (selectedRituals.length === 0) issues.push('Please select at least one ritual');
+    if (!selectedVoiceId) issues.push('Please select a voice assistant');
+    
+    return {
+      isValid: issues.length === 0,
+      issues
+    };
+  };
+
+  const validationStatus = getValidationStatus();
 
   return (
     <div className="min-h-screen bg-spiritual-diagonal relative overflow-hidden font-sans">
@@ -416,6 +487,22 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
               <h3 className="text-xl font-semibold text-spiritual-900 tracking-spiritual">Choose Your Voice Assistant</h3>
             </div>
             
+            {/* Instructions */}
+            <div className="mb-6 p-4 bg-spiritual-50 rounded-spiritual border border-spiritual-200">
+              <div className="flex items-start gap-3">
+                <Volume2 className="w-5 h-5 text-spiritual-600 mt-0.5" />
+                <div>
+                  <p className="text-sm text-spiritual-800 font-medium mb-1">Voice Sample Instructions:</p>
+                  <ul className="text-xs text-spiritual-700 space-y-1">
+                    <li>• Click the <Play className="w-3 h-3 inline" /> button to hear a sample of each voice</li>
+                    <li>• Each voice will read a spiritual greeting and introduction</li>
+                    <li>• Press <kbd className="px-1 py-0.5 bg-spiritual-200 rounded text-xs">ESC</kbd> to stop playback</li>
+                    <li>• Select the voice that resonates most with your spiritual practice</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
             <div className="space-y-3">
               {availableVoices.length > 0 ? (
                 availableVoices.map((voice) => (
@@ -428,7 +515,7 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-1">
                         <div className={`w-5 h-5 border-2 rounded flex items-center justify-center ${
                           selectedVoiceId === voice.voice_id
                             ? 'border-spiritual-500 bg-spiritual-500'
@@ -441,24 +528,57 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
                         <Volume2 className={`w-5 h-5 ${
                           selectedVoiceId === voice.voice_id ? 'text-spiritual-600' : 'text-spiritual-500'
                         }`} />
-                        <div>
+                        <div className="flex-1">
                           <h4 className="font-medium text-spiritual-900 tracking-spiritual">
                             {voice.name}
                           </h4>
                           <p className="text-sm text-spiritual-700/70 tracking-spiritual">
-                            {voice.labels?.accent || 'Natural voice'}
+                            {voice.description || voice.labels?.accent || 'Natural voice'}
                           </p>
+                          {voice.labels && (
+                            <div className="flex gap-2 mt-1">
+                              {voice.labels.gender && (
+                                <span className="px-2 py-1 bg-spiritual-100 text-spiritual-700 text-xs rounded-full">
+                                  {voice.labels.gender}
+                                </span>
+                              )}
+                              {voice.labels.style && (
+                                <span className="px-2 py-1 bg-spiritual-100 text-spiritual-700 text-xs rounded-full">
+                                  {voice.labels.style}
+                                </span>
+                              )}
+                              {voice.labels.accent && voice.labels.accent !== 'English' && (
+                                <span className="px-2 py-1 bg-spiritual-100 text-spiritual-700 text-xs rounded-full">
+                                  {voice.labels.accent}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 ml-4">
                         <button
                           onClick={() => handleVoiceSample(voice.voice_id)}
                           disabled={isPlaying}
-                          className="p-2 bg-spiritual-100 hover:bg-spiritual-200 text-spiritual-600 rounded-lg transition-colors disabled:opacity-50"
-                          title="Listen to sample"
+                          className={`p-2 rounded-lg transition-all duration-200 ${
+                            samplingVoiceId === voice.voice_id
+                              ? 'bg-spiritual-300 text-spiritual-800 animate-pulse'
+                              : isPlaying 
+                                ? 'bg-spiritual-200 text-spiritual-700' 
+                                : 'bg-spiritual-100 hover:bg-spiritual-200 text-spiritual-600 hover:scale-105'
+                          } disabled:opacity-50`}
+                          title={
+                            samplingVoiceId === voice.voice_id 
+                              ? "Playing sample..." 
+                              : isPlaying 
+                                ? "Another voice is playing" 
+                                : "Listen to voice sample"
+                          }
                         >
-                          {isPlaying ? (
+                          {samplingVoiceId === voice.voice_id ? (
+                            <div className="w-4 h-4 border-2 border-spiritual-600 border-t-transparent rounded-full animate-spin" />
+                          ) : isPlaying ? (
                             <Pause className="w-4 h-4" />
                           ) : (
                             <Play className="w-4 h-4" />
@@ -466,9 +586,13 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
                         </button>
                         <button
                           onClick={() => handleVoiceSelect(voice.voice_id)}
-                          className="px-3 py-1 bg-spiritual-600 hover:bg-spiritual-700 text-white text-sm rounded-lg transition-colors"
+                          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                            selectedVoiceId === voice.voice_id
+                              ? 'bg-spiritual-700 text-white'
+                              : 'bg-spiritual-600 hover:bg-spiritual-700 text-white'
+                          }`}
                         >
-                          Select
+                          {selectedVoiceId === voice.voice_id ? 'Selected' : 'Select'}
                         </button>
                       </div>
                     </div>
@@ -612,18 +736,33 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
 
           {/* Save Preferences Button */}
           <div className="pt-6 relative z-10">
+            {/* Validation Feedback */}
+            {!validationStatus.isValid && (
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-spiritual">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-5 h-5 text-red-600" />
+                  <h4 className="font-medium text-red-800">Please complete the following:</h4>
+                </div>
+                <ul className="list-disc list-inside text-sm text-red-700 space-y-1">
+                  {validationStatus.issues.map((issue, index) => (
+                    <li key={index}>{issue}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
             <button
               onClick={handleSavePreferences}
-              disabled={!isFormValid || loading || saveSuccess}
+              disabled={!validationStatus.isValid || loading || saveSuccess}
               className={`group relative overflow-hidden flex items-center justify-center gap-3 w-full py-4 px-6 font-semibold rounded-button shadow-spiritual transition-all duration-300 transform tracking-spiritual ${
-                isFormValid && !loading && !saveSuccess
+                validationStatus.isValid && !loading && !saveSuccess
                   ? 'bg-gradient-to-r from-spiritual-400 to-spiritual-500 hover:from-spiritual-500 hover:to-spiritual-600 text-white hover:shadow-spiritual-lg hover:scale-[1.02] active:scale-[0.98] border-2 border-spiritual-600/30 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
-              title={!isFormValid ? "Please complete all required steps" : "Save your preferences"}
+              title={!validationStatus.isValid ? "Please complete all required steps" : "Save your preferences"}
             >
               {/* Glow Effect */}
-              {isFormValid && !loading && !saveSuccess && (
+              {validationStatus.isValid && !loading && !saveSuccess && (
                 <div className="absolute inset-0 rounded-button bg-gradient-to-r from-spiritual-400 to-spiritual-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-300 -z-10"></div>
               )}
               
@@ -639,13 +778,13 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
                 </>
               ) : (
                 <>
-                  <Save className={`w-5 h-5 transition-transform duration-300 ${isFormValid ? 'group-hover:rotate-12 group-active:rotate-6' : ''}`} />
+                  <Save className={`w-5 h-5 transition-transform duration-300 ${validationStatus.isValid ? 'group-hover:rotate-12 group-active:rotate-6' : ''}`} />
                   <span className="text-lg">Save Preferences</span>
                 </>
               )}
             </button>
             
-            {isFormValid && (
+            {validationStatus.isValid && (
               <p className="text-center text-sm text-spiritual-700/70 mt-4 tracking-spiritual">
                 You can change these preferences anytime in Settings.
               </p>
@@ -653,6 +792,14 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
           </div>
         </div>
       </div>
+      
+      {/* Hidden audio element for voice samples */}
+      <audio
+        ref={audioRef}
+        onEnded={() => console.log('Audio ended')}
+        onError={() => console.error('Audio error')}
+        style={{ display: 'none' }}
+      />
     </div>
   );
 };

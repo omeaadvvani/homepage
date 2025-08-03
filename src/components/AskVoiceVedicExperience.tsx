@@ -337,27 +337,23 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
 
       const utterance = new SpeechSynthesisUtterance(text);
       
-      // Enhanced voice selection with Indian accents
+      // Enhanced voice selection with English only
       const setVoice = () => {
         const voices = synth.getVoices();
         console.log('Available voices:', voices.length);
         
-        // Priority order for voice selection
+        // Priority order for voice selection - English only
         const voicePreferences = [
-          // Indian English voices (if available)
-          { name: 'Google हिन्दी', lang: 'hi-IN' },
-          { name: 'Google हिन्दी', lang: 'en-IN' },
-          { name: 'Microsoft Neeru - Hindi', lang: 'hi-IN' },
-          { name: 'Microsoft Neeru - Hindi', lang: 'en-IN' },
-          // General Indian English
-          { lang: 'en-IN' },
-          // Female voices
+          // English voices only
           { name: 'Google UK English Female', lang: 'en-GB' },
           { name: 'Microsoft Zira - English (United States)', lang: 'en-US' },
-          // Male voices
           { name: 'Google UK English Male', lang: 'en-GB' },
           { name: 'Microsoft David - English (United States)', lang: 'en-US' },
-          // Fallback to any available voice
+          { name: 'Google US English Female', lang: 'en-US' },
+          { name: 'Google US English Male', lang: 'en-US' },
+          // Any English voice
+          { lang: 'en-GB' },
+          { lang: 'en-US' },
           { lang: 'en' }
         ];
 
@@ -395,7 +391,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       utterance.rate = 0.9; // Slightly slower for clarity
       utterance.pitch = 1.0; // Normal pitch
       utterance.volume = 1.0; // Full volume
-      utterance.lang = 'en-IN'; // Indian English
+      utterance.lang = 'en-US'; // English only
 
       utterance.onend = () => {
         console.log('Speech ended');

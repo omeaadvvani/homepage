@@ -7,11 +7,9 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
-    hmr: {
-      overlay: false, // Disable error overlay to prevent page reloads
-    },
+    hmr: false, // Completely disable hot module replacement
     watch: {
-      usePolling: false, // Disable polling to reduce reloads
+      ignored: ['**/*'], // Ignore all file changes
     },
   },
   build: {

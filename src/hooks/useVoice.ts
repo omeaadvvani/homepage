@@ -116,9 +116,12 @@ export const useVoice = () => {
     };
 
     recognition.onend = () => {
+      console.log('Speech recognition ended, final transcript:', voiceState.transcribedText);
       setVoiceState(prev => ({ 
         ...prev, 
-        isListening: false 
+        isListening: false,
+        // Keep the transcribed text for auto-processing
+        transcribedText: prev.transcribedText
       }));
     };
 
@@ -187,9 +190,10 @@ export const useVoice = () => {
   // Auto-process when transcription is complete
   useEffect(() => {
     if (voiceState.transcribedText && !voiceState.isListening && !voiceState.isProcessing) {
-      processSpeechInput(voiceState.transcribedText);
+      // Removed auto-processing logic - let VoiceInterface handle it
+      // This prevents conflicts between useVoice and VoiceInterface auto-processing
     }
-  }, [voiceState.transcribedText, voiceState.isListening, voiceState.isProcessing, processSpeechInput]);
+  }, [voiceState.transcribedText, voiceState.isListening, voiceState.isProcessing]);
 
   // Load user's voice settings
   const loadUserVoiceSettings = useCallback(async () => {
@@ -237,51 +241,96 @@ export const useVoice = () => {
   // Load available voices
   const loadAvailableVoices = useCallback(async () => {
     try {
-      setVoiceState(prev => ({ ...prev, isLoading: true }));
+      setVoiceState(prev => ({ ...prev, isLoading: true, error: null }));
+      
+      // First try to get voices from ElevenLabs API
       const voices = await elevenLabsService.getVoices();
       
-      // Filter for Indian accent voices and include user's custom voice
-      const indianVoices = voices.filter(voice => 
-        voice.voice_id === 'pjcYQlDFKMbcOUp6F5GD' || // User's custom voice
-        voice.name.toLowerCase().includes('priya') ||
-        voice.name.toLowerCase().includes('meera') ||
-        voice.name.toLowerCase().includes('anita') ||
-        voice.name.toLowerCase().includes('kavya') ||
-        voice.name.toLowerCase().includes('sarah') || // Fallback soothing voices
-        voice.name.toLowerCase().includes('emily') ||
-        voice.name.toLowerCase().includes('anna') ||
-        voice.name.toLowerCase().includes('lisa') ||
-        voice.category === 'premade'
-      );
+      // Create a more accurate and diverse voice list
+      const curatedVoices: ElevenLabsVoice[] = [];
+      
+      // Add actual API voices if available
+      if (voices && voices.length > 0) {
+        // Filter for high-quality voices with Indian accents or soothing qualities
+        const filteredVoices = voices.filter(voice => 
+          voice.voice_id === 'pjcYQlDFKMbcOUp6F5GD' || // User's custom voice
+          voice.name.toLowerCase().includes('priya') ||
+          voice.name.toLowerCase().includes('meera') ||
+          voice.name.toLowerCase().includes('anita') ||
+          voice.name.toLowerCase().includes('kavya') ||
+          voice.name.toLowerCase().includes('sarah') ||
+          voice.name.toLowerCase().includes('emily') ||
+          voice.name.toLowerCase().includes('anna') ||
+          voice.name.toLowerCase().includes('lisa') ||
+          voice.name.toLowerCase().includes('indian') ||
+          voice.name.toLowerCase().includes('soft') ||
+          voice.name.toLowerCase().includes('gentle') ||
+          voice.category === 'premade'
+        );
+        
+        curatedVoices.push(...filteredVoices);
+      }
 
-      // Add predefined Indian accent voices if not found in API
+      // Add high-quality predefined Indian voices as fallback
       const predefinedIndianVoices: ElevenLabsVoice[] = [
         {
-          voice_id: 'priya_indian_female',
-          name: 'Priya (Indian Female)',
+          voice_id: 'priya_indian_female_01',
+          name: 'Priya (Indian Female - Soft)',
           category: 'custom',
+          description: 'Gentle Indian female voice with spiritual warmth',
+          labels: { accent: 'Indian', gender: 'female', style: 'spiritual' },
           settings: {
-            stability: 0.7,
+            stability: 0.75,
             similarity_boost: 0.8,
             style: 0.3,
             use_speaker_boost: true
           }
         },
         {
-          voice_id: 'meera_indian_female',
-          name: 'Meera (Indian Female)',
+          voice_id: 'meera_indian_female_02',
+          name: 'Meera (Indian Female - Melodic)',
           category: 'custom',
+          description: 'Melodic Indian female voice with traditional warmth',
+          labels: { accent: 'Indian', gender: 'female', style: 'traditional' },
           settings: {
-            stability: 0.6,
-            similarity_boost: 0.7,
+            stability: 0.7,
+            similarity_boost: 0.75,
             style: 0.4,
             use_speaker_boost: true
           }
         },
         {
-          voice_id: 'raj_indian_male',
-          name: 'Raj (Indian Male)',
+          voice_id: 'raj_indian_male_01',
+          name: 'Raj (Indian Male - Wise)',
           category: 'custom',
+          description: 'Wise Indian male voice with spiritual depth',
+          labels: { accent: 'Indian', gender: 'male', style: 'spiritual' },
+          settings: {
+            stability: 0.8,
+            similarity_boost: 0.7,
+            style: 0.2,
+            use_speaker_boost: true
+          }
+        },
+        {
+          voice_id: 'arun_indian_male_02',
+          name: 'Arun (Indian Male - Gentle)',
+          category: 'custom',
+          description: 'Gentle Indian male voice with calming presence',
+          labels: { accent: 'Indian', gender: 'male', style: 'gentle' },
+          settings: {
+            stability: 0.75,
+            similarity_boost: 0.75,
+            style: 0.3,
+            use_speaker_boost: true
+          }
+        },
+        {
+          voice_id: 'sarah_soothing_01',
+          name: 'Sarah (Soothing English)',
+          category: 'custom',
+          description: 'Soothing English voice with spiritual warmth',
+          labels: { accent: 'English', gender: 'female', style: 'soothing' },
           settings: {
             stability: 0.8,
             similarity_boost: 0.6,
@@ -290,32 +339,62 @@ export const useVoice = () => {
           }
         },
         {
-          voice_id: 'arun_indian_male',
-          name: 'Arun (Indian Male)',
+          voice_id: 'emily_gentle_01',
+          name: 'Emily (Gentle English)',
           category: 'custom',
+          description: 'Gentle English voice with calming presence',
+          labels: { accent: 'English', gender: 'female', style: 'gentle' },
           settings: {
             stability: 0.7,
-            similarity_boost: 0.7,
-            style: 0.3,
+            similarity_boost: 0.65,
+            style: 0.25,
             use_speaker_boost: true
           }
         }
       ];
 
-      const allVoices = [...indianVoices, ...predefinedIndianVoices];
+      // Combine API voices with predefined voices, avoiding duplicates
+      const allVoices = [...curatedVoices];
+      
+      // Add predefined voices only if they don't conflict with API voices
+      predefinedIndianVoices.forEach(predefinedVoice => {
+        const exists = allVoices.some(voice => 
+          voice.name.toLowerCase().includes(predefinedVoice.name.split(' ')[0].toLowerCase())
+        );
+        if (!exists) {
+          allVoices.push(predefinedVoice);
+        }
+      });
 
-      // If no voices found, use default voice
+      // Ensure we have at least one voice
       if (allVoices.length === 0) {
         const defaultVoice = elevenLabsService.getDefaultSoothingVoice();
         setVoiceState(prev => ({ 
           ...prev, 
           availableVoices: [defaultVoice],
-          selectedVoice: defaultVoice
+          selectedVoice: defaultVoice,
+          error: 'Using default voice - no voices available'
         }));
       } else {
+        // Sort voices by quality and relevance
+        const sortedVoices = allVoices.sort((a, b) => {
+          // Prioritize Indian voices
+          const aIsIndian = a.name.toLowerCase().includes('indian') || 
+                           (a.labels?.accent === 'Indian');
+          const bIsIndian = b.name.toLowerCase().includes('indian') || 
+                           (b.labels?.accent === 'Indian');
+          
+          if (aIsIndian && !bIsIndian) return -1;
+          if (!aIsIndian && bIsIndian) return 1;
+          
+          // Then sort by name
+          return a.name.localeCompare(b.name);
+        });
+
         setVoiceState(prev => ({ 
           ...prev, 
-          availableVoices: allVoices 
+          availableVoices: sortedVoices,
+          error: null
         }));
       }
     } catch (error) {
@@ -370,9 +449,12 @@ export const useVoice = () => {
   }, [user?.id]);
 
   // Convert text to speech
-  const speakText = useCallback(async (text: string, voice?: ElevenLabsVoice) => {
+  const speakText = useCallback(async (text: string, voice?: ElevenLabsVoice, externalAudioRef?: React.RefObject<HTMLAudioElement>) => {
+    console.log('🎤 speakText called with:', { text: text.substring(0, 50) + '...', voice: voice?.name, hasExternalRef: !!externalAudioRef });
+    
     const selectedVoice = voice || voiceState.selectedVoice;
     if (!selectedVoice) {
+      console.error('❌ No voice selected');
       setVoiceState(prev => ({ 
         ...prev, 
         error: 'No voice selected' 
@@ -381,6 +463,7 @@ export const useVoice = () => {
     }
 
     try {
+      console.log('🔄 Setting loading state...');
       setVoiceState(prev => ({ 
         ...prev, 
         isLoading: true,
@@ -394,25 +477,36 @@ export const useVoice = () => {
         voice_settings: selectedVoice.settings
       };
 
+      console.log('📡 Calling ElevenLabs API with voice ID:', selectedVoice.voice_id);
       const audioBuffer = await elevenLabsService.textToSpeech(request);
       
       if (audioBuffer) {
+        console.log('✅ Received audio buffer, size:', audioBuffer.byteLength);
         const blob = new Blob([audioBuffer], { type: 'audio/mpeg' });
         const audioUrl = URL.createObjectURL(blob);
         
+        console.log('🔗 Created audio URL:', audioUrl);
         setVoiceState(prev => ({ 
           ...prev, 
           audioUrl,
           isLoading: false 
         }));
 
-        // Play the audio
-        if (audioRef.current) {
-          audioRef.current.src = audioUrl;
-          audioRef.current.play();
+        // Play the audio using the provided audio ref or the internal one
+        const audioElement = externalAudioRef?.current || audioRef.current;
+        console.log('🎵 Audio element found:', !!audioElement);
+        
+        if (audioElement) {
+          console.log('▶️ Playing audio...');
+          audioElement.src = audioUrl;
+          await audioElement.play();
           setVoiceState(prev => ({ ...prev, isPlaying: true }));
+          console.log('✅ Audio playback started');
+        } else {
+          console.error('❌ No audio element found');
         }
       } else {
+        console.error('❌ No audio buffer received');
         setVoiceState(prev => ({ 
           ...prev, 
           error: 'Failed to generate speech',
@@ -420,7 +514,7 @@ export const useVoice = () => {
         }));
       }
     } catch (error) {
-      console.error('Error in text-to-speech:', error);
+      console.error('❌ Error in text-to-speech:', error);
       
       // Handle specific ElevenLabs errors
       let errorMessage = 'Failed to convert text to speech';
