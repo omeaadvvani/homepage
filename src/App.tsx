@@ -25,6 +25,7 @@ import DebugInfo from './components/DebugInfo';
 import DevelopmentModeIndicator from './components/DevelopmentModeIndicator';
 import GitLogTest from './components/GitLogTest';
 import ComprehensiveTest from './components/ComprehensiveTest';
+import LocationTest from './components/LocationTest';
 
 function App() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
@@ -128,9 +129,15 @@ function App() {
       } else {
         setLocation('India');
         setLocationStatus('success');
+        setLocationWarning('Geolocation not supported. Using default location.');
+      }
+    } else {
+      // For authenticated users, start location tracking
+      if (user?.id && !isTracking) {
+        startLocationTracking();
       }
     }
-  }, [user?.id]);
+  }, [user?.id, isTracking, startLocationTracking]);
 
   // Update location state when real-time location changes
   useEffect(() => {
@@ -308,26 +315,41 @@ function App() {
   // Simplified location name detection
   const getPreciseLocationName = async (latitude: number, longitude: number): Promise<string> => {
     try {
+      console.log('🔍 Getting location name for coordinates:', latitude, longitude);
+      
       const response = await fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
+        {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+        }
       );
 
       if (response.ok) {
         const data = await response.json();
+        console.log('📍 Geocoding response:', data);
+        
         const city = data.city || data.locality || '';
         const state = data.principalSubdivision || '';
         const country = data.countryName || '';
         
+        let locationName = '';
         if (city && state) {
-          return `${city}, ${state}, ${country}`;
+          locationName = `${city}, ${state}, ${country}`;
         } else if (city) {
-          return `${city}, ${country}`;
+          locationName = `${city}, ${country}`;
         } else if (state) {
-          return `${state}, ${country}`;
+          locationName = `${state}, ${country}`;
         } else {
-          return country || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          locationName = country || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
         }
+        
+        console.log('✅ Location name resolved:', locationName);
+        return locationName;
       } else {
+        console.warn('⚠️ Geocoding API failed, using fallback');
         // Fallback to coordinate-based detection
         if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
           return 'India';
@@ -340,7 +362,8 @@ function App() {
         }
       }
     } catch (error) {
-      console.warn('Geocoding failed, using fallback:', error);
+      console.warn('❌ Geocoding failed, using fallback:', error);
+      // Fallback to coordinate-based detection
       if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
         return 'India';
       } else if (latitude >= 24 && latitude <= 49 && longitude >= -125 && longitude <= -66) {
@@ -818,6 +841,11 @@ function App() {
         {/* Debug Information */}
         <div className="mt-4 max-w-md">
           <DebugInfo />
+        </div>
+
+        {/* Location Test */}
+        <div className="mt-4 max-w-md">
+          <LocationTest />
         </div>
       </div>
 

@@ -33,17 +33,22 @@ export const useLocation = (userId?: string) => {
 
   // Initialize location tracking
   const startLocationTracking = useCallback(async () => {
+    console.log('🚀 Starting location tracking for user:', userId);
+    
     if (!userId) {
+      console.error('❌ User ID required for location tracking');
       setLocationState(prev => ({ ...prev, error: 'User ID required for location tracking' }));
       return;
     }
 
     if (!('geolocation' in navigator)) {
+      console.error('❌ Geolocation not supported by browser');
       setLocationState(prev => ({ ...prev, error: 'Geolocation not supported by browser' }));
       return;
     }
 
     try {
+      console.log('📍 Requesting current position...');
       setLocationState(prev => ({ ...prev, isTracking: true, error: null }));
 
       // Get initial position
@@ -53,6 +58,12 @@ export const useLocation = (userId?: string) => {
           timeout: 15000,
           maximumAge: 0
         });
+      });
+
+      console.log('✅ Position obtained:', {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy
       });
 
       const locationData: LocationData = {
@@ -65,6 +76,7 @@ export const useLocation = (userId?: string) => {
         is_active: true
       };
 
+      console.log('💾 Saving location to database:', locationData.location_name);
       // Save to Supabase
       await saveLocationToDatabase(locationData);
 
@@ -76,6 +88,7 @@ export const useLocation = (userId?: string) => {
         isTracking: true
       }));
 
+      console.log('👀 Starting position watch...');
       // Start watching for position changes
       const newWatchId = navigator.geolocation.watchPosition(
         async (position) => {
@@ -159,28 +172,43 @@ export const useLocation = (userId?: string) => {
   // Get location name from coordinates
   const getLocationName = async (latitude: number, longitude: number): Promise<string> => {
     try {
+      console.log('🔍 Getting location name for coordinates:', latitude, longitude);
+      
       // Use a reliable geocoding service for precise location names
       const response = await fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
+        {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+        }
       );
 
       if (response.ok) {
         const data = await response.json();
+        console.log('📍 Geocoding response:', data);
+        
         const city = data.city || data.locality || '';
         const state = data.principalSubdivision || '';
         const country = data.countryName || '';
         
+        let locationName = '';
         // Return precise location name
         if (city && state) {
-          return `${city}, ${state}, ${country}`;
+          locationName = `${city}, ${state}, ${country}`;
         } else if (city) {
-          return `${city}, ${country}`;
+          locationName = `${city}, ${country}`;
         } else if (state) {
-          return `${state}, ${country}`;
+          locationName = `${state}, ${country}`;
         } else {
-          return country || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          locationName = country || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
         }
+        
+        console.log('✅ Location name resolved:', locationName);
+        return locationName;
       } else {
+        console.warn('⚠️ Geocoding API failed, using fallback');
         // Fallback to coordinate-based detection for major regions
         if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
           return 'India';
@@ -193,7 +221,7 @@ export const useLocation = (userId?: string) => {
         }
       }
     } catch (error) {
-      console.warn('Geocoding failed, using fallback:', error);
+      console.warn('❌ Geocoding failed, using fallback:', error);
       // Fallback to coordinate-based detection
       if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
         return 'India';
