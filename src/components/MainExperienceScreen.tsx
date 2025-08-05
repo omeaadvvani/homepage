@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useUserPreferences } from '../hooks/useUserPreferences';
+import { useLocation } from '../hooks/useLocation';
 import UpcomingEvents from './UpcomingEvents';
 import TimezoneInfo from './TimezoneInfo';
 
@@ -46,6 +47,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
 }) => {
   const { userProfile } = useAuth();
   const { preferences } = useUserPreferences();
+  const { currentLocation, isTracking, error: locationError } = useLocation(userProfile?.id);
   const navigate = useNavigate();
   
   const [showSacredText, setShowSacredText] = useState(false);
@@ -157,7 +159,12 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
   // Get display values with fallbacks
   const displayLanguage = preferences?.language || userProfile?.preferred_language || 'English';
   const displayCalendar = preferences?.calendar_type || userProfile?.calendar_tradition || 'North Indian';
-  const displayLocation = preferences?.location || userProfile?.location || 'India';
+  
+  // Get actual detected location or fallback
+  const displayLocation = currentLocation?.location_name || 
+                         preferences?.location || 
+                         userProfile?.location || 
+                         (locationError ? 'Location unavailable' : 'Detecting location...');
 
   return (
     <div className="min-h-screen bg-spiritual-diagonal relative overflow-hidden font-sans">
@@ -223,11 +230,21 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
               <span className="text-sm font-medium tracking-spiritual">{displayLanguage}</span>
             </div>
             <div className="flex items-center gap-2 bg-white/70 backdrop-blur-sm px-4 py-2 rounded-spiritual border border-spiritual-200/50">
-              <MapPin className="w-4 h-4 text-accent-600" />
-              <span className="text-sm font-medium tracking-spiritual">{displayLocation}</span>
+              <MapPin className={`w-4 h-4 ${isTracking ? 'text-green-600 animate-pulse' : 'text-accent-600'}`} />
+              <span className="text-sm font-medium tracking-spiritual">
+                {isTracking && !currentLocation ? 'Detecting location...' : displayLocation}
+              </span>
             </div>
             <div className="bg-white/70 backdrop-blur-sm px-4 py-2 rounded-spiritual border border-spiritual-200/50">
-              <TimezoneInfo className="text-sm font-medium tracking-spiritual" />
+              <TimezoneInfo 
+                location={currentLocation ? {
+                  latitude: currentLocation.latitude,
+                  longitude: currentLocation.longitude,
+                  timezone: currentLocation.timezone,
+                  city: currentLocation.location_name
+                } : undefined}
+                className="text-sm font-medium tracking-spiritual" 
+              />
             </div>
           </div>
         </div>

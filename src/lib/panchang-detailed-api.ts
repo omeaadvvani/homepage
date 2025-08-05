@@ -493,7 +493,20 @@ export class PanchangDetailedAPI {
     const lowerQuery = query.toLowerCase();
     
     // Determine timezone from location
-    const timezone = location ? 'Asia/Kolkata' : 'Asia/Kolkata'; // Default to India timezone for now
+    const getTimezoneFromCoords = (lat: number, lng: number): string => {
+      // India coordinates (approximate)
+      if (lat >= 6 && lat <= 37 && lng >= 68 && lng <= 97) return 'Asia/Kolkata';
+      // US coordinates (approximate)
+      if (lat >= 24 && lat <= 71 && lng >= -180 && lng <= -66) return 'America/New_York';
+      // UK coordinates (approximate)
+      if (lat >= 49 && lat <= 61 && lng >= -8 && lng <= 2) return 'Europe/London';
+      // Australia coordinates (approximate)
+      if (lat >= -44 && lat <= -10 && lng >= 113 && lng <= 154) return 'Australia/Sydney';
+      // Default to India timezone
+      return 'Asia/Kolkata';
+    };
+    
+    const timezone = location ? getTimezoneFromCoords(location.latitude, location.longitude) : 'Asia/Kolkata';
     const fallbackData = getFallbackPanchangData(timezone);
     
     // Check for tomorrow
