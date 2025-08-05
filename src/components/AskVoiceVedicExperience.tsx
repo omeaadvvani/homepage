@@ -522,9 +522,11 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
             });
           } else if (lowerQuestion.includes('astrology') || lowerQuestion.includes('horoscope') || 
                      lowerQuestion.includes('nakshatra') || lowerQuestion.includes('tithi') ||
-                     lowerQuestion.includes('panchang') || lowerQuestion.includes('tithi')) {
-            // Use astrological insights for Panchang-related queries with timezone
-            responseText = await perplexityAPI.generateAstrologicalInsights(finalQuestion, {
+                     lowerQuestion.includes('panchang') || lowerQuestion.includes('tithi') ||
+                     lowerQuestion.includes('purnima') || lowerQuestion.includes('ekadashi') ||
+                     lowerQuestion.includes('amavasya') || lowerQuestion.includes('auspicious')) {
+            // Use Drik Panchangam specific method for Panchang-related queries
+            responseText = await perplexityAPI.generateDrikPanchangamResponse(finalQuestion, {
               userLocation: currentLocation?.location_name || 'Vancouver, Canada',
               currentTime: new Date().toISOString(),
               timezone: 'America/Vancouver'

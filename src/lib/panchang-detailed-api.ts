@@ -664,9 +664,11 @@ export class PanchangDetailedAPI {
             });
           } else if (lowerQuestion.includes('astrology') || lowerQuestion.includes('horoscope') || 
                      lowerQuestion.includes('nakshatra') || lowerQuestion.includes('tithi') ||
-                     lowerQuestion.includes('panchang') || lowerQuestion.includes('tithi')) {
-            // Use astrological insights for Panchang-related queries with timezone
-            responseText = await perplexityAPI.generateAstrologicalInsights(query, {
+                     lowerQuestion.includes('panchang') || lowerQuestion.includes('tithi') ||
+                     lowerQuestion.includes('purnima') || lowerQuestion.includes('ekadashi') ||
+                     lowerQuestion.includes('amavasya') || lowerQuestion.includes('auspicious')) {
+            // Use Drik Panchangam specific method for Panchang-related queries
+            responseText = await perplexityAPI.generateDrikPanchangamResponse(query, {
               userLocation: 'Vancouver, Canada',
               currentTime: new Date().toISOString(),
               timezone: userTimezone

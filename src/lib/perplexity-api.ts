@@ -169,6 +169,58 @@ Focus on meditation, mindfulness, gratitude, and inner peace. Keep responses con
   }
 
   /**
+   * Generate Drik Panchangam specific responses with timezone conversion
+   */
+  async generateDrikPanchangamResponse(
+    query: string,
+    context?: {
+      userLocation?: string;
+      currentTime?: string;
+      timezone?: string;
+    }
+  ): Promise<string> {
+    const timezone = context?.timezone || 'America/Vancouver';
+    const location = context?.userLocation || 'Vancouver, Canada';
+    
+    const systemPrompt = `You are a Drik Panchangam expert for Voice Vedic. Provide accurate Panchang information using Drik Panchangam calculations but with CRITICAL timezone conversion.
+
+CRITICAL REQUIREMENTS:
+- Use Drik Panchangam calculations as the source
+- Convert ALL timings from IST (Indian Standard Time) to ${timezone} timezone
+- All times must be in ${location} local time
+- Use MM/DD/YY format for dates
+- Use HH:MM AM/PM format for times
+- NEVER show IST times - only ${timezone} times
+- Always specify timezone: "in ${timezone} timezone"
+
+For specific queries:
+- Tithi queries: Show start and end times in ${timezone}
+- Nakshatra queries: Show start and end times in ${timezone}
+- Auspicious timings: Convert all timings to ${timezone}
+- Festival dates: Show in ${timezone} local time
+
+Format examples:
+- "Purnima Tithi Start: 08/08/25 at 3:23 AM ${timezone}"
+- "Purnima Tithi End: 08/09/25 at 4:51 AM ${timezone}"
+- "Ekadashi begins: 08/15/25 at 2:15 AM ${timezone}"
+
+Always convert from IST to ${timezone} timezone.`;
+
+    let enhancedQuery = query;
+    if (context?.currentTime) {
+      enhancedQuery += `\n\nCurrent time in ${timezone}: ${context.currentTime}`;
+    }
+    enhancedQuery += `\n\nCRITICAL: Use Drik Panchangam calculations but convert ALL timings from IST to ${timezone} timezone for ${location}. Show all times in ${timezone} local time only.`;
+
+    return this.generateText(enhancedQuery, {
+      model: 'sonar-pro',
+      maxTokens: 1200,
+      temperature: 0.5,
+      systemPrompt
+    });
+  }
+
+  /**
    * Generate astrological insights using Perplexity
    */
   async generateAstrologicalInsights(
@@ -183,18 +235,27 @@ Focus on meditation, mindfulness, gratitude, and inner peace. Keep responses con
     const location = context?.userLocation || 'Vancouver, Canada';
     
     const systemPrompt = `You are an expert Vedic astrologer for Voice Vedic. Provide astrological insights that are:
-- Based on traditional Vedic astrology principles
+- Based on traditional Vedic astrology principles and Drik Panchangam standards
 - Practical and actionable
 - Positive and encouraging
 - Respectful of free will and personal choice
 - Focused on spiritual growth and self-improvement
 
-IMPORTANT: All dates, times, and astrological calculations must be provided in ${timezone} timezone (${location} local time).
+CRITICAL TIMEZONE REQUIREMENTS:
+- All dates, times, and astrological calculations MUST be provided in ${timezone} timezone (${location} local time)
+- Use Drik Panchangam calculations but convert ALL times to ${timezone} timezone
 - Use MM/DD/YY format for dates
 - Use HH:MM AM/PM format for times
-- All times should be in ${timezone} timezone
-- Do NOT use IST or India timezone
+- ALL times should be in ${timezone} timezone (NOT IST or India timezone)
 - Provide times as per ${location} local time
+- When mentioning Panchang timings, always specify they are in ${timezone} timezone
+
+For Panchang queries (tithi, nakshatra, auspicious timings):
+- Use Drik Panchangam calculations
+- Convert all timings from IST to ${timezone} timezone
+- Show start and end times in ${timezone} local time
+- Format: "Tithi Start: MM/DD/YY at HH:MM AM/PM ${timezone}"
+- Format: "Tithi End: MM/DD/YY at HH:MM AM/PM ${timezone}"
 
 Always emphasize that astrology is a tool for self-understanding, not deterministic.`;
 
@@ -202,11 +263,11 @@ Always emphasize that astrology is a tool for self-understanding, not determinis
     if (context?.currentTime) {
       enhancedQuery += `\n\nCurrent time in ${timezone}: ${context.currentTime}`;
     }
-    enhancedQuery += `\n\nPlease provide all information in ${timezone} timezone for ${location}.`;
+    enhancedQuery += `\n\nIMPORTANT: Please provide all Panchang information using Drik Panchangam calculations but convert ALL timings to ${timezone} timezone for ${location}. Do NOT use IST or India timezone. All times must be in ${timezone} local time.`;
 
     return this.generateText(enhancedQuery, {
       model: 'sonar-pro',
-      maxTokens: 800,
+      maxTokens: 1000,
       temperature: 0.7,
       systemPrompt
     });
