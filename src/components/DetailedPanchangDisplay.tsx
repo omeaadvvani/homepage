@@ -27,6 +27,7 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [userQuery, setUserQuery] = useState(query || '');
   const [lastQuery, setLastQuery] = useState('');
+  const [isMuted, setIsMuted] = useState(false);
 
   const { currentLocation } = useLocation();
   const { speakText, stopAudio, isPlaying } = useVoice();
@@ -64,7 +65,7 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
         setLastQuery(customQuery || userQuery);
         
         // Auto-speak the summary
-        if (response.spokenSummary) {
+        if (response.spokenSummary && !isMuted) {
           setTimeout(() => {
             speakSummary(response.spokenSummary);
           }, 500);
@@ -86,7 +87,7 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
   };
 
   const speakSummary = async (summary: string) => {
-    if (!summary) return;
+    if (!summary || isMuted) return;
     
     setIsSpeaking(true);
     try {
@@ -101,6 +102,13 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
   const stopSpeaking = () => {
     stopAudio();
     setIsSpeaking(false);
+  };
+
+  const toggleMute = () => {
+    if (isSpeaking) {
+      stopSpeaking();
+    }
+    setIsMuted(!isMuted);
   };
 
   const handleQuerySubmit = (e: React.FormEvent) => {
@@ -197,15 +205,33 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
           >
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Search'}
           </button>
+        </form>
+      </div>
+
+      {/* Controls */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
           <button
-            type="button"
             onClick={handleRefresh}
             disabled={isLoading}
-            className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50"
+            className="flex items-center gap-1 px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
           </button>
-        </form>
+          
+          <button
+            onClick={toggleMute}
+            className="flex items-center gap-1 px-3 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+          >
+            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            {isMuted ? 'Unmute' : 'Mute'}
+          </button>
+        </div>
+        
+        <div className="text-sm text-gray-600">
+          {isMuted && <span className="text-orange-600">Voice output is muted</span>}
+        </div>
       </div>
 
       {/* Error Display */}
@@ -256,6 +282,13 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
                       Speak
                     </button>
                   )}
+                  <button
+                    onClick={toggleMute}
+                    className="flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
+                  >
+                    {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                    {isMuted ? 'Unmute' : 'Mute'}
+                  </button>
                 </div>
               </div>
               <p className="text-blue-700 text-sm">{spokenSummary}</p>

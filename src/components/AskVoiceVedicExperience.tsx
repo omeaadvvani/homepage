@@ -98,6 +98,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   // Simple browser-based voice synthesis
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [isMuted, setIsMuted] = useState(false);
   
   // Panchang integration
   const { panchangData, loading: panchangLoading } = usePanchang();
@@ -333,6 +334,8 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
 
   // Enhanced Text-to-Speech function with ElevenLabs integration
   const speak = async (text: string) => {
+    if (isMuted) return; // Don't speak if muted
+    
     try {
       setIsSpeaking(true);
       setVoiceError(null);
@@ -702,11 +705,15 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   };
 
   const handleReplayAudio = (content: string) => {
-    // Text-to-speech temporarily disabled
-    // if (content && content.trim() !== "") {
-    //   speak(content);
-    // }
-    console.log('🔇 Text-to-speech is currently disabled');
+    speak(content);
+  };
+
+  const toggleMute = () => {
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+    setIsMuted(!isMuted);
   };
 
   const clearConversation = () => {
@@ -775,10 +782,20 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
           </h1>
           <p className="text-sm text-spiritual-700/80 tracking-spiritual">
             Your spiritual conversation companion
+            {isMuted && <span className="text-orange-600 ml-2">(Voice muted)</span>}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={toggleMute}
+            className="group flex items-center gap-2 px-4 py-2 bg-spiritual-50 hover:bg-spiritual-100 rounded-spiritual shadow-spiritual border border-spiritual-200/50 transition-all duration-300 text-spiritual-700 font-medium tracking-spiritual"
+            title={isMuted ? "Unmute voice" : "Mute voice"}
+          >
+            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            <span className="text-sm">{isMuted ? 'Unmute' : 'Mute'}</span>
+          </button>
+          
           <button
             onClick={() => setShowVoiceSettings(!showVoiceSettings)}
             className="group flex items-center gap-2 px-4 py-2 bg-spiritual-50 hover:bg-spiritual-100 rounded-spiritual shadow-spiritual border border-spiritual-200/50 transition-all duration-300 text-spiritual-700 font-medium tracking-spiritual"
