@@ -156,80 +156,28 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
 
   const handleVoiceSelect = (voiceId: string) => {
     setSelectedVoiceId(voiceId);
-    setIsVoiceDropdownOpen(false);
+    const selectedVoice = indianVoiceSamples.find(v => v.id === voiceId);
+    if (selectedVoice) {
+      setSelectedIndianVoice(selectedVoice);
+    }
   };
 
   const handleVoiceSample = async (voiceId: string) => {
-    console.log('🎤 Starting voice sample for voice ID:', voiceId);
-    const voice = availableVoices.find(v => v.voice_id === voiceId);
-    if (voice) {
-      console.log('✅ Found voice:', voice.name);
-      try {
-        // Set the sampling state
-        setSamplingVoiceId(voiceId);
-        
-        // Stop any current playback
-        if (isPlaying) {
-          console.log('🛑 Stopping current playback');
-          stopAudio();
-          // Small delay to ensure previous audio stops
-          await new Promise(resolve => setTimeout(resolve, 200));
-        }
-        
-        // Create sample texts based on voice characteristics
-        let sampleText = "Namaste. Welcome to VoiceVedic. I am your spiritual guide, ready to share ancient wisdom and sacred knowledge with you. This is how I will sound when reading your daily Panchang and spiritual guidance.";
-        
-        // Customize sample text based on voice characteristics
-        if (voice.name.toLowerCase().includes('indian') || voice.labels?.accent?.toLowerCase().includes('indian')) {
-          sampleText = "Namaste. Welcome to VoiceVedic. I am here to guide you through your spiritual journey with wisdom and compassion. I will share sacred knowledge, daily Panchang readings, and spiritual insights with you in a voice that resonates with your soul.";
-        } else if (voice.name.toLowerCase().includes('gentle') || voice.name.toLowerCase().includes('soft') || voice.labels?.style?.toLowerCase().includes('gentle')) {
-          sampleText = "Hello. Welcome to VoiceVedic. I am here to provide you with gentle spiritual guidance and peaceful wisdom. I will read your daily Panchang with a calm, soothing voice that brings tranquility to your spiritual practice.";
-        } else if (voice.name.toLowerCase().includes('wise') || voice.name.toLowerCase().includes('spiritual') || voice.labels?.style?.toLowerCase().includes('wise')) {
-          sampleText = "Greetings. Welcome to VoiceVedic. I am here to share ancient wisdom and spiritual insights with you. I will read your daily Panchang and sacred teachings with a voice that carries the depth of spiritual knowledge.";
-        } else if (voice.labels?.gender?.toLowerCase() === 'female') {
-          sampleText = "Namaste. Welcome to VoiceVedic. I am your spiritual companion, ready to guide you through your daily spiritual practices. I will read your Panchang readings and spiritual guidance with clarity and warmth.";
-        } else if (voice.labels?.gender?.toLowerCase() === 'male') {
-          sampleText = "Namaste. Welcome to VoiceVedic. I am your spiritual guide, here to share sacred knowledge and daily wisdom with you. I will read your Panchang and spiritual teachings with a voice of authority and wisdom.";
-        }
-        
-        console.log('📝 Sample text:', sampleText);
-        console.log('🎵 Audio ref exists:', !!audioRef.current);
-        
-        // Try ElevenLabs first, then fallback to Web Speech API
-        try {
-          // Add a brief pause and then play the sample
-          await new Promise(resolve => setTimeout(resolve, 100));
-          console.log('🚀 Calling enhanced voice sample...');
-          await playVoiceSampleWithFallbacks(sampleText, voice);
-          console.log('✅ Enhanced voice sample completed');
-          setVoiceSampleSuccess(`Playing sample of ${voice.name}...`);
-          setVoiceSampleError('');
-        } catch (elevenLabsError) {
-          console.error('❌ All TTS services failed:', elevenLabsError);
-          setVoiceSampleError('Voice sample failed. Please try again or check your internet connection.');
-          setVoiceSampleSuccess('');
-        }
-        
-      } catch (error) {
-        console.error('❌ Error playing voice sample:', error);
-        setVoiceSampleError('Failed to play voice sample. Please try again.');
-        setVoiceSampleSuccess('');
-        // Provide fallback sample text
-        const fallbackText = "Namaste. Welcome to VoiceVedic. This is a sample of my voice for your spiritual guidance and daily Panchang readings.";
-        await playVoiceSampleWithWebSpeech(fallbackText, voice);
-      } finally {
-        // Clear the sampling state when done
-        setSamplingVoiceId('');
-        console.log('🏁 Voice sample process completed');
-        
-        // Clear notifications after a delay
-        setTimeout(() => {
-          setVoiceSampleSuccess('');
-          setVoiceSampleError('');
-        }, 3000);
-      }
-    } else {
-      console.error('❌ Voice not found:', voiceId);
+    const voiceSample = indianVoiceSamples.find(v => v.id === voiceId);
+    if (!voiceSample) return;
+
+    setSamplingVoiceId(voiceId);
+    setVoiceSampleError('');
+    setVoiceSampleSuccess('');
+
+    try {
+      await playVoiceSample(voiceSample);
+      setVoiceSampleSuccess(`Voice sample played successfully for ${voiceSample.name}`);
+    } catch (error) {
+      console.error('Voice sample error:', error);
+      setVoiceSampleError('Failed to play voice sample. Please try again.');
+    } finally {
+      setSamplingVoiceId('');
     }
   };
 
@@ -530,6 +478,11 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
     setSelectedVoiceId(voiceSample.id);
   };
 
+  // Get Indian voice samples only
+  const indianVoiceSamples = INDIAN_VOICE_SAMPLES;
+  const indianFemaleVoices = getVoiceSamplesByGender('female');
+  const indianMaleVoices = getVoiceSamplesByGender('male');
+
   return (
     <div className="min-h-screen bg-spiritual-diagonal relative overflow-hidden font-sans">
       {/* Spiritual Visual Layer */}
@@ -727,205 +680,183 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
             )}
 
             {/* Indian Voice Samples Section */}
-            <div className="mb-6 p-4 bg-spiritual-50 rounded-spiritual border border-spiritual-200">
-              <div className="flex items-center gap-3 mb-4">
-                <Volume2 className="w-5 h-5 text-spiritual-600" />
-                <h4 className="text-lg font-semibold text-spiritual-900">Indian Accent Voice Samples</h4>
-              </div>
-              <p className="text-sm text-spiritual-700 mb-4">
-                Listen to these Indian accent voices and select the one that resonates with your spiritual practice.
-              </p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {INDIAN_VOICE_SAMPLES.map((voiceSample) => (
-                  <div
-                    key={voiceSample.id}
-                    className={`p-3 rounded-spiritual border-2 transition-all duration-300 ${
-                      selectedIndianVoice?.id === voiceSample.id
-                        ? 'border-spiritual-400 bg-spiritual-100 shadow-spiritual'
-                        : 'border-spiritual-200 bg-white/50 hover:border-spiritual-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className={`w-4 h-4 border-2 rounded flex items-center justify-center ${
-                          selectedIndianVoice?.id === voiceSample.id
-                            ? 'border-spiritual-500 bg-spiritual-500'
-                            : 'border-spiritual-300'
-                        }`}>
-                          {selectedIndianVoice?.id === voiceSample.id && (
-                            <CheckCircle className="w-2 h-2 text-white" />
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <h5 className="font-medium text-spiritual-900 text-sm">
-                            {voiceSample.name}
-                          </h5>
-                          <p className="text-xs text-spiritual-700">
-                            {voiceSample.description}
-                          </p>
-                          <div className="flex gap-1 mt-1">
-                            <span className="px-2 py-1 bg-spiritual-100 text-spiritual-700 text-xs rounded-full">
-                              {voiceSample.gender}
-                            </span>
-                            <span className="px-2 py-1 bg-spiritual-100 text-spiritual-700 text-xs rounded-full">
-                              {voiceSample.accent}
-                            </span>
+            <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Volume2 className="w-5 h-5 text-spiritual-600" />
+                  <h3 className="text-lg font-semibold text-spiritual-900 tracking-spiritual">
+                    Choose Your Voice Assistant
+                  </h3>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Indian Female Voices */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-spiritual-800 tracking-spiritual">Indian Female Voices</h4>
+                    {indianFemaleVoices.map((voiceSample) => (
+                      <div
+                        key={voiceSample.id}
+                        className={`p-4 rounded-spiritual border-2 transition-all duration-300 ${
+                          selectedVoiceId === voiceSample.id
+                            ? 'border-spiritual-400 bg-spiritual-50 shadow-spiritual'
+                            : 'border-spiritual-200 bg-white/50 hover:border-spiritual-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className={`w-5 h-5 border-2 rounded flex items-center justify-center ${
+                              selectedVoiceId === voiceSample.id
+                                ? 'border-spiritual-500 bg-spiritual-500'
+                                : 'border-spiritual-300'
+                            }`}>
+                              {selectedVoiceId === voiceSample.id && (
+                                <CheckCircle className="w-3 h-3 text-white" />
+                              )}
+                            </div>
+                            <Volume2 className={`w-5 h-5 ${
+                              selectedVoiceId === voiceSample.id ? 'text-spiritual-600' : 'text-spiritual-500'
+                            }`} />
+                            <div className="flex-1">
+                              <h4 className="font-medium text-spiritual-900 tracking-spiritual">
+                                {voiceSample.name}
+                              </h4>
+                              <p className="text-sm text-spiritual-700/70 tracking-spiritual">
+                                {voiceSample.description}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 ml-4">
+                            <button
+                              onClick={() => handleVoiceSample(voiceSample.id)}
+                              disabled={samplingVoiceId !== ''}
+                              className={`p-2 rounded-lg transition-all duration-200 ${
+                                samplingVoiceId === voiceSample.id
+                                  ? 'bg-spiritual-300 text-spiritual-800 animate-pulse'
+                                  : samplingVoiceId !== ''
+                                    ? 'bg-spiritual-200 text-spiritual-700' 
+                                    : 'bg-spiritual-100 hover:bg-spiritual-200 text-spiritual-600 hover:scale-105'
+                              } disabled:opacity-50`}
+                              title={
+                                samplingVoiceId === voiceSample.id 
+                                  ? "Playing sample..." 
+                                  : samplingVoiceId !== ''
+                                    ? "Another voice is playing" 
+                                    : "Listen to voice sample"
+                              }
+                            >
+                              {samplingVoiceId === voiceSample.id ? (
+                                <div className="flex items-center gap-1">
+                                  <div className="w-4 h-4 border-2 border-spiritual-600 border-t-transparent rounded-full animate-spin" />
+                                  <span className="text-xs">Playing</span>
+                                </div>
+                              ) : (
+                                <Play className="w-4 h-4" />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => handleVoiceSelect(voiceSample.id)}
+                              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                                selectedVoiceId === voiceSample.id
+                                  ? 'bg-spiritual-700 text-white'
+                                  : 'bg-spiritual-600 hover:bg-spiritual-700 text-white'
+                              }`}
+                            >
+                              {selectedVoiceId === voiceSample.id ? 'Selected' : 'Select'}
+                            </button>
                           </div>
                         </div>
                       </div>
-                      
-                      <div className="flex items-center gap-2 ml-2">
-                        <button
-                          onClick={() => playIndianVoiceSample(voiceSample)}
-                          disabled={isPlayingIndianVoice}
-                          className={`p-2 rounded-lg transition-all duration-200 ${
-                            isPlayingIndianVoice
-                              ? 'bg-spiritual-200 text-spiritual-700' 
-                              : 'bg-spiritual-100 hover:bg-spiritual-200 text-spiritual-600 hover:scale-105'
-                          } disabled:opacity-50`}
-                          title="Listen to voice sample"
-                        >
-                          {isPlayingIndianVoice ? (
-                            <div className="w-4 h-4 border-2 border-spiritual-600 border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <Play className="w-4 h-4" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleIndianVoiceSelect(voiceSample)}
-                          className={`px-2 py-1 text-xs rounded-lg transition-colors ${
-                            selectedIndianVoice?.id === voiceSample.id
-                              ? 'bg-spiritual-700 text-white'
-                              : 'bg-spiritual-600 hover:bg-spiritual-700 text-white'
-                          }`}
-                        >
-                          {selectedIndianVoice?.id === voiceSample.id ? 'Selected' : 'Select'}
-                        </button>
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-            
-            <div className="space-y-3">
-              {availableVoices.length > 0 ? (
-                availableVoices.map((voice) => (
-                  <div
-                    key={voice.voice_id}
-                    className={`p-4 rounded-spiritual border-2 transition-all duration-300 ${
-                      selectedVoiceId === voice.voice_id
-                        ? 'border-spiritual-400 bg-spiritual-50 shadow-spiritual'
-                        : 'border-spiritual-200 bg-white/50 hover:border-spiritual-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className={`w-5 h-5 border-2 rounded flex items-center justify-center ${
-                          selectedVoiceId === voice.voice_id
-                            ? 'border-spiritual-500 bg-spiritual-500'
-                            : 'border-spiritual-300'
-                        }`}>
-                          {selectedVoiceId === voice.voice_id && (
-                            <CheckCircle className="w-3 h-3 text-white" />
-                          )}
-                        </div>
-                        <Volume2 className={`w-5 h-5 ${
-                          selectedVoiceId === voice.voice_id ? 'text-spiritual-600' : 'text-spiritual-500'
-                        }`} />
-                        <div className="flex-1">
-                          <h4 className="font-medium text-spiritual-900 tracking-spiritual">
-                            {voice.name}
-                          </h4>
-                          <p className="text-sm text-spiritual-700/70 tracking-spiritual">
-                            {voice.description || voice.labels?.accent || 'Natural voice'}
-                          </p>
-                          {voice.labels && (
-                            <div className="flex gap-2 mt-1">
-                              {voice.labels.gender && (
-                                <span className="px-2 py-1 bg-spiritual-100 text-spiritual-700 text-xs rounded-full">
-                                  {voice.labels.gender}
-                                </span>
-                              )}
-                              {voice.labels.style && (
-                                <span className="px-2 py-1 bg-spiritual-100 text-spiritual-700 text-xs rounded-full">
-                                  {voice.labels.style}
-                                </span>
-                              )}
-                              {voice.labels.accent && voice.labels.accent !== 'English' && (
-                                <span className="px-2 py-1 bg-spiritual-100 text-spiritual-700 text-xs rounded-full">
-                                  {voice.labels.accent}
-                                </span>
+
+                  {/* Indian Male Voices */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-spiritual-800 tracking-spiritual">Indian Male Voices</h4>
+                    {indianMaleVoices.map((voiceSample) => (
+                      <div
+                        key={voiceSample.id}
+                        className={`p-4 rounded-spiritual border-2 transition-all duration-300 ${
+                          selectedVoiceId === voiceSample.id
+                            ? 'border-spiritual-400 bg-spiritual-50 shadow-spiritual'
+                            : 'border-spiritual-200 bg-white/50 hover:border-spiritual-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className={`w-5 h-5 border-2 rounded flex items-center justify-center ${
+                              selectedVoiceId === voiceSample.id
+                                ? 'border-spiritual-500 bg-spiritual-500'
+                                : 'border-spiritual-300'
+                            }`}>
+                              {selectedVoiceId === voiceSample.id && (
+                                <CheckCircle className="w-3 h-3 text-white" />
                               )}
                             </div>
-                          )}
+                            <Volume2 className={`w-5 h-5 ${
+                              selectedVoiceId === voiceSample.id ? 'text-spiritual-600' : 'text-spiritual-500'
+                            }`} />
+                            <div className="flex-1">
+                              <h4 className="font-medium text-spiritual-900 tracking-spiritual">
+                                {voiceSample.name}
+                              </h4>
+                              <p className="text-sm text-spiritual-700/70 tracking-spiritual">
+                                {voiceSample.description}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 ml-4">
+                            <button
+                              onClick={() => handleVoiceSample(voiceSample.id)}
+                              disabled={samplingVoiceId !== ''}
+                              className={`p-2 rounded-lg transition-all duration-200 ${
+                                samplingVoiceId === voiceSample.id
+                                  ? 'bg-spiritual-300 text-spiritual-800 animate-pulse'
+                                  : samplingVoiceId !== ''
+                                    ? 'bg-spiritual-200 text-spiritual-700' 
+                                    : 'bg-spiritual-100 hover:bg-spiritual-200 text-spiritual-600 hover:scale-105'
+                              } disabled:opacity-50`}
+                              title={
+                                samplingVoiceId === voiceSample.id 
+                                  ? "Playing sample..." 
+                                  : samplingVoiceId !== ''
+                                    ? "Another voice is playing" 
+                                    : "Listen to voice sample"
+                              }
+                            >
+                              {samplingVoiceId === voiceSample.id ? (
+                                <div className="flex items-center gap-1">
+                                  <div className="w-4 h-4 border-2 border-spiritual-600 border-t-transparent rounded-full animate-spin" />
+                                  <span className="text-xs">Playing</span>
+                                </div>
+                              ) : (
+                                <Play className="w-4 h-4" />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => handleVoiceSelect(voiceSample.id)}
+                              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                                selectedVoiceId === voiceSample.id
+                                  ? 'bg-spiritual-700 text-white'
+                                  : 'bg-spiritual-600 hover:bg-spiritual-700 text-white'
+                              }`}
+                            >
+                              {selectedVoiceId === voiceSample.id ? 'Selected' : 'Select'}
+                            </button>
+                          </div>
                         </div>
                       </div>
-                      
-                      <div className="flex items-center gap-2 ml-4">
-                        <button
-                          onClick={() => handleVoiceSample(voice.voice_id)}
-                          disabled={isPlaying}
-                          className={`p-2 rounded-lg transition-all duration-200 ${
-                            samplingVoiceId === voice.voice_id
-                              ? 'bg-spiritual-300 text-spiritual-800 animate-pulse'
-                              : isPlaying 
-                                ? 'bg-spiritual-200 text-spiritual-700' 
-                                : 'bg-spiritual-100 hover:bg-spiritual-200 text-spiritual-600 hover:scale-105'
-                          } disabled:opacity-50`}
-                          title={
-                            samplingVoiceId === voice.voice_id 
-                              ? "Playing sample..." 
-                              : isPlaying 
-                                ? "Another voice is playing" 
-                                : "Listen to voice sample"
-                          }
-                        >
-                          {samplingVoiceId === voice.voice_id ? (
-                            <div className="flex items-center gap-1">
-                              <div className="w-4 h-4 border-2 border-spiritual-600 border-t-transparent rounded-full animate-spin" />
-                              <span className="text-xs">Playing</span>
-                            </div>
-                          ) : isPlaying ? (
-                            <Pause className="w-4 h-4" />
-                          ) : (
-                            <Play className="w-4 h-4" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleVoiceSelect(voice.voice_id)}
-                          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                            selectedVoiceId === voice.voice_id
-                              ? 'bg-spiritual-700 text-white'
-                              : 'bg-spiritual-600 hover:bg-spiritual-700 text-white'
-                          }`}
-                        >
-                          {selectedVoiceId === voice.voice_id ? 'Selected' : 'Select'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="p-4 bg-gray-50 rounded-spiritual border-2 border-gray-200">
-                  <div className="flex items-center gap-3">
-                    <AlertCircle className="w-5 h-5 text-gray-500" />
-                    <div>
-                      <p className="text-sm text-gray-600">Loading available voices...</p>
-                      <p className="text-xs text-gray-500">Please wait while we fetch voice options</p>
-                    </div>
+                    ))}
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
             
             {selectedVoiceId && (
               <div className="mt-4 p-3 bg-green-50 rounded-spiritual border border-green-200">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-green-600" />
                   <span className="text-sm text-green-700">
-                    Selected: {availableVoices.find(v => v.voice_id === selectedVoiceId)?.name || 'Voice'}
+                    Selected: {indianVoiceSamples.find(v => v.id === selectedVoiceId)?.name || 'Voice'}
                   </span>
                 </div>
               </div>
