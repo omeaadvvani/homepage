@@ -46,7 +46,7 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
   const calendarOptions = [
     {
       id: 'north-indian',
-      name: 'North Indian (Drik Panchang)',
+      name: 'North Indian Calendar',
       icon: Calendar,
       description: 'Traditional Vedic calendar system'
     },
@@ -58,7 +58,7 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
     },
     {
       id: 'telugu',
-      name: 'Telugu Panchangam',
+      name: 'Telugu Calendar',
       icon: Calendar,
       description: 'Telugu traditional calendar'
     },
@@ -143,7 +143,7 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
 
       const { error } = await upsertPreferences({
         language,
-        calendar_type: selectedCalendarOption?.name || 'North Indian (Drik Panchang)',
+        calendar_type: selectedCalendarOption?.name || 'North Indian Calendar',
         location: detectedLocation,
         notification_time: notificationTime
       });

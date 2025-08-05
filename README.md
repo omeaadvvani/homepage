@@ -17,7 +17,7 @@ A modern React-based voice assistant for Hindu calendar and spiritual guidance, 
 - **Styling**: TailwindCSS with custom spiritual theme
 - **Backend**: Supabase (Database, Auth, Edge Functions)
 - **Voice**: Browser Speech Synthesis API
-- **AI**: OpenAI GPT-4 for enhanced responses
+- **AI**: Perplexity API for spiritual guidance and real-time information
 - **Icons**: Lucide React
 
 ## 📦 Installation
@@ -38,8 +38,7 @@ A modern React-based voice assistant for Hindu calendar and spiritual guidance, 
    ```env
    VITE_SUPABASE_URL=your_supabase_url
    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   VITE_OPENAI_API_KEY=your_openai_api_key
-   VITE_ELEVENLABS_API_KEY=your_elevenlabs_api_key
+   VITE_PERPLEXITY_API_KEY=your_perplexity_api_key
    ```
 
 4. **Start development server**
@@ -55,8 +54,7 @@ A modern React-based voice assistant for Hindu calendar and spiritual guidance, 
 |----------|-------------|----------|
 | `VITE_SUPABASE_URL` | Supabase project URL | ✅ |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key | ✅ |
-| `VITE_OPENAI_API_KEY` | OpenAI API key for enhanced responses | ✅ |
-| `VITE_ELEVENLABS_API_KEY` | ElevenLabs API key (optional) | ❌ |
+| `VITE_PERPLEXITY_API_KEY` | Perplexity API key for spiritual guidance | ✅ |
 
 ### Supabase Setup
 
@@ -70,7 +68,6 @@ A modern React-based voice assistant for Hindu calendar and spiritual guidance, 
    ```
 
 3. **Set environment variables in Supabase Dashboard**:
-   - `OPENAI_API_KEY`
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
 

@@ -34,13 +34,7 @@ interface SpiritualEvent {
   type: 'tithi' | 'festival' | 'fast' | 'prayer';
 }
 
-interface UpcomingEvent {
-  id: string;
-  name: string;
-  date: string;
-  action: string;
-  days_away: number;
-}
+
 
 const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({ 
   onChangePreferences, 
@@ -54,7 +48,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
   
   const [showSacredText, setShowSacredText] = useState(false);
   const [todayEvent, setTodayEvent] = useState<SpiritualEvent | null>(null);
-  const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
+
   const [currentTime, setCurrentTime] = useState(new Date());
   const [dailyGreeting, setDailyGreeting] = useState('');
   const [showGreeting, setShowGreeting] = useState(false);
@@ -112,29 +106,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
     }
   ], []);
 
-  const sampleUpcoming: UpcomingEvent[] = useMemo(() => [
-    {
-      id: '1',
-      name: 'Ekadashi',
-      date: '2025-01-02',
-      action: 'Fast and offer prayers to Lord Vishnu',
-      days_away: 3
-    },
-    {
-      id: '2',
-      name: 'Amavasya',
-      date: '2025-01-05',
-      action: 'Offer prayers to ancestors and light diyas',
-      days_away: 6
-    },
-    {
-      id: '3',
-      name: 'Makar Sankranti',
-      date: '2025-01-14',
-      action: 'Celebrate harvest festival with til-gud',
-      days_away: 15
-    }
-  ], []);
+
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -155,8 +127,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
   useEffect(() => {
     // In production, fetch from Supabase based on user's calendar type and location
     setTodayEvent(sampleEvents[0]);
-    setUpcomingEvents(sampleUpcoming);
-  }, [preferences, sampleEvents, sampleUpcoming]);
+  }, [preferences, sampleEvents]);
 
   const formatTime = (timeString: string) => {
     const [hours, minutes] = timeString.split(':');
@@ -320,32 +291,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
             </button>
           </div>
 
-          {/* Upcoming Events Preview */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-card p-6 shadow-spiritual border border-spiritual-200/50">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <Calendar className="w-6 h-6 text-spiritual-600" />
-                <h2 className="text-xl font-semibold text-spiritual-900 tracking-spiritual">Upcoming Events</h2>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              {upcomingEvents.map((event) => (
-                <div key={event.id} className="flex items-center justify-between p-4 bg-spiritual-50/50 rounded-spiritual border border-spiritual-200/30 hover:bg-spiritual-50 transition-colors duration-300">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="font-semibold text-spiritual-900 tracking-spiritual">{event.name}</h3>
-                      <span className="text-xs bg-spiritual-200 text-spiritual-800 px-2 py-1 rounded-full font-medium tracking-spiritual">
-                        {event.days_away} days
-                      </span>
-                    </div>
-                    <p className="text-sm text-spiritual-700 tracking-spiritual">{event.action}</p>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-spiritual-400" />
-                </div>
-              ))}
-            </div>
-          </div>
+
 
           {/* Quick Actions */}
           <div className="flex flex-col sm:flex-row gap-4">

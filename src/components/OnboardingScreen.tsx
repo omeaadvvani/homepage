@@ -36,7 +36,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete, onBack 
   const calendarOptions = [
     {
       id: 'north-indian',
-      name: 'North Indian (Drik Panchang)',
+      name: 'North Indian Calendar',
       icon: Calendar,
       description: 'Traditional Vedic calendar system'
     },
@@ -48,7 +48,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete, onBack 
     },
     {
       id: 'telugu',
-      name: 'Telugu Panchangam',
+      name: 'Telugu Calendar',
       icon: Calendar,
       description: 'Telugu traditional calendar'
     },

@@ -14,10 +14,12 @@ import {
   VolumeX,
   Calendar
 } from 'lucide-react';
-import { usePanchang } from '../hooks/usePanchang';
+
+import { perplexityApi } from '../lib/perplexity-api';
+
 // Removed unused imports to fix linting errors
-// Removed complex API dependencies - using simple local responses
-// Removed ElevenLabs dependency - using browser speech synthesis instead
+// Perplexity API integration for spiritual guidance
+// Browser-based voice synthesis
 
 // Type definitions for Web Speech API
 declare global {
@@ -89,8 +91,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   
-  // Panchang integration
-  const { panchangData, loading: panchangLoading } = usePanchang();
+
   
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -111,11 +112,9 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   
   // Fallback suggestions when API fails
   const fallbackSuggestions = useMemo(() => [
-    "When is the next Amavasya?",
-    "What should I do on Ekadashi?", 
-    "How do I perform a simple pooja at home?",
-    "Which day is best for Hanuman prayers?",
-    "What is the meaning of Rahukalam?"
+    "When is next Amavasya in Mumbai?",
+    "When is Purnima this month in Chicago USA?",
+    "When is Rahukaal today?"
   ], []);
 
   useEffect(() => {
@@ -297,70 +296,135 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     }, 100);
   };
 
-  // Enhanced Text-to-Speech function with ElevenLabs integration
-  const speak = async (text: string) => {
-    try {
-      if (!text || text.trim() === "") return;
-
-      setIsSpeaking(true);
-      setVoiceError(null);
-      
-      // Use browser speech synthesis (simple and reliable)
-      const synth = window.speechSynthesis;
-      synth.cancel(); // Stop any current speech
-      
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "en-IN";
-      utterance.rate = 0.85;
-      utterance.pitch = 1.1;
-
-      const setVoice = () => {
-        const voices = synth.getVoices();
-        
-        // Prioritize Catherine (en-AU) voice
-        let selectedVoice = voices.find(voice => 
-          voice.name.toLowerCase().includes('catherine') && 
-          voice.lang.toLowerCase().includes('en-au')
-        );
-        
-        // Fallback to other good voices if Catherine not found
-        if (!selectedVoice) {
-          selectedVoice = voices.find((v) =>
-            v.name === "Google UK English Female" ||
-            v.name === "Microsoft Zira Desktop - English (United States)" ||
-            v.name === "Samantha" ||
-            v.name === "Karen" ||
-            v.name.toLowerCase().includes("female") ||
-            v.name.toLowerCase().includes("google")
-          ) || voices[0];
-        }
-
-        if (selectedVoice) {
-          utterance.voice = selectedVoice;
-        }
-
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = (event) => {
-          console.error('Speech synthesis error:', event);
-          setVoiceError('Voice synthesis failed');
-          setIsSpeaking(false);
-        };
-
-        synth.speak(utterance);
-      };
-
-      if (synth.getVoices().length === 0) {
-        synth.onvoiceschanged = () => setVoice();
-      } else {
-        setVoice();
-      }
-      
-    } catch (error) {
-      console.error('❌ Error in text-to-speech:', error);
-      setVoiceError('Voice synthesis failed');
-      setIsSpeaking(false);
-    }
+  // Voice options for Indian/neutral accents
+  const getAvailableVoices = () => {
+    const voices = window.speechSynthesis.getVoices();
+    return [
+      ...voices.filter(v => v.lang === "en-IN" && v.name.toLowerCase().includes("female")).map(v => ({ label: `Indian English Female – ${v.name}`, value: v.name })),
+      ...voices.filter(v => v.lang === "en-IN" && v.name.toLowerCase().includes("male")).map(v => ({ label: `Indian English Male – ${v.name}`, value: v.name })),
+      ...voices.filter(v => v.lang === "en-GB" && v.name.toLowerCase().includes("female")).map(v => ({ label: `Neutral English Female – ${v.name}`, value: v.name })),
+      ...voices.filter(v => v.lang === "en-GB" && v.name.toLowerCase().includes("male")).map(v => ({ label: `Neutral English Male – ${v.name}`, value: v.name })),
+    ];
   };
+  const [voiceOptions, setVoiceOptions] = useState(getAvailableVoices());
+  const [selectedVoice, setSelectedVoice] = useState(voiceOptions[0]?.value || "");
+  const [playingMsgId, setPlayingMsgId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const updateVoices = () => {
+      const options = getAvailableVoices();
+      setVoiceOptions(options);
+      if (!options.find(v => v.value === selectedVoice)) {
+        setSelectedVoice(options[0]?.value || "");
+      }
+    };
+    window.speechSynthesis.onvoiceschanged = updateVoices;
+    updateVoices();
+    return () => { window.speechSynthesis.onvoiceschanged = null; };
+  }, []);
+
+  const playMessage = (msgId: string, text: string) => {
+    if (playingMsgId === msgId) {
+      window.speechSynthesis.cancel();
+      setPlayingMsgId(null);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    setPlayingMsgId(msgId);
+    const utterance = new window.SpeechSynthesisUtterance(text);
+    const voices = window.speechSynthesis.getVoices();
+    utterance.voice = voices.find(v => v.name === selectedVoice) || voices[0];
+    utterance.onend = () => setPlayingMsgId(null);
+    utterance.onerror = () => setPlayingMsgId(null);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Output post-processing for Perplexity responses
+  function processPerplexityResponse(response: string, isMoreInfo: boolean = false): string {
+    let lines = response.split('\n').map(line => line.trim()).filter(Boolean);
+
+    // Remove reasoning/thinking lines and blocks
+    const forbiddenPhrases = [
+      "let's tackle this",
+      "step by step", 
+      "i need to check",
+      "search results",
+      "the instructions say",
+      "wait,",
+      "reasoning",
+      "<think>",
+      "<reasoning>",
+      "</think>",
+      "looking at",
+      "the fifth source",
+      "the fourth source",
+      "both dates are",
+      "for deeper observance",
+      "the user's location",
+      "the answer should mention",
+      "timings from",
+      "adjusted for",
+      "this confusion arises",
+      "different sources might",
+      "the user is in",
+      "i need to convert",
+      "assuming the dates",
+      "the first result",
+      "the third source",
+      "might be a different",
+      "please consult",
+      "consult local panchang",
+      "priests for precise timings",
+      "as per your location",
+      "family traditions",
+      "reference",
+      "source",
+      "please provide your location",
+      // New forbidden phrase
+      "drik panchang or similar tools provide precise timings",
+      // New forbidden phrases for self-contained answers
+      "please check drik panchang",
+      "refer to drik panchang",
+      "consult drik panchang",
+      "check kksf",
+      "refer to kksf",
+      "consult kksf",
+      "check other sources",
+      "refer to other sources",
+      "consult other sources"
+    ];
+    
+    // Remove lines containing forbidden phrases or source references
+    lines = lines.filter(line =>
+      !forbiddenPhrases.some(phrase => line.toLowerCase().includes(phrase)) &&
+      !/\[\d+\]/.test(line)
+    );
+
+    // Remove everything before the first "🪔 Jai Shree Krishna"
+    const jaiShreeIndex = lines.findIndex(line => line.includes('🪔 Jai Shree Krishna'));
+    if (jaiShreeIndex > 0) {
+      lines = lines.slice(jaiShreeIndex);
+    }
+
+    // Ensure greeting
+    if (!lines[0]?.includes('🪔 Jai Shree Krishna')) {
+      lines.unshift('🪔 Jai Shree Krishna.');
+    }
+
+    // Limit lines
+    const maxLines = 15;
+    if (lines.length > maxLines) {
+      lines = lines.slice(0, maxLines);
+    }
+
+    // Each line should be 1–2 sentences only
+    lines = lines.map(line => {
+      const sentences = line.split('. ');
+      return sentences.slice(0, 2).join('. ') + (sentences.length > 2 ? '.' : '');
+    });
+
+    return lines.join('\n');
+  }
 
   const handleAskQuestion = async () => {
     if (!question.trim()) return;
@@ -378,54 +442,25 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     setQuestion('');
 
     try {
-      // Get current date and time for Panchang API
-      const now = new Date();
-      const date = now.toLocaleDateString('en-GB'); // DD/MM/YYYY format
-      const time = now.toTimeString().split(' ')[0]; // HH:MM:SS format
-      const timezone = (now.getTimezoneOffset() / -60).toString(); // Convert to decimal hours
-
-      // Call the Panchang Guidance API
-      const response = await fetch('https://lsreburdljvhqksbrckc.supabase.co/functions/v1/panchang-guidance', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({
-          question: userMessage.content,
-          date,
-          time,
-          timezone,
-          latitude: panchangData?.reqlat,
-          longitude: panchangData?.reqlon
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      const responseText = data.guidance || 'Unable to generate guidance at this time.';
+      // Call Perplexity API for spiritual guidance
+      const responseText = await perplexityApi.getResponse(userMessage.content);
+      // Determine if user asked for 'more info'
+      const isMoreInfo = /more info|full panchang|all details/i.test(userMessage.content);
+      const processedText = processPerplexityResponse(responseText, isMoreInfo);
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
-        content: responseText,
+        content: processedText,
         timestamp: new Date()
       };
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      // Trigger text-to-speech safely
+      // Trigger text-to-speech for the response
       if (responseText && responseText.trim() !== "") {
         setTimeout(() => {
-          speak(responseText);
+          playMessage(assistantMessage.id, responseText);
         }, 300);
       }
 
@@ -434,32 +469,22 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       const errorMessage = error instanceof Error ? error.message : 'Failed to get response';
       setApiError(errorMessage);
       
-      // Fallback to local responses if API fails
-      let fallbackText = '';
-      const questionLower = userMessage.content.toLowerCase();
+      let errorContent = 'I apologize, but I encountered an error while processing your question. Please try again.';
       
-      if (questionLower.includes('amavasya')) {
-        fallbackText = `Amavasya falls on Sunday, July 21, 2024.\nIt marks the new moon and is ideal for spiritual cleansing and honoring ancestors.\nObserve silence, offer water to your elders, or perform a simple prayer at home.`;
-      } else if (questionLower.includes('ekadashi')) {
-        fallbackText = `Ekadashi falls on Tuesday, July 16, 2024.\nIt is a sacred day for fasting and spiritual purification in Hindu tradition.\nFast from grains, meditate, and chant the holy names for spiritual progress.`;
-      } else if (questionLower.includes('pooja') || questionLower.includes('puja')) {
-        fallbackText = `For a simple pooja at home, first purify yourself with a bath.\nLight a lamp, offer flowers, and chant simple mantras with devotion.\nPerform with a clean mind and pure heart - that is most important.`;
-      } else if (questionLower.includes('hanuman')) {
-        fallbackText = `Tuesday is the most auspicious day for Hanuman prayers.\nChant Hanuman Chalisa, offer sindoor and jasmine flowers.\nVisit a Hanuman temple or create a simple altar at home.`;
-      } else if (questionLower.includes('rahukalam')) {
-        fallbackText = `Rahukalam varies daily - today it is from 3:00 PM to 4:30 PM.\nAvoid starting new ventures during this time.\nUse this period for meditation, prayer, or completing existing tasks.`;
-      } else {
-        fallbackText = `Namaste! I understand you're asking about "${userMessage.content}".\nFor specific spiritual guidance, I recommend consulting your local temple or spiritual guide.\nMay your spiritual journey be blessed with wisdom and peace. Om Shanti.`;
+      if (errorMessage.includes('API key not configured')) {
+        errorContent = 'Perplexity API key is not configured. Please check your environment variables.';
+      } else if (errorMessage.includes('Perplexity API error')) {
+        errorContent = 'There was an issue with the Perplexity service. Please try again in a moment.';
       }
       
-      const fallbackMessage: Message = {
+      const errorResponse: Message = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
-        content: fallbackText,
+        content: errorContent,
         timestamp: new Date()
       };
 
-      setMessages(prev => [...prev, fallbackMessage]);
+      setMessages(prev => [...prev, errorResponse]);
     } finally {
       setIsAsking(false);
     }
@@ -522,12 +547,6 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     } catch (err) {
       console.error("Voice capture failed:", err);
       setIsListening(false);
-    }
-  };
-
-  const handleReplayAudio = (content: string) => {
-    if (content && content.trim() !== "") {
-      speak(content);
     }
   };
 
@@ -601,15 +620,17 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowVoiceSettings(!showVoiceSettings)}
-            className="group flex items-center gap-2 px-4 py-2 bg-spiritual-50 hover:bg-spiritual-100 rounded-spiritual shadow-spiritual border border-spiritual-200/50 transition-all duration-300 text-spiritual-700 font-medium tracking-spiritual"
-            title="Voice Settings"
+          <select
+            className="px-2 py-1 rounded border text-sm text-spiritual-700 bg-white shadow"
+            value={selectedVoice}
+            onChange={e => setSelectedVoice(e.target.value)}
+            style={{ minWidth: 180 }}
+            title="Choose Voice Accent"
           >
-            <Settings className="w-4 h-4" />
-            <span className="text-sm">Voice</span>
-          </button>
-          
+            {voiceOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
           <button
             onClick={clearConversation}
             disabled={messages.length === 0}
@@ -622,33 +643,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         </div>
       </div>
       
-      {/* Panchang Info Section */}
-      {panchangData && !panchangLoading && (
-        <div className="relative z-20 bg-gradient-to-r from-orange-50 to-yellow-50 border-b border-orange-200/50 p-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Calendar className="w-5 h-5 text-orange-600" />
-                <div>
-                  <h3 className="text-sm font-semibold text-orange-800 tracking-spiritual">
-                    Today's Panchang
-                  </h3>
-                  <div className="flex items-center gap-4 text-xs text-orange-700">
-                    <span>🌙 {panchangData.tithi} ({panchangData.paksha})</span>
-                    <span>⭐ {panchangData.nakshatra}</span>
-                    <span>🧘 {panchangData.yoga}</span>
-                    <span>♈ {panchangData.rashi}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="text-right text-xs text-orange-600">
-                <div>🌅 {panchangData.sunrise?.replace(/(\d{2}):(\d{2}):(\d{2})/, '$1:$2')}</div>
-                <div>🌇 {panchangData.sunset?.replace(/(\d{2}):(\d{2}):(\d{2})/, '$1:$2')}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
       
       {/* Voice Settings Panel */}
       {showVoiceSettings && (
@@ -772,7 +767,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
                 Welcome to Your Spiritual Session
               </h2>
               <p className="text-spiritual-700/80 tracking-spiritual max-w-md mx-auto">
-                Ask me about Hindu festivals, auspicious timings, rituals, or any spiritual guidance you need.
+                Ask me about Hindu festivals, auspicious timings, rituals, or any spiritual guidance you need. For best results, include your location — like “When is the next Amavasya in Mumbai, India?”
               </p>
             </div>
           )}
@@ -807,6 +802,16 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
                     }`}>
                       {formatTime(message.timestamp)}
                     </span>
+                    {/* Sound icon for assistant messages */}
+                    {message.type === 'assistant' && (
+                      <button
+                        className={`ml-2 p-1 rounded-full transition-colors duration-200 ${playingMsgId === message.id ? 'bg-yellow-200 text-yellow-800' : 'bg-spiritual-100 text-spiritual-700 hover:bg-yellow-100'}`}
+                        onClick={() => playMessage(message.id, message.content)}
+                        title={playingMsgId === message.id ? 'Stop Voice' : 'Play Voice'}
+                      >
+                        {playingMsgId === message.id ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                      </button>
+                    )}
                   </div>
                   
                   <div className={`leading-relaxed tracking-spiritual whitespace-pre-line ${
@@ -993,6 +998,14 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
           </div>
         </div>
       </div>
+      {isSpeaking && (
+        <button
+          className="fixed bottom-8 right-8 z-50 bg-red-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2"
+          onClick={() => { setIsMuted(true); window.speechSynthesis.cancel(); }}
+        >
+          <VolumeX className="w-5 h-5" /> Mute
+        </button>
+      )}
     </div>
   );
 };

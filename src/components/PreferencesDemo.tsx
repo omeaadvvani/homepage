@@ -9,7 +9,7 @@ const PreferencesDemo: React.FC = () => {
   
   const [formData, setFormData] = useState({
     language: preferences?.language || 'English',
-    calendar_type: preferences?.calendar_type || 'Drik Panchang',
+    calendar_type: preferences?.calendar_type || 'North Indian Calendar',
     location: preferences?.location || '',
     notification_time: preferences?.notification_time || '07:00'
   });
@@ -99,7 +99,7 @@ const PreferencesDemo: React.FC = () => {
         setSaveMessage({ type: 'success', text: 'Preferences deleted successfully!' });
         setFormData({
           language: 'English',
-          calendar_type: 'Drik Panchang',
+          calendar_type: 'North Indian Calendar',
           location: '',
           notification_time: '07:00'
         });
@@ -197,9 +197,9 @@ const PreferencesDemo: React.FC = () => {
             onChange={(e) => setFormData(prev => ({ ...prev, calendar_type: e.target.value }))}
             className="w-full px-4 py-3 border-2 border-spiritual-200 rounded-spiritual focus:border-spiritual-400 focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 bg-white text-spiritual-900"
           >
-            <option value="Drik Panchang">Drik Panchang</option>
+            <option value="North Indian Calendar">North Indian Calendar</option>
             <option value="Tamil Calendar">Tamil Calendar</option>
-            <option value="Telugu Panchangam">Telugu Panchangam</option>
+            <option value="Telugu Calendar">Telugu Calendar</option>
             <option value="ISKCON Calendar">ISKCON Calendar</option>
           </select>
         </div>

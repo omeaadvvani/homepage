@@ -826,11 +826,6 @@ function App() {
             </span>
           </button>
         </div>
-
-        {/* Supabase Connection Test */}
-        <div className="mt-8 max-w-md">
-          <SupabaseTest />
-        </div>
       </div>
 
       {/* Footer */}
