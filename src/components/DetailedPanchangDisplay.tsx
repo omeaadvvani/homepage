@@ -59,7 +59,7 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
       const response = await panchangDetailedAPI.getDetailedPanchang(query, location);
 
       if (response && response.tableData) {
-        setPanchangData(response);
+        setPanchangData(response.tableData);
         setSpokenSummary(response.spokenSummary || '');
         setLastQuery(customQuery || userQuery);
         
@@ -70,7 +70,7 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
           }, 500);
         }
 
-        console.log('✅ Detailed Panchang data received:', response);
+        console.log('✅ Detailed Panchang data received:', response.tableData);
       } else {
         setError('Failed to fetch Panchang data');
         console.error('❌ Panchang fetch failed: No data received');
@@ -272,13 +272,98 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
 
           {/* Panchang Table */}
           <div className="overflow-x-auto">
-            <div className="prose prose-sm max-w-none">
-              <div 
-                className="markdown-content"
-                dangerouslySetInnerHTML={{ 
-                  __html: formatTableData(panchangData).replace(/\n/g, '<br>') 
-                }}
-              />
+            <div className="bg-white border border-gray-300 rounded-lg overflow-hidden">
+              <div className="p-4">
+                <h2 className="text-xl font-bold text-gray-800 mb-4">Panchang Information</h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-purple-50">
+                        <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                          Field
+                        </th>
+                        <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                          Value(s)
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {panchangData && (
+                        <>
+                          <tr className="bg-white">
+                            <td className="border border-gray-300 px-4 py-3 font-medium text-gray-700">Date</td>
+                            <td className="border border-gray-300 px-4 py-3 text-gray-800">{panchangData.date || 'Not available'}</td>
+                          </tr>
+                          <tr className="bg-gray-50">
+                            <td className="border border-gray-300 px-4 py-3 font-medium text-gray-700">Maasa</td>
+                            <td className="border border-gray-300 px-4 py-3 text-gray-800">{panchangData.maasa || 'Not available'}</td>
+                          </tr>
+                          <tr className="bg-white">
+                            <td className="border border-gray-300 px-4 py-3 font-medium text-gray-700">Vasara</td>
+                            <td className="border border-gray-300 px-4 py-3 text-gray-800">{panchangData.vasara || 'Not available'}</td>
+                          </tr>
+                          <tr className="bg-gray-50">
+                            <td className="border border-gray-300 px-4 py-3 font-medium text-gray-700">Tithi</td>
+                            <td className="border border-gray-300 px-4 py-3 text-gray-800">{panchangData.tithi || 'Not available'}</td>
+                          </tr>
+                          <tr className="bg-white">
+                            <td className="border border-gray-300 px-4 py-3 font-medium text-gray-700">Tithi Start/End</td>
+                            <td className="border border-gray-300 px-4 py-3 text-gray-800">{panchangData.tithiStartEnd || 'Not available'}</td>
+                          </tr>
+                          <tr className="bg-gray-50">
+                            <td className="border border-gray-300 px-4 py-3 font-medium text-gray-700">Nakshatra</td>
+                            <td className="border border-gray-300 px-4 py-3 text-gray-800">{panchangData.nakshatra || 'Not available'}</td>
+                          </tr>
+                          <tr className="bg-white">
+                            <td className="border border-gray-300 px-4 py-3 font-medium text-gray-700">Raashi</td>
+                            <td className="border border-gray-300 px-4 py-3 text-gray-800">{panchangData.raashi || 'Not available'}</td>
+                          </tr>
+                          <tr className="bg-gray-50">
+                            <td className="border border-gray-300 px-4 py-3 font-medium text-gray-700">Sunrise</td>
+                            <td className="border border-gray-300 px-4 py-3 text-gray-800">{panchangData.sunrise || 'Not available'}</td>
+                          </tr>
+                          <tr className="bg-white">
+                            <td className="border border-gray-300 px-4 py-3 font-medium text-gray-700">Sunset</td>
+                            <td className="border border-gray-300 px-4 py-3 text-gray-800">{panchangData.sunset || 'Not available'}</td>
+                          </tr>
+                          <tr className="bg-gray-50">
+                            <td className="border border-gray-300 px-4 py-3 font-medium text-gray-700">Aayana</td>
+                            <td className="border border-gray-300 px-4 py-3 text-gray-800">{panchangData.aayana || 'Not available'}</td>
+                          </tr>
+                          <tr className="bg-white">
+                            <td className="border border-gray-300 px-4 py-3 font-medium text-gray-700">Amrutha Kalam</td>
+                            <td className="border border-gray-300 px-4 py-3 text-gray-800">{panchangData.amruthaKalam || 'Not available'}</td>
+                          </tr>
+                          <tr className="bg-gray-50">
+                            <td className="border border-gray-300 px-4 py-3 font-medium text-gray-700">Varjyam</td>
+                            <td className="border border-gray-300 px-4 py-3 text-gray-800">{panchangData.varjyam || 'Not available'}</td>
+                          </tr>
+                          <tr className="bg-white">
+                            <td className="border border-gray-300 px-4 py-3 font-medium text-gray-700">Durmuhurtham</td>
+                            <td className="border border-gray-300 px-4 py-3 text-gray-800">{panchangData.durmuhurtham || 'Not available'}</td>
+                          </tr>
+                          <tr className="bg-gray-50">
+                            <td className="border border-gray-300 px-4 py-3 font-medium text-gray-700">Rahu Kalam</td>
+                            <td className="border border-gray-300 px-4 py-3 text-gray-800">{panchangData.rahuKalam || 'Not available'}</td>
+                          </tr>
+                          <tr className="bg-white">
+                            <td className="border border-gray-300 px-4 py-3 font-medium text-gray-700">Yama Gandam</td>
+                            <td className="border border-gray-300 px-4 py-3 text-gray-800">{panchangData.yamaGandam || 'Not available'}</td>
+                          </tr>
+                          <tr className="bg-gray-50">
+                            <td className="border border-gray-300 px-4 py-3 font-medium text-gray-700">Pradosham Timings</td>
+                            <td className="border border-gray-300 px-4 py-3 text-gray-800">{panchangData.pradosham || 'Not available'}</td>
+                          </tr>
+                          <tr className="bg-white">
+                            <td className="border border-gray-300 px-4 py-3 font-medium text-gray-700">Source</td>
+                            <td className="border border-gray-300 px-4 py-3 text-gray-800">{panchangData.source || 'Not available'}</td>
+                          </tr>
+                        </>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
 

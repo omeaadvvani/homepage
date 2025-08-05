@@ -591,7 +591,7 @@ export class PanchangDetailedAPI {
     query: string,
     location?: { latitude: number; longitude: number }
   ): Promise<{
-    tableData: string;
+    tableData: PanchangDetailedData;
     spokenSummary: string;
     source: string;
   }> {
@@ -634,11 +634,10 @@ export class PanchangDetailedAPI {
           }
           
           const parsedData = this.parsePerplexityResponse(response, userTimezone);
-          const tableData = this.formatPanchangData(parsedData, userTimezone);
           const spokenSummary = this.generateSpokenSummary(parsedData, userTimezone);
           
           return {
-            tableData,
+            tableData: parsedData,
             spokenSummary,
             source: 'Perplexity AI'
           };
@@ -658,18 +657,18 @@ export class PanchangDetailedAPI {
       
       if (isSpecificQuery || parsedQuery.tithi) {
         console.log('📋 Using fallback data for specific query to ensure tabular format');
-        const tithiInfo = this.getTithiInfo(parsedQuery.tithi || query.toLowerCase(), userTimezone);
+        const fallbackData = this.getFallbackData(query, location, userTimezone);
         return {
-          tableData: tithiInfo,
+          tableData: fallbackData,
           spokenSummary: `Here is information about ${parsedQuery.tithi || query} in your local timezone. ${TITHI_DATA[parsedQuery.tithi?.toLowerCase() as keyof typeof TITHI_DATA]?.description || 'This is important information for your spiritual practice.'}`,
           source: 'Local Database (Clean Format)'
         };
       }
       
       if (parsedQuery.nakshatra) {
-        const nakshatraInfo = this.getNakshatraInfo(parsedQuery.nakshatra, userTimezone);
+        const fallbackData = this.getFallbackData(query, location, userTimezone);
         return {
-          tableData: nakshatraInfo,
+          tableData: fallbackData,
           spokenSummary: `Here is information about ${parsedQuery.nakshatra} nakshatra in your local timezone. ${NAKSHATRA_DATA[parsedQuery.nakshatra.toLowerCase() as keyof typeof NAKSHATRA_DATA]?.description}`,
           source: 'Local Database (Clean Format)'
         };
@@ -677,13 +676,12 @@ export class PanchangDetailedAPI {
 
       // Default fallback data with user's timezone
       const fallbackData = this.getFallbackData(query, location, userTimezone);
-      const tableData = this.formatPanchangData(fallbackData, userTimezone);
       const spokenSummary = this.generateSpokenSummary(fallbackData, userTimezone);
       
       return {
-        tableData,
+        tableData: fallbackData,
         spokenSummary,
-        source: 'Local Database (Fallback)'
+        source: 'Local Database (Clean Format)'
       };
 
     } catch (error) {
@@ -691,11 +689,10 @@ export class PanchangDetailedAPI {
       
       // Ultimate fallback
       const fallbackData = this.getFallbackData(query, location, 'Asia/Kolkata');
-      const tableData = this.formatPanchangData(fallbackData, 'Asia/Kolkata');
       const spokenSummary = this.generateSpokenSummary(fallbackData, 'Asia/Kolkata');
       
       return {
-        tableData,
+        tableData: fallbackData,
         spokenSummary,
         source: 'Emergency Fallback'
       };
