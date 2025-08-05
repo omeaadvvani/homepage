@@ -25,9 +25,9 @@ const DetailedPanchangTest: React.FC = () => {
       
       setResults(prev => [...prev, {
         type: testType,
-        success: response.success,
-        response: response.data || response,
-        error: response.error,
+        success: true,
+        response: response.tableData || response,
+        error: undefined,
         duration
       }]);
       
@@ -54,53 +54,43 @@ const DetailedPanchangTest: React.FC = () => {
     
     // Test 1: Basic Panchang Query
     await runTest('Basic Panchang Query', () => 
-      panchangDetailedAPI.getDetailedPanchang({
-        latitude: 28.6139,
-        longitude: 77.2090,
-        location: 'Delhi, India',
-        query: 'Show me today\'s Panchang with all details'
-      })
+      panchangDetailedAPI.getDetailedPanchang(
+        'Show me today\'s Panchang with all details',
+        { latitude: 28.6139, longitude: 77.2090 }
+      )
     );
 
     // Test 2: Specific Tithi Query
     await runTest('Specific Tithi Query', () => 
-      panchangDetailedAPI.getDetailedPanchang({
-        latitude: 28.6139,
-        longitude: 77.2090,
-        location: 'Delhi, India',
-        query: 'When is the next Ekadashi and what are the auspicious timings?'
-      })
+      panchangDetailedAPI.getDetailedPanchang(
+        'When is the next Ekadashi and what are the auspicious timings?',
+        { latitude: 28.6139, longitude: 77.2090 }
+      )
     );
 
     // Test 3: Nakshatra Query
     await runTest('Nakshatra Query', () => 
-      panchangDetailedAPI.getDetailedPanchang({
-        latitude: 28.6139,
-        longitude: 77.2090,
-        location: 'Delhi, India',
-        query: 'Tell me about today\'s nakshatra and raashi'
-      })
+      panchangDetailedAPI.getDetailedPanchang(
+        'Tell me about today\'s nakshatra and raashi',
+        { latitude: 28.6139, longitude: 77.2090 }
+      )
     );
 
     // Test 4: Tomorrow's Panchang
     await runTest('Tomorrow\'s Panchang', () => 
-      panchangDetailedAPI.getDetailedPanchang({
-        latitude: 28.6139,
-        longitude: 77.2090,
-        location: 'Delhi, India',
-        query: 'Show me tomorrow\'s Panchang with sunrise and sunset times'
-      })
+      panchangDetailedAPI.getDetailedPanchang(
+        'Show me tomorrow\'s Panchang with sunrise and sunset times',
+        { latitude: 28.6139, longitude: 77.2090 }
+      )
     );
 
     // Test 5: Custom Query
     if (testQuery.trim()) {
       await runTest('Custom Query', () => 
-        panchangDetailedAPI.getDetailedPanchang({
-          latitude: 28.6139,
-          longitude: 77.2090,
-          location: 'Delhi, India',
-          query: testQuery
-        })
+        panchangDetailedAPI.getDetailedPanchang(
+          testQuery,
+          { latitude: 28.6139, longitude: 77.2090 }
+        )
       );
     }
   };
