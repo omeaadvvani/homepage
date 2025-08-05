@@ -45,13 +45,14 @@ interface TithiNakshatraQuery {
 }
 
 class PanchangDetailedAPI {
-  private baseURL = 'https://api.panchang.click';
+  private baseURL = 'https://api.panchang.click'; // Kept for reference but not used
   private userId: string;
   private authCode: string;
 
   constructor() {
     this.userId = import.meta.env.VITE_PANCHANG_USER_ID || '';
     this.authCode = import.meta.env.VITE_PANCHANG_AUTH_CODE || '';
+    console.log('🤖 PanchangDetailedAPI initialized - using Perplexity API for all data');
   }
 
   /**
@@ -256,7 +257,7 @@ class PanchangDetailedAPI {
   }
 
   /**
-   * Fetch raw Panchang data from API
+   * Fetch Panchang data using Perplexity API instead of Panchang API
    */
   private async fetchPanchangData(params: {
     date: string;
@@ -266,34 +267,141 @@ class PanchangDetailedAPI {
     timezone?: string;
   }) {
     try {
-      const url = `${this.baseURL}/panchang`;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.authCode}`,
-          'X-User-ID': this.userId
-        },
-        body: JSON.stringify({
-          date: params.date,
-          latitude: params.latitude,
-          longitude: params.longitude,
-          location: params.location,
-          timezone: params.timezone || 'Asia/Kolkata'
-        })
+      console.log('🤖 Using Perplexity API for Panchang data');
+      
+      // Create a comprehensive query for Perplexity
+      const query = `Provide detailed Panchang information for ${params.location} on ${params.date}. Include:
+- Current tithi with start and end times
+- Nakshatra with timing
+- Sunrise and sunset times
+- Auspicious timings (Amrutha Kalam)
+- Inauspicious timings (Rahu Kalam, Varjyam, Durmuhurtham, Yama Gandam)
+- Aayana (Dakshinayana/Uttarayana)
+- Maasa (lunar month)
+- Vasara (day of week)
+- Raashi (zodiac sign)
+
+Format the response as a structured JSON object with all these details.`;
+
+      // Import and use Perplexity API
+      const { perplexityAPI } = await import('./perplexity-api');
+      
+      const response = await perplexityAPI.generateText(query, {
+        model: 'llama-3.1-sonar-small-128k-online',
+        maxTokens: 1500,
+        temperature: 0.3,
+        systemPrompt: `You are an expert Vedic astrologer and Panchang specialist. Provide accurate, detailed Panchang information in a structured format. Always include specific timings and dates. Respond with comprehensive Panchang data including all traditional elements like tithi, nakshatra, auspicious/inauspicious timings, etc.`
       });
 
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      return { success: true, data };
+      // Parse the response to extract structured data
+      const parsedData = this.parsePerplexityResponse(response, params);
+      
+      return { success: true, data: parsedData };
 
     } catch (error) {
-      console.error('❌ API fetch error:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'API request failed' };
+      console.error('❌ Perplexity API fetch error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Perplexity API request failed' };
     }
+  }
+
+  /**
+   * Parse Perplexity response to extract structured Panchang data
+   */
+  private parsePerplexityResponse(response: string, params: any): any {
+    try {
+      console.log('🔍 Parsing Perplexity response for Panchang data');
+      
+      // Try to extract JSON from the response
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          return JSON.parse(jsonMatch[0]);
+        } catch (e) {
+          console.warn('Failed to parse JSON from response, using fallback parsing');
+        }
+      }
+
+      // Fallback: Extract information using regex patterns
+      const extractedData: any = {
+        date: params.date,
+        location: params.location,
+        maasa: this.extractValue(response, /maasa[:\s]+([^\n,]+)/i) || 'Not available',
+        vasara: this.extractValue(response, /vasara[:\s]+([^\n,]+)/i) || 'Not available',
+        tithi: this.extractValue(response, /tithi[:\s]+([^\n,]+)/i) || 'Not available',
+        nakshatra: this.extractValue(response, /nakshatra[:\s]+([^\n,]+)/i) || 'Not available',
+        raashi: this.extractValue(response, /raashi[:\s]+([^\n,]+)/i) || 'Not available',
+        sunrise: this.extractTime(response, /sunrise[:\s]+([^\d]+)/i) || 'Not available',
+        sunset: this.extractTime(response, /sunset[:\s]+([^\d]+)/i) || 'Not available',
+        aayana: this.extractValue(response, /aayana[:\s]+([^\n,]+)/i) || 'Not available',
+        amruthaKalamStart: this.extractTime(response, /amrutha[:\s]+([^\d]+)/i) || 'Not available',
+        amruthaKalamEnd: this.extractTime(response, /amrutha[:\s]+([^\d]+)/i) || 'Not available',
+        rahuKalamStart: this.extractTime(response, /rahu[:\s]+([^\d]+)/i) || 'Not available',
+        rahuKalamEnd: this.extractTime(response, /rahu[:\s]+([^\d]+)/i) || 'Not available',
+        varjyamStart: this.extractTime(response, /varjyam[:\s]+([^\d]+)/i) || 'Not available',
+        varjyamEnd: this.extractTime(response, /varjyam[:\s]+([^\d]+)/i) || 'Not available',
+        durmuhurthamStart: this.extractTime(response, /durmuhurtham[:\s]+([^\d]+)/i) || 'Not available',
+        durmuhurthamEnd: this.extractTime(response, /durmuhurtham[:\s]+([^\d]+)/i) || 'Not available',
+        yamaGandamStart: this.extractTime(response, /yama[:\s]+([^\d]+)/i) || 'Not available',
+        yamaGandamEnd: this.extractTime(response, /yama[:\s]+([^\d]+)/i) || 'Not available',
+        pradoshamStart: this.extractTime(response, /pradosham[:\s]+([^\d]+)/i) || 'Not available',
+        pradoshamEnd: this.extractTime(response, /pradosham[:\s]+([^\d]+)/i) || 'Not available'
+      };
+
+      console.log('✅ Extracted Panchang data from Perplexity response:', extractedData);
+      return extractedData;
+
+    } catch (error) {
+      console.error('❌ Error parsing Perplexity response:', error);
+      // Return default data structure
+      return {
+        date: params.date,
+        location: params.location,
+        maasa: 'Not available',
+        vasara: 'Not available',
+        tithi: 'Not available',
+        nakshatra: 'Not available',
+        raashi: 'Not available',
+        sunrise: 'Not available',
+        sunset: 'Not available',
+        aayana: 'Not available',
+        amruthaKalamStart: 'Not available',
+        amruthaKalamEnd: 'Not available',
+        rahuKalamStart: 'Not available',
+        rahuKalamEnd: 'Not available',
+        varjyamStart: 'Not available',
+        varjyamEnd: 'Not available',
+        durmuhurthamStart: 'Not available',
+        durmuhurthamEnd: 'Not available',
+        yamaGandamStart: 'Not available',
+        yamaGandamEnd: 'Not available',
+        pradoshamStart: 'Not available',
+        pradoshamEnd: 'Not available'
+      };
+    }
+  }
+
+  /**
+   * Extract value using regex pattern
+   */
+  private extractValue(text: string, pattern: RegExp): string | null {
+    const match = text.match(pattern);
+    return match ? match[1].trim() : null;
+  }
+
+  /**
+   * Extract time using regex pattern
+   */
+  private extractTime(text: string, pattern: RegExp): string | null {
+    const match = text.match(pattern);
+    if (!match) return null;
+    
+    // Try to find time patterns in the matched text
+    const timeMatch = match[1].match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (timeMatch) {
+      return `${timeMatch[1]}:${timeMatch[2]} ${timeMatch[3].toUpperCase()}`;
+    }
+    
+    return match[1].trim();
   }
 
   /**

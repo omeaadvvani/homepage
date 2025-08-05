@@ -58,7 +58,7 @@ const DetailedPanchangTest: React.FC = () => {
         latitude: 28.6139,
         longitude: 77.2090,
         location: 'Delhi, India',
-        query: 'Show me today\'s Panchang'
+        query: 'Show me today\'s Panchang with all details'
       })
     );
 
@@ -68,7 +68,7 @@ const DetailedPanchangTest: React.FC = () => {
         latitude: 28.6139,
         longitude: 77.2090,
         location: 'Delhi, India',
-        query: 'When is the next Ekadashi?'
+        query: 'When is the next Ekadashi and what are the auspicious timings?'
       })
     );
 
@@ -78,7 +78,7 @@ const DetailedPanchangTest: React.FC = () => {
         latitude: 28.6139,
         longitude: 77.2090,
         location: 'Delhi, India',
-        query: 'Tell me about today\'s nakshatra'
+        query: 'Tell me about today\'s nakshatra and raashi'
       })
     );
 
@@ -88,7 +88,7 @@ const DetailedPanchangTest: React.FC = () => {
         latitude: 28.6139,
         longitude: 77.2090,
         location: 'Delhi, India',
-        query: 'Show me tomorrow\'s Panchang'
+        query: 'Show me tomorrow\'s Panchang with sunrise and sunset times'
       })
     );
 
@@ -136,11 +136,14 @@ Sunset: ${data.sunset}
         <h2 className="text-lg font-semibold mb-2">API Configuration</h2>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <span className="text-gray-600">User ID:</span>
-            {import.meta.env.VITE_PANCHANG_USER_ID ? (
+            <span className="text-gray-600">Perplexity API:</span>
+            {import.meta.env.VITE_PERPLEXITY_API_KEY ? (
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-green-500" />
                 <span className="text-green-600">Configured</span>
+                <span className="text-xs text-gray-500">
+                  ({import.meta.env.VITE_PERPLEXITY_API_KEY.substring(0, 8)}...)
+                </span>
               </div>
             ) : (
               <div className="flex items-center gap-2">
@@ -150,19 +153,15 @@ Sunset: ${data.sunset}
             )}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-gray-600">Auth Code:</span>
-            {import.meta.env.VITE_PANCHANG_AUTH_CODE ? (
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span className="text-green-600">Configured</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <XCircle className="w-4 h-4 text-red-500" />
-                <span className="text-red-600">Not configured</span>
-              </div>
-            )}
+            <span className="text-gray-600">Data Source:</span>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-blue-500" />
+              <span className="text-blue-600">Perplexity AI</span>
+            </div>
           </div>
+        </div>
+        <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-700">
+          <strong>Note:</strong> All Panchang data is now generated using Perplexity AI instead of the Panchang API
         </div>
       </div>
 
@@ -281,14 +280,14 @@ Sunset: ${data.sunset}
 
       {/* Usage Examples */}
       <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-        <h2 className="text-lg font-semibold mb-3">Usage Examples</h2>
+        <h2 className="text-lg font-semibold mb-3">Usage Examples (Perplexity AI)</h2>
         <div className="space-y-3 text-sm">
           <div className="flex items-start gap-2">
             <Calendar className="w-4 h-4 text-purple-600 mt-0.5" />
             <div>
               <span className="font-medium">Basic Panchang:</span>
               <code className="block bg-gray-200 p-1 rounded mt-1">
-                "Show me today's Panchang"
+                "Show me today's Panchang with all details"
               </code>
             </div>
           </div>
@@ -298,7 +297,7 @@ Sunset: ${data.sunset}
             <div>
               <span className="font-medium">Specific Tithi:</span>
               <code className="block bg-gray-200 p-1 rounded mt-1">
-                "When is the next Ekadashi?"
+                "When is the next Ekadashi and what are the auspicious timings?"
               </code>
             </div>
           </div>
@@ -308,7 +307,17 @@ Sunset: ${data.sunset}
             <div>
               <span className="font-medium">Location Specific:</span>
               <code className="block bg-gray-200 p-1 rounded mt-1">
-                "Show me tomorrow's Panchang for Mumbai"
+                "Show me tomorrow's Panchang for Mumbai with sunrise times"
+              </code>
+            </div>
+          </div>
+          
+          <div className="flex items-start gap-2">
+            <Clock className="w-4 h-4 text-purple-600 mt-0.5" />
+            <div>
+              <span className="font-medium">Auspicious Timings:</span>
+              <code className="block bg-gray-200 p-1 rounded mt-1">
+                "What are today's Amrutha Kalam and Rahu Kalam timings?"
               </code>
             </div>
           </div>
