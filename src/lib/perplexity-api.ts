@@ -61,7 +61,7 @@ class PerplexityAPI {
       }
 
       const {
-        model = 'llama-3.1-sonar-small-128k',
+        model = 'llama-3.1-sonar-small-128k-online',
         maxTokens = 1000,
         temperature = 0.7,
         systemPrompt = 'You are a helpful AI assistant for Voice Vedic, a spiritual and astrological application. Provide clear, accurate, and helpful responses.'
@@ -103,9 +103,10 @@ class PerplexityAPI {
         console.error('❌ Perplexity API Error:', {
           status: response.status,
           statusText: response.statusText,
-          error: errorText
+          error: errorText,
+          requestBody: JSON.stringify(requestBody, null, 2)
         });
-        throw new Error(`Perplexity API error: ${response.status} ${response.statusText}`);
+        throw new Error(`Perplexity API error: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const data: PerplexityResponse = await response.json();
@@ -156,7 +157,7 @@ Focus on meditation, mindfulness, gratitude, and inner peace. Keep responses con
     }
 
     return this.generateText(enhancedQuery, {
-      model: 'llama-3.1-sonar-small-128k',
+      model: 'llama-3.1-sonar-small-128k-online',
       maxTokens: 800,
       temperature: 0.8,
       systemPrompt
@@ -185,7 +186,7 @@ Always emphasize that astrology is a tool for self-understanding, not determinis
     }
 
     return this.generateText(enhancedQuery, {
-      model: 'llama-3.1-sonar-small-128k',
+      model: 'llama-3.1-sonar-small-128k-online',
       maxTokens: 600,
       temperature: 0.7,
       systemPrompt
@@ -199,7 +200,7 @@ Always emphasize that astrology is a tool for self-understanding, not determinis
     const systemPrompt = `You are a helpful AI assistant for Voice Vedic. Provide accurate, informative, and helpful responses. Be concise but thorough.`;
 
     return this.generateText(query, {
-      model: 'llama-3.1-sonar-small-128k',
+      model: 'llama-3.1-sonar-small-128k-online',
       maxTokens: 1000,
       temperature: 0.5,
       systemPrompt
@@ -207,19 +208,49 @@ Always emphasize that astrology is a tool for self-understanding, not determinis
   }
 
   /**
-   * Test the API connection
+   * Test connection with different models
    */
   async testConnection(): Promise<boolean> {
     try {
-      const response = await this.generateText('Hello, this is a test message.', {
-        maxTokens: 50,
-        temperature: 0.1
-      });
+      const testModels = [
+        'llama-3.1-sonar-small-128k-online',
+        'llama-3.1-sonar-small-128k',
+        'llama-3.1-sonar-medium-128k-online',
+        'llama-3.1-sonar-medium-128k',
+        'llama-3.1-sonar-large-128k-online',
+        'llama-3.1-sonar-large-128k',
+        'llama-3.1-sonar-small-128k-online',
+        'mixtral-8x7b-instruct',
+        'mistral-7b-instruct',
+        'codellama-34b-instruct',
+        'llama-2-70b-chat',
+        'llama-2-13b-chat',
+        'llama-2-7b-chat'
+      ];
+
+      for (const model of testModels) {
+        try {
+          console.log(`🧪 Testing model: ${model}`);
+          const response = await this.generateText('Hello, this is a test.', {
+            model,
+            maxTokens: 50,
+            temperature: 0.1
+          });
+          
+          if (response && response.length > 0) {
+            console.log(`✅ Model ${model} works! Response: ${response.substring(0, 100)}...`);
+            return true;
+          }
+        } catch (modelError) {
+          console.log(`❌ Model ${model} failed: ${modelError}`);
+          continue;
+        }
+      }
       
-      console.log('✅ Perplexity API connection test successful');
-      return true;
+      console.error('❌ All models failed');
+      return false;
     } catch (error) {
-      console.error('❌ Perplexity API connection test failed:', error);
+      console.error('❌ Connection test failed:', error);
       return false;
     }
   }

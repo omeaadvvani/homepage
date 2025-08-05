@@ -287,7 +287,7 @@ Format the response as a structured JSON object with all these details.`;
       const { perplexityAPI } = await import('./perplexity-api');
       
       const response = await perplexityAPI.generateText(query, {
-        model: 'llama-3.1-sonar-small-128k',
+        model: 'llama-3.1-sonar-small-128k-online',
         maxTokens: 1500,
         temperature: 0.3,
         systemPrompt: `You are an expert Vedic astrologer and Panchang specialist. Provide accurate, detailed Panchang information in a structured format. Always include specific timings and dates. Respond with comprehensive Panchang data including all traditional elements like tithi, nakshatra, auspicious/inauspicious timings, etc.`
