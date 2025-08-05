@@ -45,6 +45,8 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [samplingVoiceId, setSamplingVoiceId] = useState<string>('');
+  const [voiceSampleError, setVoiceSampleError] = useState<string>('');
+  const [voiceSampleSuccess, setVoiceSampleSuccess] = useState<string>('');
 
   const { upsertPreferences, loading } = useUserPreferences();
   const { 
@@ -184,30 +186,116 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
         console.log('📝 Sample text:', sampleText);
         console.log('🎵 Audio ref exists:', !!audioRef.current);
         
-        // Add a brief pause and then play the sample
-        await new Promise(resolve => setTimeout(resolve, 100));
-        console.log('🚀 Calling speakText...');
-        await speakText(sampleText, voice, audioRef);
-        console.log('✅ speakText completed');
+        // Try ElevenLabs first, then fallback to Web Speech API
+        try {
+          // Add a brief pause and then play the sample
+          await new Promise(resolve => setTimeout(resolve, 100));
+          console.log('🚀 Calling speakText...');
+          await speakText(sampleText, voice, audioRef);
+          console.log('✅ speakText completed');
+          setVoiceSampleSuccess(`Playing sample of ${voice.name}...`);
+          setVoiceSampleError('');
+        } catch (elevenLabsError) {
+          console.error('❌ ElevenLabs failed, trying Web Speech API fallback:', elevenLabsError);
+          
+          // Fallback to Web Speech API
+          await playVoiceSampleWithWebSpeech(sampleText, voice);
+          setVoiceSampleSuccess(`Playing sample of ${voice.name} (using browser voice)...`);
+          setVoiceSampleError('');
+        }
         
       } catch (error) {
         console.error('❌ Error playing voice sample:', error);
+        setVoiceSampleError('Failed to play voice sample. Please try again.');
+        setVoiceSampleSuccess('');
         // Provide fallback sample text
         const fallbackText = "Namaste. Welcome to VoiceVedic. This is a sample of my voice for your spiritual guidance and daily Panchang readings.";
-        await speakText(fallbackText, voice, audioRef);
+        await playVoiceSampleWithWebSpeech(fallbackText, voice);
       } finally {
         // Clear the sampling state when done
         setSamplingVoiceId('');
         console.log('🏁 Voice sample process completed');
+        
+        // Clear notifications after a delay
+        setTimeout(() => {
+          setVoiceSampleSuccess('');
+          setVoiceSampleError('');
+        }, 3000);
       }
     } else {
       console.error('❌ Voice not found:', voiceId);
     }
   };
 
+  // Fallback voice sample using Web Speech API
+  const playVoiceSampleWithWebSpeech = async (text: string, voice: any) => {
+    return new Promise<void>((resolve, reject) => {
+      try {
+        if (!('speechSynthesis' in window)) {
+          reject(new Error('Speech synthesis not supported'));
+          return;
+        }
+
+        // Stop any current speech
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        // Set voice properties based on the selected voice
+        utterance.rate = 0.9; // Slightly slower for clarity
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+
+        // Try to find a matching voice in the browser's available voices
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(v => 
+          v.name.toLowerCase().includes('indian') || 
+          v.lang.includes('en-IN') ||
+          v.lang.includes('en-GB')
+        );
+        
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+        }
+
+        utterance.onend = () => {
+          console.log('✅ Web Speech API sample completed');
+          resolve();
+        };
+
+        utterance.onerror = (event) => {
+          console.error('❌ Web Speech API error:', event);
+          reject(new Error('Speech synthesis failed'));
+        };
+
+        window.speechSynthesis.speak(utterance);
+        
+        // Set a timeout to resolve if speech doesn't end properly
+        setTimeout(() => {
+          window.speechSynthesis.cancel();
+          resolve();
+        }, 10000); // 10 second timeout
+        
+      } catch (error) {
+        console.error('❌ Web Speech API error:', error);
+        reject(error);
+      }
+    });
+  };
+
   // Load available voices on component mount
   useEffect(() => {
     loadAvailableVoices();
+    
+    // Also load browser voices for fallback
+    if ('speechSynthesis' in window) {
+      // Load voices if not already loaded
+      if (window.speechSynthesis.getVoices().length === 0) {
+        window.speechSynthesis.onvoiceschanged = () => {
+          console.log('🎤 Browser voices loaded:', window.speechSynthesis.getVoices().length);
+        };
+      }
+    }
   }, [loadAvailableVoices]);
 
   // Set initial selected voice
@@ -503,6 +591,25 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
               </div>
             </div>
             
+            {/* Voice Sample Notifications */}
+            {voiceSampleSuccess && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-spiritual">
+                <div className="flex items-center gap-2 text-green-800">
+                  <Volume2 className="w-4 h-4" />
+                  <span className="text-sm font-medium">{voiceSampleSuccess}</span>
+                </div>
+              </div>
+            )}
+            
+            {voiceSampleError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-spiritual">
+                <div className="flex items-center gap-2 text-red-800">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="text-sm font-medium">{voiceSampleError}</span>
+                </div>
+              </div>
+            )}
+            
             <div className="space-y-3">
               {availableVoices.length > 0 ? (
                 availableVoices.map((voice) => (
@@ -577,7 +684,10 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
                           }
                         >
                           {samplingVoiceId === voice.voice_id ? (
-                            <div className="w-4 h-4 border-2 border-spiritual-600 border-t-transparent rounded-full animate-spin" />
+                            <div className="flex items-center gap-1">
+                              <div className="w-4 h-4 border-2 border-spiritual-600 border-t-transparent rounded-full animate-spin" />
+                              <span className="text-xs">Playing</span>
+                            </div>
                           ) : isPlaying ? (
                             <Pause className="w-4 h-4" />
                           ) : (
