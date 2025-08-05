@@ -17,6 +17,7 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import UpcomingEvents from './UpcomingEvents';
+import TimezoneInfo from './TimezoneInfo';
 
 interface MainExperienceScreenProps {
   onChangePreferences: () => void;
@@ -224,6 +225,9 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
             <div className="flex items-center gap-2 bg-white/70 backdrop-blur-sm px-4 py-2 rounded-spiritual border border-spiritual-200/50">
               <MapPin className="w-4 h-4 text-accent-600" />
               <span className="text-sm font-medium tracking-spiritual">{displayLocation}</span>
+            </div>
+            <div className="bg-white/70 backdrop-blur-sm px-4 py-2 rounded-spiritual border border-spiritual-200/50">
+              <TimezoneInfo className="text-sm font-medium tracking-spiritual" />
             </div>
           </div>
         </div>

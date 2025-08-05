@@ -29,6 +29,8 @@ import LocationTest from './components/LocationTest';
 import PerplexityTest from './components/PerplexityTest';
 import DetailedPanchangDisplay from './components/DetailedPanchangDisplay';
 import DetailedPanchangTest from './components/DetailedPanchangTest';
+import PerplexityWebScraperTest from './components/PerplexityWebScraperTest';
+import TimezoneInfo from './components/TimezoneInfo';
 
 function App() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
@@ -1017,6 +1019,11 @@ function App() {
         {/* Detailed Panchang Test */}
         <div className="mt-4 max-w-4xl">
           <DetailedPanchangTest />
+        </div>
+
+        {/* Perplexity Web Scraper Test */}
+        <div className="mt-4 max-w-4xl">
+          <PerplexityWebScraperTest />
         </div>
       </div>
 

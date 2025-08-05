@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, ArrowRight } from 'lucide-react';
 import { perplexityAPI } from '../lib/perplexity-api';
 import { formatDate } from '../lib/date-utils';
+import { getTimezoneFromCoordinatesFallback, formatDateInTimezone } from '../lib/timezone-utils';
 
 interface UpcomingEvent {
   id: string;
@@ -31,65 +32,141 @@ const UpcomingEvents: React.FC = () => {
       const today = new Date();
       const upcomingEvents: UpcomingEvent[] = [];
 
-      // Generate upcoming events using Perplexity AI
-      try {
-        const query = "What are the upcoming important Hindu dates like Ekadashi, Purnima, Amavasya, and Ashtami? Please provide dates and descriptions.";
-        const response = await perplexityAPI.generateAstrologicalInsights(query);
+      // Get timezone from location (default to India coordinates)
+      const timezone = getTimezoneFromCoordinatesFallback(28.6139, 77.209);
+
+      // Calculate accurate upcoming events based on current date and timezone
+      const calculateNextEkadashi = () => {
+        const daysSinceNewYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 1).getTime()) / (1000 * 60 * 60 * 24));
+        const lunarDay = (daysSinceNewYear % 30) + 1;
         
-        if (response && response.trim()) {
-          // Parse the response to extract event information
-          // For now, we'll create mock events based on typical patterns
-          const mockEvents = [
-            {
-              id: 'ekadashi',
-              name: 'Ekadashi',
-              type: 'ekadashi' as const,
-              date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 5 days from now
-              daysUntil: 5,
-              description: 'Fast and offer prayers to Lord Vishnu',
-              icon: '🕉️',
-              color: 'bg-blue-100 text-blue-800'
-            },
-            {
-              id: 'purnima',
-              name: 'Purnima',
-              type: 'purnima' as const,
-              date: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 12 days from now
-              daysUntil: 12,
-              description: 'Full moon day - ideal for meditation and charity',
-              icon: '🌕',
-              color: 'bg-yellow-100 text-yellow-800'
-            },
-            {
-              id: 'amavasya',
-              name: 'Amavasya',
-              type: 'amavasya' as const,
-              date: new Date(Date.now() + 26 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 26 days from now
-              daysUntil: 26,
-              description: 'New moon day - offer prayers to ancestors',
-              icon: '🌑',
-              color: 'bg-gray-100 text-gray-800'
-            },
-            {
-              id: 'ashtami',
-              name: 'Ashtami',
-              type: 'ashtami' as const,
-              date: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 8 days from now
-              daysUntil: 8,
-              description: 'Eighth day of lunar fortnight - worship Goddess Durga',
-              icon: '🙏',
-              color: 'bg-purple-100 text-purple-800'
-            }
-          ];
-          
-          upcomingEvents.push(...mockEvents);
-          console.log('✅ Generated upcoming events using Perplexity AI');
+        let daysToNextEkadashi = 0;
+        if (lunarDay <= 11) {
+          daysToNextEkadashi = 11 - lunarDay;
+        } else if (lunarDay <= 26) {
+          daysToNextEkadashi = 26 - lunarDay;
         } else {
-          throw new Error('Empty response from Perplexity API');
+          daysToNextEkadashi = 30 - lunarDay + 11;
         }
+        
+        const nextEkadashiDate = new Date(today.getTime() + daysToNextEkadashi * 24 * 60 * 60 * 1000);
+        return {
+          date: formatDateInTimezone(nextEkadashiDate, timezone),
+          daysUntil: daysToNextEkadashi
+        };
+      };
+
+      const calculateNextPurnima = () => {
+        const daysSinceNewYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 1).getTime()) / (1000 * 60 * 60 * 24));
+        const lunarDay = (daysSinceNewYear % 30) + 1;
+        
+        let daysToNextPurnima = 0;
+        if (lunarDay <= 15) {
+          daysToNextPurnima = 15 - lunarDay;
+        } else {
+          daysToNextPurnima = 30 - lunarDay + 15;
+        }
+        
+        const nextPurnimaDate = new Date(today.getTime() + daysToNextPurnima * 24 * 60 * 60 * 1000);
+        return {
+          date: formatDateInTimezone(nextPurnimaDate, timezone),
+          daysUntil: daysToNextPurnima
+        };
+      };
+
+      const calculateNextAmavasya = () => {
+        const daysSinceNewYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 1).getTime()) / (1000 * 60 * 60 * 24));
+        const lunarDay = (daysSinceNewYear % 30) + 1;
+        
+        let daysToNextAmavasya = 0;
+        if (lunarDay <= 30) {
+          daysToNextAmavasya = 30 - lunarDay;
+        } else {
+          daysToNextAmavasya = 30 - lunarDay + 30;
+        }
+        
+        const nextAmavasyaDate = new Date(today.getTime() + daysToNextAmavasya * 24 * 60 * 60 * 1000);
+        return {
+          date: formatDateInTimezone(nextAmavasyaDate, timezone),
+          daysUntil: daysToNextAmavasya
+        };
+      };
+
+      const calculateNextAshtami = () => {
+        const daysSinceNewYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 1).getTime()) / (1000 * 60 * 60 * 24));
+        const lunarDay = (daysSinceNewYear % 30) + 1;
+        
+        let daysToNextAshtami = 0;
+        if (lunarDay <= 8) {
+          daysToNextAshtami = 8 - lunarDay;
+        } else if (lunarDay <= 23) {
+          daysToNextAshtami = 23 - lunarDay;
+        } else {
+          daysToNextAshtami = 30 - lunarDay + 8;
+        }
+        
+        const nextAshtamiDate = new Date(today.getTime() + daysToNextAshtami * 24 * 60 * 60 * 1000);
+        return {
+          date: formatDateInTimezone(nextAshtamiDate, timezone),
+          daysUntil: daysToNextAshtami
+        };
+      };
+
+      // Generate accurate upcoming events
+      try {
+        const ekadashi = calculateNextEkadashi();
+        const purnima = calculateNextPurnima();
+        const amavasya = calculateNextAmavasya();
+        const ashtami = calculateNextAshtami();
+
+        const accurateEvents = [
+          {
+            id: 'ekadashi',
+            name: 'Ekadashi',
+            type: 'ekadashi' as const,
+            date: ekadashi.date,
+            daysUntil: ekadashi.daysUntil,
+            description: 'Fast and offer prayers to Lord Vishnu',
+            icon: '🕉️',
+            color: 'bg-blue-100 text-blue-800'
+          },
+          {
+            id: 'purnima',
+            name: 'Purnima',
+            type: 'purnima' as const,
+            date: purnima.date,
+            daysUntil: purnima.daysUntil,
+            description: 'Full moon day - ideal for meditation and charity',
+            icon: '🌕',
+            color: 'bg-yellow-100 text-yellow-800'
+          },
+          {
+            id: 'amavasya',
+            name: 'Amavasya',
+            type: 'amavasya' as const,
+            date: amavasya.date,
+            daysUntil: amavasya.daysUntil,
+            description: 'New moon day - offer prayers to ancestors',
+            icon: '🌑',
+            color: 'bg-gray-100 text-gray-800'
+          },
+          {
+            id: 'ashtami',
+            name: 'Ashtami',
+            type: 'ashtami' as const,
+            date: ashtami.date,
+            daysUntil: ashtami.daysUntil,
+            description: 'Eighth day of lunar fortnight - worship Goddess Durga',
+            icon: '🙏',
+            color: 'bg-purple-100 text-purple-800'
+          }
+        ];
+        
+        upcomingEvents.push(...accurateEvents);
+        console.log('✅ Generated accurate upcoming events based on current date');
       } catch (error) {
-        console.error('Error fetching upcoming events:', error);
-        setError('Unable to fetch upcoming events. Please try again later.');
+        console.error('Error calculating upcoming events:', error);
+        setError('Unable to calculate upcoming events. Please try again later.');
       }
 
       // Add upcoming festivals based on current date

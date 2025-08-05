@@ -1,58 +1,156 @@
 import { perplexityAPI } from './perplexity-api';
+import { perplexityWebScraper } from './perplexity-web-scraper';
+import { 
+  getCurrentTimeInTimezone, 
+  formatDateInTimezone, 
+  getCurrentDayInTimezone,
+  calculateSunTimes,
+  getTimezoneFromCoordinatesFallback
+} from './timezone-utils';
 
-// Fallback data for when Perplexity API is not available
-const FALLBACK_PANCHANG_DATA = {
-  today: {
-    date: '08/04/25',
-    vasara: 'Monday',
-    tithi: 'Shukla Ashtami (till 2:45 PM), Shukla Navami (from 2:46 PM)',
-    nakshatra: 'Swati (till 5:32 PM), Vishakha (from 5:33 PM)',
-    raashi: 'Tula (till 11:11 AM), Vrishchika (from 11:12 AM)',
-    sunrise: '6:02 AM',
-    sunset: '8:18 PM',
-    amruthaKalam: '9:15 AM – 10:55 AM',
-    rahuKalam: '7:21 AM – 8:59 AM',
-    yamaGandam: '11:34 AM – 1:12 PM',
-    varjyam: '2:05 PM – 3:45 PM',
-    durmuhurtham: '12:15 PM – 1:07 PM',
-    pradosham: '7:15 PM – 8:15 PM',
-    aayana: 'Dakshinayana'
-  },
-  tomorrow: {
-    date: '08/05/25',
-    vasara: 'Tuesday',
-    tithi: 'Shukla Navami (till 1:23 PM), Shukla Dashami (from 1:24 PM)',
-    nakshatra: 'Vishakha (till 3:45 PM), Anuradha (from 3:46 PM)',
-    raashi: 'Vrishchika (till 9:32 AM), Dhanu (from 9:33 AM)',
-    sunrise: '6:03 AM',
-    sunset: '8:17 PM',
-    amruthaKalam: '9:16 AM – 10:56 AM',
-    rahuKalam: '7:22 AM – 9:00 AM',
-    yamaGandam: '11:35 AM – 1:13 PM',
-    varjyam: '2:06 PM – 3:46 PM',
-    durmuhurtham: '12:16 PM – 1:08 PM',
-    pradosham: '7:16 PM – 8:16 PM',
-    aayana: 'Dakshinayana'
+// Helper function to get current date in proper format with timezone
+const getCurrentDate = (timezone: string = 'Asia/Kolkata') => {
+  return formatDateInTimezone(new Date(), timezone);
+};
+
+// Helper function to get current day name with timezone
+const getCurrentDay = (timezone: string = 'Asia/Kolkata') => {
+  return getCurrentDayInTimezone(timezone);
+};
+
+// Helper function to calculate next Ekadashi (approximately every 15 days)
+const getNextEkadashi = () => {
+  const now = new Date();
+  // Ekadashi occurs on 11th and 26th day of lunar month
+  // For simplicity, we'll calculate approximate dates
+  const daysSinceNewYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / (1000 * 60 * 60 * 24));
+  const lunarDay = (daysSinceNewYear % 30) + 1;
+  
+  // Find next Ekadashi (11th or 26th day)
+  let daysToNextEkadashi = 0;
+  if (lunarDay <= 11) {
+    daysToNextEkadashi = 11 - lunarDay;
+  } else if (lunarDay <= 26) {
+    daysToNextEkadashi = 26 - lunarDay;
+  } else {
+    daysToNextEkadashi = 30 - lunarDay + 11;
   }
+  
+  const nextEkadashiDate = new Date(now.getTime() + daysToNextEkadashi * 24 * 60 * 60 * 1000);
+  return nextEkadashiDate.toLocaleDateString('en-US', { 
+    month: 'long', 
+    day: 'numeric', 
+    year: 'numeric' 
+  });
+};
+
+// Helper function to calculate next Purnima (full moon)
+const getNextPurnima = () => {
+  const now = new Date();
+  // Purnima is on 15th day of lunar month
+  const daysSinceNewYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / (1000 * 60 * 60 * 24));
+  const lunarDay = (daysSinceNewYear % 30) + 1;
+  
+  let daysToNextPurnima = 0;
+  if (lunarDay <= 15) {
+    daysToNextPurnima = 15 - lunarDay;
+  } else {
+    daysToNextPurnima = 30 - lunarDay + 15;
+  }
+  
+  const nextPurnimaDate = new Date(now.getTime() + daysToNextPurnima * 24 * 60 * 60 * 1000);
+  return nextPurnimaDate.toLocaleDateString('en-US', { 
+    month: 'long', 
+    day: 'numeric', 
+    year: 'numeric' 
+  });
+};
+
+// Helper function to calculate next Amavasya (new moon)
+const getNextAmavasya = () => {
+  const now = new Date();
+  // Amavasya is on 30th day of lunar month
+  const daysSinceNewYear = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / (1000 * 60 * 60 * 24));
+  const lunarDay = (daysSinceNewYear % 30) + 1;
+  
+  let daysToNextAmavasya = 0;
+  if (lunarDay <= 30) {
+    daysToNextAmavasya = 30 - lunarDay;
+  } else {
+    daysToNextAmavasya = 30 - lunarDay + 30;
+  }
+  
+  const nextAmavasyaDate = new Date(now.getTime() + daysToNextAmavasya * 24 * 60 * 60 * 1000);
+  return nextAmavasyaDate.toLocaleDateString('en-US', { 
+    month: 'long', 
+    day: 'numeric', 
+    year: 'numeric' 
+  });
+};
+
+// Function to get fallback data with timezone
+const getFallbackPanchangData = (timezone: string = 'Asia/Kolkata') => {
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  // Calculate sun times based on location (default to India coordinates)
+  const sunTimes = calculateSunTimes(28.6139, 77.209, today);
+  const tomorrowSunTimes = calculateSunTimes(28.6139, 77.209, tomorrow);
+  
+  return {
+    today: {
+      date: getCurrentDate(timezone),
+      vasara: getCurrentDay(timezone),
+      tithi: 'Shukla Ashtami (till 2:45 PM), Shukla Navami (from 2:46 PM)',
+      nakshatra: 'Swati (till 5:32 PM), Vishakha (from 5:33 PM)',
+      raashi: 'Tula (till 11:11 AM), Vrishchika (from 11:12 AM)',
+      sunrise: sunTimes.sunrise,
+      sunset: sunTimes.sunset,
+      amruthaKalam: '9:15 AM – 10:55 AM',
+      rahuKalam: '7:21 AM – 8:59 AM',
+      yamaGandam: '11:34 AM – 1:12 PM',
+      varjyam: '2:05 PM – 3:45 PM',
+      durmuhurtham: '12:15 PM – 1:07 PM',
+      pradosham: '7:15 PM – 8:15 PM',
+      aayana: 'Dakshinayana'
+    },
+    tomorrow: {
+      date: formatDateInTimezone(tomorrow, timezone),
+      vasara: getCurrentDayInTimezone(timezone),
+      tithi: 'Shukla Navami (till 1:23 PM), Shukla Dashami (from 1:24 PM)',
+      nakshatra: 'Vishakha (till 3:45 PM), Anuradha (from 3:46 PM)',
+      raashi: 'Vrishchika (till 9:32 AM), Dhanu (from 9:33 AM)',
+      sunrise: tomorrowSunTimes.sunrise,
+      sunset: tomorrowSunTimes.sunset,
+      amruthaKalam: '9:16 AM – 10:56 AM',
+      rahuKalam: '7:22 AM – 9:00 AM',
+      yamaGandam: '11:35 AM – 1:13 PM',
+      varjyam: '2:06 PM – 3:46 PM',
+      durmuhurtham: '12:16 PM – 1:08 PM',
+      pradosham: '7:16 PM – 8:16 PM',
+      aayana: 'Dakshinayana'
+    }
+  };
 };
 
 // Tithi information for specific queries
 const TITHI_DATA = {
   'ekadashi': {
     description: 'Ekadashi is the eleventh lunar day of the waxing and waning moon. It is considered highly auspicious for fasting and spiritual practices.',
-    nextOccurrence: 'August 15, 2025',
+    nextOccurrence: getNextEkadashi(),
     timings: '6:00 AM to 6:00 AM next day',
     significance: 'Fasting on Ekadashi helps purify the mind and body, and is believed to bring spiritual benefits.'
   },
   'purnima': {
     description: 'Purnima is the full moon day, the fifteenth lunar day. It marks the completion of the waxing phase of the moon.',
-    nextOccurrence: 'August 30, 2025',
+    nextOccurrence: getNextPurnima(),
     timings: 'Full day',
     significance: 'Purnima is ideal for meditation, charity, and spiritual practices. Many festivals fall on Purnima.'
   },
   'amavasya': {
     description: 'Amavasya is the new moon day, when the moon is not visible. It marks the beginning of the waxing phase.',
-    nextOccurrence: 'August 14, 2025',
+    nextOccurrence: getNextAmavasya(),
     timings: 'Full day',
     significance: 'Amavasya is considered auspicious for ancestral rituals and spiritual practices.'
   }
@@ -170,18 +268,62 @@ export class PanchangDetailedAPI {
   }
 
   /**
-   * Get fallback data based on query
+   * Generate spoken summary from content (for web scraper responses)
    */
-  private getFallbackData(query: string): PanchangDetailedData {
+  private generateSpokenSummaryFromContent(content: string): string {
+    // Extract key information from markdown content
+    const lines = content.split('\n');
+    let summary = '';
+    
+    for (const line of lines) {
+      if (line.includes('**Tithi:**')) {
+        const tithiMatch = line.match(/\*\*Tithi:\*\*\s*(.+)/);
+        if (tithiMatch) {
+          summary += `Today's tithi is ${tithiMatch[1]}. `;
+        }
+      } else if (line.includes('**Nakshatra:**')) {
+        const nakshatraMatch = line.match(/\*\*Nakshatra:\*\*\s*(.+)/);
+        if (nakshatraMatch) {
+          summary += `The nakshatra is ${nakshatraMatch[1]}. `;
+        }
+      } else if (line.includes('**Sunrise:**')) {
+        const sunriseMatch = line.match(/\*\*Sunrise:\*\*\s*(.+)/);
+        if (sunriseMatch) {
+          summary += `Sunrise is at ${sunriseMatch[1]}. `;
+        }
+      } else if (line.includes('**Sunset:**')) {
+        const sunsetMatch = line.match(/\*\*Sunset:\*\*\s*(.+)/);
+        if (sunsetMatch) {
+          summary += `Sunset is at ${sunsetMatch[1]}. `;
+        }
+      }
+    }
+    
+    if (!summary) {
+      // Fallback summary
+      summary = `Here is the Panchang information you requested. Please check the detailed display for complete information.`;
+    }
+    
+    return summary;
+  }
+
+  /**
+   * Get fallback data based on query and location
+   */
+  private getFallbackData(query: string, location?: { latitude: number; longitude: number }): PanchangDetailedData {
     const lowerQuery = query.toLowerCase();
+    
+    // Determine timezone from location
+    const timezone = location ? getTimezoneFromCoordinatesFallback(location.latitude, location.longitude) : 'Asia/Kolkata';
+    const fallbackData = getFallbackPanchangData(timezone);
     
     // Check for tomorrow
     if (lowerQuery.includes('tomorrow')) {
-      return FALLBACK_PANCHANG_DATA.tomorrow;
+      return fallbackData.tomorrow;
     }
     
     // Default to today
-    return FALLBACK_PANCHANG_DATA.today;
+    return fallbackData.today;
   }
 
   /**
@@ -243,7 +385,7 @@ export class PanchangDetailedAPI {
       // First try Perplexity API
       try {
         const response = await perplexityAPI.generateText(query, {
-          model: 'llama-3.1-sonar-small-128k-online',
+          model: 'sonar-pro',
           maxTokens: 1500,
           temperature: 0.3,
           systemPrompt: `You are an expert Vedic astrologer and Panchang specialist. Provide accurate, detailed Panchang information in a structured format. Always include specific timings and dates. Respond with comprehensive Panchang data including all traditional elements like tithi, nakshatra, auspicious/inauspicious timings, etc.`
@@ -262,7 +404,23 @@ export class PanchangDetailedAPI {
           };
         }
       } catch (perplexityError) {
-        console.log('⚠️ Perplexity API failed, using fallback:', perplexityError);
+        console.log('⚠️ Perplexity API failed, trying web scraper:', perplexityError);
+        
+        // Try web scraper as second option
+        try {
+          const scrapedResponse = await perplexityWebScraper.scrapeFromPerplexity(query);
+          if (scrapedResponse.success) {
+            console.log('✅ Web scraper response received');
+            return {
+              tableData: scrapedResponse.content,
+              spokenSummary: this.generateSpokenSummaryFromContent(scrapedResponse.content),
+              source: scrapedResponse.source
+            };
+          }
+        } catch (scraperError) {
+          console.log('⚠️ Web scraper also failed:', scraperError);
+        }
+        
         this.useFallback = true;
       }
 
@@ -289,7 +447,7 @@ export class PanchangDetailedAPI {
       }
 
       // Default fallback data
-      const fallbackData = this.getFallbackData(query);
+      const fallbackData = this.getFallbackData(query, location);
       const tableData = this.formatPanchangData(fallbackData);
       const spokenSummary = this.generateSpokenSummary(fallbackData);
       
@@ -303,7 +461,7 @@ export class PanchangDetailedAPI {
       console.error('❌ Error in getDetailedPanchang:', error);
       
       // Ultimate fallback
-      const fallbackData = this.getFallbackData(query);
+      const fallbackData = this.getFallbackData(query, location);
       const tableData = this.formatPanchangData(fallbackData);
       const spokenSummary = this.generateSpokenSummary(fallbackData);
       
@@ -360,8 +518,8 @@ export class PanchangDetailedAPI {
     
     // Fill in defaults for missing fields
     return {
-      date: data.date || '08/04/25',
-      vasara: data.vasara || 'Monday',
+      date: data.date || getCurrentDate(),
+      vasara: data.vasara || getCurrentDay(),
       tithi: data.tithi || 'Shukla Ashtami',
       nakshatra: data.nakshatra || 'Swati',
       raashi: data.raashi || 'Tula',

@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { getTimezoneFromCoordinates, LocationInfo } from '../lib/timezone-utils';
 
-export interface LocationData {
+export interface LocationData extends LocationInfo {
   id?: string;
   user_id: string;
-  latitude: number;
-  longitude: number;
   location_name: string;
   accuracy?: number;
   timestamp: string;
@@ -113,6 +112,7 @@ export const useLocation = (userId?: string) => {
         user_id: userId,
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
+        timezone: await getTimezoneFromCoordinates(position.coords.latitude, position.coords.longitude),
         location_name: await getLocationName(position.coords.latitude, position.coords.longitude),
         accuracy: position.coords.accuracy || undefined,
         timestamp: new Date().toISOString(),
@@ -140,6 +140,7 @@ export const useLocation = (userId?: string) => {
             user_id: userId,
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
+            timezone: await getTimezoneFromCoordinates(position.coords.latitude, position.coords.longitude),
             location_name: await getLocationName(position.coords.latitude, position.coords.longitude),
             accuracy: position.coords.accuracy || undefined,
             timestamp: new Date().toISOString(),
