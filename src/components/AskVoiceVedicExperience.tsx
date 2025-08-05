@@ -15,6 +15,8 @@ import {
   Calendar
 } from 'lucide-react';
 import { usePanchang } from '../hooks/usePanchang';
+import { useLocation } from '../hooks/useLocation';
+import { useAuth } from '../hooks/useAuth';
 import { aiService } from '../lib/gemini-api';
 import { perplexityAPI } from '../lib/perplexity-api';
 // Removed unused imports to fix linting errors
@@ -129,6 +131,8 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   
   // Panchang integration
   const { panchangData, loading: panchangLoading } = usePanchang();
+  const { currentLocation } = useLocation();
+  const { user } = useAuth();
   
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -513,7 +517,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
               lowerQuestion.includes('peace') || lowerQuestion.includes('mindfulness')) {
             // Use spiritual guidance
             responseText = await perplexityAPI.generateSpiritualGuidance(finalQuestion, {
-              userLocation: 'Delhi, India',
+              userLocation: currentLocation?.location_name || 'Vancouver, Canada',
               currentTime: new Date().toISOString()
             });
           } else if (lowerQuestion.includes('astrology') || lowerQuestion.includes('horoscope') || 

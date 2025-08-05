@@ -23,19 +23,13 @@ export interface TimeInfo {
  */
 export async function getTimezoneFromCoordinates(latitude: number, longitude: number): Promise<string> {
   try {
-    // Use a timezone API to get timezone from coordinates
-    const response = await fetch(`https://api.timezonedb.com/v2.1/get-time-zone?key=YOUR_API_KEY&format=json&by=position&lat=${latitude}&lng=${longitude}`);
-    
-    if (response.ok) {
-      const data = await response.json();
-      return data.zoneName || 'Asia/Kolkata'; // Default to India timezone
-    }
+    const response = await fetch(`https://api.bigdatacloud.net/data/timezone-by-location?latitude=${latitude}&longitude=${longitude}&localityLanguage=en&key=your_api_key`);
+    const data = await response.json();
+    return data.zoneName || 'America/Vancouver'; // Default to Vancouver timezone
   } catch (error) {
-    console.log('Timezone API failed, using fallback:', error);
+    console.error('Error fetching timezone from coordinates:', error);
+    return 'America/Vancouver';
   }
-  
-  // Fallback: Determine timezone based on coordinates
-  return getTimezoneFromCoordinatesFallback(latitude, longitude);
 }
 
 /**
@@ -79,7 +73,7 @@ export function getTimezoneFromCoordinatesFallback(latitude: number, longitude: 
 /**
  * Get current time in specified timezone
  */
-export function getCurrentTimeInTimezone(timezone: string = 'Asia/Kolkata'): TimeInfo {
+export function getCurrentTimeInTimezone(timezone: string = 'America/Vancouver'): TimeInfo {
   const now = new Date();
   const utcTime = now.toISOString();
   
@@ -135,7 +129,7 @@ function getTimezoneOffset(timezone: string): number {
 /**
  * Format date in specified timezone
  */
-export function formatDateInTimezone(date: Date, timezone: string = 'Asia/Kolkata'): string {
+export function formatDateInTimezone(date: Date, timezone: string = 'America/Vancouver'): string {
   try {
     return date.toLocaleDateString('en-US', {
       timeZone: timezone,
@@ -152,7 +146,7 @@ export function formatDateInTimezone(date: Date, timezone: string = 'Asia/Kolkat
 /**
  * Format time in specified timezone
  */
-export function formatTimeInTimezone(date: Date, timezone: string = 'Asia/Kolkata'): string {
+export function formatTimeInTimezone(date: Date, timezone: string = 'America/Vancouver'): string {
   try {
     return date.toLocaleTimeString('en-US', {
       timeZone: timezone,
@@ -169,7 +163,7 @@ export function formatTimeInTimezone(date: Date, timezone: string = 'Asia/Kolkat
 /**
  * Get current day name in specified timezone
  */
-export function getCurrentDayInTimezone(timezone: string = 'Asia/Kolkata'): string {
+export function getCurrentDayInTimezone(timezone: string = 'America/Vancouver'): string {
   const now = new Date();
   try {
     return now.toLocaleDateString('en-US', {
@@ -185,7 +179,7 @@ export function getCurrentDayInTimezone(timezone: string = 'Asia/Kolkata'): stri
 /**
  * Convert UTC time to local timezone
  */
-export function convertUTCToLocal(utcTime: string, timezone: string = 'Asia/Kolkata'): string {
+export function convertUTCToLocal(utcTime: string, timezone: string = 'America/Vancouver'): string {
   try {
     const date = new Date(utcTime);
     return date.toLocaleString('en-US', {

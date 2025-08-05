@@ -11,14 +11,18 @@ import {
   getTimezoneDisplayName
 } from './timezone-utils';
 
-// Helper function to get current date in proper format with timezone
-const getCurrentDate = (timezone: string = 'Asia/Kolkata') => {
-  return formatDateInTimezone(new Date(), timezone);
+// Helper functions for date and time formatting
+const getCurrentDate = (timezone: string = 'America/Vancouver') => {
+  const now = new Date();
+  return now.toLocaleDateString('en-US', { timeZone: timezone });
 };
 
-// Helper function to get current day name with timezone
-const getCurrentDay = (timezone: string = 'Asia/Kolkata') => {
-  return getCurrentDayInTimezone(timezone);
+const getCurrentDay = (timezone: string = 'America/Vancouver') => {
+  const now = new Date();
+  return now.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    timeZone: timezone 
+  });
 };
 
 // Helper function to calculate next Ekadashi (approximately every 15 days)
@@ -148,7 +152,7 @@ const TITHI_DATA = {
     nextOccurrence: getNextEkadashi(),
     timings: '6:00 AM to 6:00 AM next day',
     significance: 'Fasting on Ekadashi helps purify the mind and body, and is believed to bring spiritual benefits.',
-    formatTable: (timezone: string = 'Asia/Kolkata') => {
+    formatTable: (timezone: string = 'America/Vancouver') => {
       const nextDate = new Date();
       const daysSinceNewYear = Math.floor((nextDate.getTime() - new Date(nextDate.getFullYear(), 0, 1).getTime()) / (1000 * 60 * 60 * 24));
       const lunarDay = (daysSinceNewYear % 30) + 1;
@@ -226,7 +230,7 @@ Ekadashi is considered one of the most powerful days for spiritual advancement. 
     nextOccurrence: getNextPurnima(),
     timings: 'Full day',
     significance: 'Purnima is ideal for meditation, charity, and spiritual practices. Many festivals fall on Purnima.',
-    formatTable: (timezone: string = 'Asia/Kolkata') => {
+    formatTable: (timezone: string = 'America/Vancouver') => {
       const nextDate = new Date();
       const daysSinceNewYear = Math.floor((nextDate.getTime() - new Date(nextDate.getFullYear(), 0, 1).getTime()) / (1000 * 60 * 60 * 24));
       const lunarDay = (daysSinceNewYear % 30) + 1;
@@ -285,7 +289,7 @@ Purnima is the full moon day, the fifteenth lunar day. It marks the completion o
     nextOccurrence: getNextAmavasya(),
     timings: 'Full day',
     significance: 'Amavasya is considered auspicious for ancestral rituals and spiritual practices.',
-    formatTable: (timezone: string = 'Asia/Kolkata') => {
+    formatTable: (timezone: string = 'America/Vancouver') => {
       const nextDate = new Date();
       const daysSinceNewYear = Math.floor((nextDate.getTime() - new Date(nextDate.getFullYear(), 0, 1).getTime()) / (1000 * 60 * 60 * 24));
       const lunarDay = (daysSinceNewYear % 30) + 1;
@@ -719,8 +723,8 @@ export class PanchangDetailedAPI {
       console.error('Error in getDetailedPanchang:', error);
       
       // Ultimate fallback
-      const fallbackData = this.getFallbackData(query, location, 'Asia/Kolkata');
-      const spokenSummary = this.generateSpokenSummary(fallbackData, 'Asia/Kolkata');
+      const fallbackData = this.getFallbackData(query, location, 'America/Vancouver');
+      const spokenSummary = this.generateSpokenSummary(fallbackData, 'America/Vancouver');
       
       return {
         tableData: fallbackData,

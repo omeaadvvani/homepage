@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { perplexityAPI } from '../lib/perplexity-api';
+import { useLocation } from '../hooks/useLocation';
+import { useAuth } from '../hooks/useAuth';
 
 // Utility function to remove citations from text
 const removeCitations = (text: string): string => {
@@ -8,68 +10,30 @@ const removeCitations = (text: string): string => {
 };
 
 const PanchangQueryTest: React.FC = () => {
-  const [query, setQuery] = useState<string>('');
-  const [response, setResponse] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [query, setQuery] = useState('');
+  const [response, setResponse] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const { currentLocation } = useLocation();
+  const { user } = useAuth();
 
-  const handleQuery = async () => {
-    if (!query.trim()) return;
-    
-    setIsLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
     setResponse('');
-    
+
     try {
-      console.log('🚀 Starting query:', query);
+      const result = await perplexityAPI.generateAstrologicalInsights(query, {
+        userLocation: currentLocation?.location_name || 'Vancouver, Canada',
+        currentTime: new Date().toISOString()
+      });
       
-      // Extract date from query if present
-      const dateMatch = query.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-      let targetDate = undefined;
-      
-      if (dateMatch) {
-        const [_, day, month, year] = dateMatch;
-        targetDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-        console.log('📅 Extracted date from query:', targetDate);
-      }
-      
-      // Determine the type of query and use appropriate Perplexity method
-      const lowerQuery = query.toLowerCase();
-      let responseText = '';
-      
-      if (lowerQuery.includes('spiritual') || lowerQuery.includes('meditation') || 
-          lowerQuery.includes('peace') || lowerQuery.includes('mindfulness') ||
-          lowerQuery.includes('lost') || lowerQuery.includes('path')) {
-        // Use spiritual guidance
-        responseText = await perplexityAPI.generateSpiritualGuidance(query, {
-          userLocation: 'Delhi, India',
-          currentTime: new Date().toISOString()
-        });
-      } else if (lowerQuery.includes('astrology') || lowerQuery.includes('horoscope') || 
-                 lowerQuery.includes('nakshatra') || lowerQuery.includes('tithi') ||
-                 lowerQuery.includes('panchang') || lowerQuery.includes('paksha') ||
-                 lowerQuery.includes('maasa') || lowerQuery.includes('vratham') ||
-                 lowerQuery.includes('ekadashi') || lowerQuery.includes('purnima') ||
-                 lowerQuery.includes('amavasya') || lowerQuery.includes('ashtami')) {
-        // Use astrological insights for Panchang-related queries
-        responseText = await perplexityAPI.generateAstrologicalInsights(query);
-      } else {
-        // Use general knowledge response
-        responseText = await perplexityAPI.generateKnowledgeResponse(query);
-      }
-      
-      if (responseText && responseText.trim()) {
-        // Remove citations from the response
-        responseText = removeCitations(responseText);
-        setResponse(responseText);
-        console.log('✅ Query completed successfully with Perplexity AI (citations removed)');
-      } else {
-        setResponse('I apologize, but I am unable to process your question at the moment. Please try asking about specific Tithis, dates, spiritual topics, or Panchang information.');
-        console.log('❌ Empty response from Perplexity API');
-      }
-    } catch (error) {
-      setResponse(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      console.log('💥 Query error:', error);
+      setResponse(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
@@ -109,11 +73,11 @@ const PanchangQueryTest: React.FC = () => {
       
       <div className="mb-4">
         <button
-          onClick={handleQuery}
-          disabled={isLoading || !query.trim()}
+          onClick={handleSubmit}
+          disabled={loading || !query.trim()}
           className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
         >
-          {isLoading ? 'Querying...' : 'Ask Question'}
+          {loading ? 'Querying...' : 'Ask Question'}
         </button>
       </div>
       

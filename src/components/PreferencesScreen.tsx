@@ -39,7 +39,7 @@ interface PreferencesScreenProps {
 const PreferencesScreen: React.FC<PreferencesScreenProps> = ({ 
   onComplete, 
   onBack, 
-  detectedLocation = 'Mumbai, India' 
+  detectedLocation = 'Vancouver, Canada' 
 }) => {
   const [language, setLanguage] = useState('English');
   const [calendarType, setCalendarType] = useState('north-indian');

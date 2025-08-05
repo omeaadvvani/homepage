@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { panchangDetailedAPI } from '../lib/panchang-detailed-api';
+import { useLocation } from '../hooks/useLocation';
+import { useAuth } from '../hooks/useAuth';
 import { Loader2, CheckCircle, XCircle, MessageSquare, Calendar, Clock, MapPin } from 'lucide-react';
 
 interface TestResult {
@@ -14,6 +16,20 @@ const DetailedPanchangTest: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<TestResult[]>([]);
   const [testQuery, setTestQuery] = useState('Show me today\'s Panchang');
+  const [query, setQuery] = useState('');
+  const [response, setResponse] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const { currentLocation } = useLocation();
+  const { user } = useAuth();
+
+  const testQueries = [
+    "Show me today's Panchang",
+    "What is today's tithi and nakshatra?",
+    "When is the next Ekadashi?",
+    "Tell me about today's auspicious timings",
+    "Show me Panchang for tomorrow"
+  ];
 
   const runTest = async (testType: string, testFunction: () => Promise<any>) => {
     const startTime = Date.now();
@@ -112,6 +128,26 @@ Nakshatra: ${data.nakshatra}
 Sunrise: ${data.sunrise}
 Sunset: ${data.sunset}
     `.trim();
+  };
+
+  const handleTestQuery = async (testQuery: string) => {
+    setLoading(true);
+    setError('');
+    setResponse(null);
+
+    try {
+      const location = currentLocation ? {
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude
+      } : { latitude: 49.2827, longitude: -123.1207 }; // Vancouver coordinates as fallback
+
+      const result = await panchangDetailedAPI.getDetailedPanchang(testQuery, location);
+      setResponse(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
