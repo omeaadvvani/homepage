@@ -35,6 +35,33 @@ const removeCitations = (text: string): string => {
   return text.replace(/\[\d+\]/g, '').trim();
 };
 
+// Utility function to make response more concise
+const makeResponseConcise = (text: string): string => {
+  // Remove extra whitespace and newlines
+  let concise = text.replace(/\s+/g, ' ').trim();
+  
+  // If response is too long, truncate it
+  if (concise.length > 300) {
+    // Find the first sentence that contains key information
+    const sentences = concise.split('.');
+    let result = '';
+    
+    for (const sentence of sentences) {
+      const trimmed = sentence.trim();
+      if (trimmed.length > 0) {
+        result += trimmed + '. ';
+        if (result.length > 200) {
+          break;
+        }
+      }
+    }
+    
+    return result.trim();
+  }
+  
+  return concise;
+};
+
 interface SpeechRecognition extends EventTarget {
   lang: string;
   interimResults: boolean;
@@ -347,20 +374,21 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
 
       const utterance = new SpeechSynthesisUtterance(text);
       
-      // Enhanced voice selection with English only
+      // Enhanced voice selection with Indian English priority
       const setVoice = () => {
         const voices = synth.getVoices();
         console.log('Available voices:', voices.length);
         
-        // Priority order for voice selection - English only
+        // Priority order for Indian English voice selection
         const voicePreferences = [
-          // English voices only
-          { name: 'Google UK English Female', lang: 'en-GB' },
-          { name: 'Microsoft Zira - English (United States)', lang: 'en-US' },
+          // Indian English voices first
+          { name: 'Google हिन्दी', lang: 'hi-IN' },
           { name: 'Google UK English Male', lang: 'en-GB' },
+          { name: 'Google UK English Female', lang: 'en-GB' },
           { name: 'Microsoft David - English (United States)', lang: 'en-US' },
-          { name: 'Google US English Female', lang: 'en-US' },
+          { name: 'Microsoft Zira - English (United States)', lang: 'en-US' },
           { name: 'Google US English Male', lang: 'en-US' },
+          { name: 'Google US English Female', lang: 'en-US' },
           // Any English voice
           { lang: 'en-GB' },
           { lang: 'en-US' },
@@ -397,11 +425,11 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         }
       };
 
-      // Configure speech parameters
-      utterance.rate = 0.9; // Slightly slower for clarity
-      utterance.pitch = 1.0; // Normal pitch
+      // Configure speech parameters for Indian spiritual voice
+      utterance.rate = 0.85; // Slower for spiritual clarity
+      utterance.pitch = 0.95; // Slightly lower for spiritual tone
       utterance.volume = 1.0; // Full volume
-      utterance.lang = 'en-US'; // English only
+      utterance.lang = 'en-IN'; // Indian English
 
       utterance.onend = () => {
         console.log('Speech ended');
@@ -424,7 +452,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       synth.speak(utterance);
       
     } catch (error) {
-      console.error('❌ Error in text-to-speech:', error);
+      console.error('Error in text-to-speech:', error);
       setVoiceError('Voice synthesis failed');
       setIsSpeaking(false);
     }
@@ -500,9 +528,10 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
           
           if (responseText && responseText.trim()) {
             console.log("✅ Perplexity API response generated successfully");
-            // Remove citations from the response
+            // Remove citations and make response concise
             responseText = removeCitations(responseText);
-            console.log("🧹 Citations removed from response");
+            responseText = makeResponseConcise(responseText);
+            console.log("🧹 Citations removed and response made concise");
           } else {
             throw new Error('Empty response from Perplexity API');
           }
@@ -532,6 +561,9 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         console.warn("⚠️ AI validation failed, using original response:", validationError);
         // Continue with original response if validation fails
       }
+      
+      // Make final response concise
+      finalResponse = makeResponseConcise(finalResponse);
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
