@@ -22,6 +22,13 @@ import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useVoice } from '../hooks/useVoice';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { 
+  INDIAN_VOICE_SAMPLES, 
+  VoiceSample, 
+  playVoiceSample, 
+  playVoiceSampleWithResponsiveVoice,
+  getVoiceSamplesByGender 
+} from '../lib/voice-utils';
 
 interface PreferencesScreenProps {
   onComplete: () => void;
@@ -47,6 +54,8 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
   const [samplingVoiceId, setSamplingVoiceId] = useState<string>('');
   const [voiceSampleError, setVoiceSampleError] = useState<string>('');
   const [voiceSampleSuccess, setVoiceSampleSuccess] = useState<string>('');
+  const [selectedIndianVoice, setSelectedIndianVoice] = useState<VoiceSample | null>(null);
+  const [isPlayingIndianVoice, setIsPlayingIndianVoice] = useState(false);
 
   const { upsertPreferences, loading } = useUserPreferences();
   const { 
@@ -190,18 +199,15 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
         try {
           // Add a brief pause and then play the sample
           await new Promise(resolve => setTimeout(resolve, 100));
-          console.log('🚀 Calling speakText...');
-          await speakText(sampleText, voice, audioRef);
-          console.log('✅ speakText completed');
+          console.log('🚀 Calling enhanced voice sample...');
+          await playVoiceSampleWithFallbacks(sampleText, voice);
+          console.log('✅ Enhanced voice sample completed');
           setVoiceSampleSuccess(`Playing sample of ${voice.name}...`);
           setVoiceSampleError('');
         } catch (elevenLabsError) {
-          console.error('❌ ElevenLabs failed, trying Web Speech API fallback:', elevenLabsError);
-          
-          // Fallback to Web Speech API
-          await playVoiceSampleWithWebSpeech(sampleText, voice);
-          setVoiceSampleSuccess(`Playing sample of ${voice.name} (using browser voice)...`);
-          setVoiceSampleError('');
+          console.error('❌ All TTS services failed:', elevenLabsError);
+          setVoiceSampleError('Voice sample failed. Please try again or check your internet connection.');
+          setVoiceSampleSuccess('');
         }
         
       } catch (error) {
@@ -278,6 +284,78 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
         
       } catch (error) {
         console.error('❌ Web Speech API error:', error);
+        reject(error);
+      }
+    });
+  };
+
+  // Enhanced voice sample with multiple fallback options
+  const playVoiceSampleWithFallbacks = async (text: string, voice: any) => {
+    // Try multiple TTS services in order of preference
+    const ttsServices = [
+      { name: 'ElevenLabs', method: () => speakText(text, voice, audioRef) },
+      { name: 'Web Speech API', method: () => playVoiceSampleWithWebSpeech(text, voice) },
+      { name: 'Free TTS API', method: () => playVoiceSampleWithFreeTTS(text, voice) }
+    ];
+
+    for (const service of ttsServices) {
+      try {
+        console.log(`🎤 Trying ${service.name}...`);
+        await service.method();
+        console.log(`✅ ${service.name} succeeded`);
+        return;
+      } catch (error) {
+        console.error(`❌ ${service.name} failed:`, error);
+        continue;
+      }
+    }
+
+    throw new Error('All TTS services failed');
+  };
+
+  // Free TTS API fallback using ResponsiveVoice or similar
+  const playVoiceSampleWithFreeTTS = async (text: string, voice: any) => {
+    return new Promise<void>((resolve, reject) => {
+      try {
+        // Use ResponsiveVoice if available (free TTS service)
+        if (typeof (window as any).responsiveVoice !== 'undefined') {
+          const responsiveVoice = (window as any).responsiveVoice;
+          
+          // Map voice characteristics to ResponsiveVoice voices
+          let voiceName = 'UK English Female';
+          if (voice.labels?.gender?.toLowerCase() === 'male') {
+            voiceName = 'UK English Male';
+          }
+          if (voice.name.toLowerCase().includes('indian') || voice.labels?.accent?.toLowerCase().includes('indian')) {
+            voiceName = 'Indian English Female';
+          }
+          
+          responsiveVoice.speak(text, voiceName, {
+            rate: 0.9,
+            pitch: 1.0,
+            volume: 1.0,
+            onend: () => {
+              console.log('✅ Free TTS sample completed');
+              resolve();
+            },
+            onerror: () => {
+              reject(new Error('Free TTS failed'));
+            }
+          });
+        } else {
+          // Fallback to basic Web Speech with Indian accent
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = 'en-IN';
+          utterance.rate = 0.9;
+          utterance.pitch = 1.0;
+          utterance.volume = 1.0;
+          
+          utterance.onend = () => resolve();
+          utterance.onerror = () => reject(new Error('Basic TTS failed'));
+          
+          window.speechSynthesis.speak(utterance);
+        }
+      } catch (error) {
         reject(error);
       }
     });
@@ -413,6 +491,44 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
   };
 
   const validationStatus = getValidationStatus();
+
+  // Play Indian voice sample
+  const playIndianVoiceSample = async (voiceSample: VoiceSample) => {
+    console.log('🎤 Playing Indian voice sample:', voiceSample.name);
+    setIsPlayingIndianVoice(true);
+    setVoiceSampleError('');
+    setVoiceSampleSuccess(`Playing ${voiceSample.name} (${voiceSample.gender}, ${voiceSample.accent} accent)...`);
+    
+    try {
+      // Try ResponsiveVoice first, then fallback to Web Speech API
+      try {
+        await playVoiceSampleWithResponsiveVoice(voiceSample);
+        setVoiceSampleSuccess(`✅ ${voiceSample.name} sample completed successfully`);
+      } catch (responsiveVoiceError) {
+        console.log('ResponsiveVoice failed, trying Web Speech API...');
+        await playVoiceSample(voiceSample);
+        setVoiceSampleSuccess(`✅ ${voiceSample.name} sample completed (using browser voice)`);
+      }
+    } catch (error) {
+      console.error('❌ Indian voice sample failed:', error);
+      setVoiceSampleError(`Failed to play ${voiceSample.name} sample. Please try again.`);
+      setVoiceSampleSuccess('');
+    } finally {
+      setIsPlayingIndianVoice(false);
+      
+      // Clear notifications after delay
+      setTimeout(() => {
+        setVoiceSampleSuccess('');
+        setVoiceSampleError('');
+      }, 3000);
+    }
+  };
+
+  // Handle Indian voice selection
+  const handleIndianVoiceSelect = (voiceSample: VoiceSample) => {
+    setSelectedIndianVoice(voiceSample);
+    setSelectedVoiceId(voiceSample.id);
+  };
 
   return (
     <div className="min-h-screen bg-spiritual-diagonal relative overflow-hidden font-sans">
@@ -609,6 +725,89 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
                 </div>
               </div>
             )}
+
+            {/* Indian Voice Samples Section */}
+            <div className="mb-6 p-4 bg-spiritual-50 rounded-spiritual border border-spiritual-200">
+              <div className="flex items-center gap-3 mb-4">
+                <Volume2 className="w-5 h-5 text-spiritual-600" />
+                <h4 className="text-lg font-semibold text-spiritual-900">Indian Accent Voice Samples</h4>
+              </div>
+              <p className="text-sm text-spiritual-700 mb-4">
+                Listen to these Indian accent voices and select the one that resonates with your spiritual practice.
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {INDIAN_VOICE_SAMPLES.map((voiceSample) => (
+                  <div
+                    key={voiceSample.id}
+                    className={`p-3 rounded-spiritual border-2 transition-all duration-300 ${
+                      selectedIndianVoice?.id === voiceSample.id
+                        ? 'border-spiritual-400 bg-spiritual-100 shadow-spiritual'
+                        : 'border-spiritual-200 bg-white/50 hover:border-spiritual-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className={`w-4 h-4 border-2 rounded flex items-center justify-center ${
+                          selectedIndianVoice?.id === voiceSample.id
+                            ? 'border-spiritual-500 bg-spiritual-500'
+                            : 'border-spiritual-300'
+                        }`}>
+                          {selectedIndianVoice?.id === voiceSample.id && (
+                            <CheckCircle className="w-2 h-2 text-white" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <h5 className="font-medium text-spiritual-900 text-sm">
+                            {voiceSample.name}
+                          </h5>
+                          <p className="text-xs text-spiritual-700">
+                            {voiceSample.description}
+                          </p>
+                          <div className="flex gap-1 mt-1">
+                            <span className="px-2 py-1 bg-spiritual-100 text-spiritual-700 text-xs rounded-full">
+                              {voiceSample.gender}
+                            </span>
+                            <span className="px-2 py-1 bg-spiritual-100 text-spiritual-700 text-xs rounded-full">
+                              {voiceSample.accent}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 ml-2">
+                        <button
+                          onClick={() => playIndianVoiceSample(voiceSample)}
+                          disabled={isPlayingIndianVoice}
+                          className={`p-2 rounded-lg transition-all duration-200 ${
+                            isPlayingIndianVoice
+                              ? 'bg-spiritual-200 text-spiritual-700' 
+                              : 'bg-spiritual-100 hover:bg-spiritual-200 text-spiritual-600 hover:scale-105'
+                          } disabled:opacity-50`}
+                          title="Listen to voice sample"
+                        >
+                          {isPlayingIndianVoice ? (
+                            <div className="w-4 h-4 border-2 border-spiritual-600 border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <Play className="w-4 h-4" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleIndianVoiceSelect(voiceSample)}
+                          className={`px-2 py-1 text-xs rounded-lg transition-colors ${
+                            selectedIndianVoice?.id === voiceSample.id
+                              ? 'bg-spiritual-700 text-white'
+                              : 'bg-spiritual-600 hover:bg-spiritual-700 text-white'
+                          }`}
+                        >
+                          {selectedIndianVoice?.id === voiceSample.id ? 'Selected' : 'Select'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
             
             <div className="space-y-3">
               {availableVoices.length > 0 ? (

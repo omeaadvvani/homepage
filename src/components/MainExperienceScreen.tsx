@@ -161,10 +161,24 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
   const displayCalendar = preferences?.calendar_type || userProfile?.calendar_tradition || 'North Indian';
   
   // Get actual detected location or fallback
-  const displayLocation = currentLocation?.location_name || 
-                         preferences?.location || 
-                         userProfile?.location || 
-                         (locationError ? 'Location unavailable' : 'Detecting location...');
+  const displayLocation = useMemo(() => {
+    if (currentLocation?.location_name) {
+      return currentLocation.location_name;
+    }
+    if (isTracking && !currentLocation) {
+      return 'Detecting location...';
+    }
+    if (locationError) {
+      return 'Location unavailable';
+    }
+    if (preferences?.location) {
+      return preferences.location;
+    }
+    if (userProfile?.location) {
+      return userProfile.location;
+    }
+    return 'Location not set';
+  }, [currentLocation, isTracking, locationError, preferences?.location, userProfile?.location]);
 
   return (
     <div className="min-h-screen bg-spiritual-diagonal relative overflow-hidden font-sans">
@@ -230,10 +244,13 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
               <span className="text-sm font-medium tracking-spiritual">{displayLanguage}</span>
             </div>
             <div className="flex items-center gap-2 bg-white/70 backdrop-blur-sm px-4 py-2 rounded-spiritual border border-spiritual-200/50">
-              <MapPin className={`w-4 h-4 ${isTracking ? 'text-green-600 animate-pulse' : 'text-accent-600'}`} />
+              <MapPin className={`w-4 h-4 ${isTracking ? 'text-green-600 animate-pulse' : currentLocation ? 'text-green-600' : locationError ? 'text-red-600' : 'text-accent-600'}`} />
               <span className="text-sm font-medium tracking-spiritual">
-                {isTracking && !currentLocation ? 'Detecting location...' : displayLocation}
+                {displayLocation}
               </span>
+              {isTracking && !currentLocation && (
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse ml-1"></div>
+              )}
             </div>
             <div className="bg-white/70 backdrop-blur-sm px-4 py-2 rounded-spiritual border border-spiritual-200/50">
               <TimezoneInfo 
