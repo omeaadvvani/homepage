@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { panchangAPI } from '../lib/panchang-api';
+import { perplexityAPI } from '../lib/perplexity-api';
 
 const AllTithisTest: React.FC = () => {
   const [results, setResults] = useState<string[]>([]);
@@ -36,17 +36,13 @@ const AllTithisTest: React.FC = () => {
         const question = `When is the next ${tithi.name.toLowerCase()}?`;
         newResults.push(`\n🔍 Testing: ${question}`);
         
-        const response = await panchangAPI.getPanchangGuidance({
-          question,
-          latitude: 28.6139,
-          longitude: 77.2090
-        });
+        const response = await perplexityAPI.generateAstrologicalInsights(question);
         
-        if (response.success && response.guidance) {
+        if (response && response.trim()) {
           newResults.push(`✅ ${tithi.name}: ${tithi.description}`);
-          newResults.push(response.guidance);
+          newResults.push(response);
         } else {
-          newResults.push(`❌ ${tithi.name}: Failed to get data`);
+          newResults.push(`❌ ${tithi.name}: Failed to get data from Perplexity AI`);
         }
       } catch (error) {
         newResults.push(`❌ ${tithi.name}: Error - ${error}`);
@@ -65,16 +61,12 @@ const AllTithisTest: React.FC = () => {
       const question = `When is the next ${tithiName.toLowerCase()}?`;
       setResults([`🔍 Testing: ${question}`]);
       
-      const response = await panchangAPI.getPanchangGuidance({
-        question,
-        latitude: 28.6139,
-        longitude: 77.2090
-      });
+      const response = await perplexityAPI.generateAstrologicalInsights(question);
       
-      if (response.success && response.guidance) {
-        setResults([`✅ ${tithiName}`, response.guidance]);
+      if (response && response.trim()) {
+        setResults([`✅ ${tithiName}`, response]);
       } else {
-        setResults([`❌ ${tithiName}: Failed to get data`]);
+        setResults([`❌ ${tithiName}: Failed to get data from Perplexity AI`]);
       }
     } catch (error) {
       setResults([`❌ ${tithiName}: Error - ${error}`]);

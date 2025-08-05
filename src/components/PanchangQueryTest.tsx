@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { panchangAPI } from '../lib/panchang-api';
+import { perplexityAPI } from '../lib/perplexity-api';
 
 const PanchangQueryTest: React.FC = () => {
   const [query, setQuery] = useState<string>('');
@@ -25,19 +25,37 @@ const PanchangQueryTest: React.FC = () => {
         console.log('📅 Extracted date from query:', targetDate);
       }
       
-      const result = await panchangAPI.getPanchangGuidance({
-        question: query,
-        date: targetDate,
-        latitude: 28.6139,
-        longitude: 77.2090
-      });
+      // Determine the type of query and use appropriate Perplexity method
+      const lowerQuery = query.toLowerCase();
+      let responseText = '';
       
-      if (result.success && result.guidance) {
-        setResponse(result.guidance);
-        console.log('✅ Query completed successfully');
+      if (lowerQuery.includes('spiritual') || lowerQuery.includes('meditation') || 
+          lowerQuery.includes('peace') || lowerQuery.includes('mindfulness') ||
+          lowerQuery.includes('lost') || lowerQuery.includes('path')) {
+        // Use spiritual guidance
+        responseText = await perplexityAPI.generateSpiritualGuidance(query, {
+          userLocation: 'Delhi, India',
+          currentTime: new Date().toISOString()
+        });
+      } else if (lowerQuery.includes('astrology') || lowerQuery.includes('horoscope') || 
+                 lowerQuery.includes('nakshatra') || lowerQuery.includes('tithi') ||
+                 lowerQuery.includes('panchang') || lowerQuery.includes('paksha') ||
+                 lowerQuery.includes('maasa') || lowerQuery.includes('vratham') ||
+                 lowerQuery.includes('ekadashi') || lowerQuery.includes('purnima') ||
+                 lowerQuery.includes('amavasya') || lowerQuery.includes('ashtami')) {
+        // Use astrological insights for Panchang-related queries
+        responseText = await perplexityAPI.generateAstrologicalInsights(query);
       } else {
-        setResponse(`Error: ${result.error || 'Failed to get response'}`);
-        console.log('❌ Query failed:', result.error);
+        // Use general knowledge response
+        responseText = await perplexityAPI.generateKnowledgeResponse(query);
+      }
+      
+      if (responseText && responseText.trim()) {
+        setResponse(responseText);
+        console.log('✅ Query completed successfully with Perplexity AI');
+      } else {
+        setResponse('I apologize, but I am unable to process your question at the moment. Please try asking about specific Tithis, dates, spiritual topics, or Panchang information.');
+        console.log('❌ Empty response from Perplexity API');
       }
     } catch (error) {
       setResponse(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -111,8 +129,8 @@ const PanchangQueryTest: React.FC = () => {
                  <h4 className="font-semibold mb-2">Response:</h4>
                  <pre className="whitespace-pre-wrap text-sm">{response}</pre>
                  <div className="mt-2 text-xs text-gray-500">
-                   💡 Performance: Check browser console for cache usage and API call details
-                   🤖 AI: Gemini is analyzing vague questions and providing spiritual guidance
+                   💡 Performance: Check browser console for Perplexity API call details
+                   🤖 AI: Perplexity AI is analyzing questions and providing comprehensive responses
                  </div>
                </div>
              )}
