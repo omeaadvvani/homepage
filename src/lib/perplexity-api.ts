@@ -63,7 +63,7 @@ class PerplexityAPI {
       }
 
       const {
-        model = 'sonar-small-online',
+        model = 'llama-3.1-sonar-small-128k-online',
         maxTokens = 1000,
         temperature = 0.7,
         systemPrompt = 'You are a helpful AI assistant for Voice Vedic, a spiritual and astrological application. Provide clear, accurate, and helpful responses.'
@@ -161,7 +161,7 @@ Focus on meditation, mindfulness, gratitude, and inner peace. Keep responses con
     }
 
     return this.generateText(enhancedQuery, {
-      model: 'sonar-small-online',
+      model: 'llama-3.1-sonar-small-128k-online',
       maxTokens: 800,
       temperature: 0.8,
       systemPrompt
@@ -190,7 +190,7 @@ Always emphasize that astrology is a tool for self-understanding, not determinis
     }
 
     return this.generateText(enhancedQuery, {
-      model: 'sonar-small-online',
+      model: 'llama-3.1-sonar-small-128k-online',
       maxTokens: 600,
       temperature: 0.7,
       systemPrompt
@@ -204,7 +204,7 @@ Always emphasize that astrology is a tool for self-understanding, not determinis
     const systemPrompt = `You are a helpful AI assistant for Voice Vedic. Provide accurate, informative, and helpful responses. Be concise but thorough.`;
 
     return this.generateText(query, {
-      model: 'sonar-small-online',
+      model: 'llama-3.1-sonar-small-128k-online',
       maxTokens: 1000,
       temperature: 0.5,
       systemPrompt
@@ -217,18 +217,18 @@ Always emphasize that astrology is a tool for self-understanding, not determinis
   async testConnection(): Promise<boolean> {
     try {
       const testModels = [
-        'sonar-small-online',
-        'sonar-small-chat',
-        'sonar-medium-online',
-        'sonar-medium-chat',
-        'sonar-large-online',
-        'sonar-large-chat',
-        'sonar-small-reasoning',
-        'sonar-medium-reasoning',
-        'sonar-large-reasoning',
-        'sonar-small-deep-research',
-        'sonar-medium-deep-research',
-        'sonar-large-deep-research'
+        'llama-3.1-sonar-small-128k-online',
+        'llama-3.1-sonar-small-128k',
+        'llama-3.1-sonar-medium-128k-online',
+        'llama-3.1-sonar-medium-128k',
+        'llama-3.1-sonar-large-128k-online',
+        'llama-3.1-sonar-large-128k',
+        'mixtral-8x7b-instruct',
+        'mistral-7b-instruct',
+        'codellama-34b-instruct',
+        'llama-2-70b-chat',
+        'llama-2-13b-chat',
+        'llama-2-7b-chat'
       ];
 
       for (const model of testModels) {
