@@ -41,7 +41,7 @@ export async function getTimezoneFromCoordinates(latitude: number, longitude: nu
 /**
  * Fallback timezone determination based on coordinates
  */
-function getTimezoneFromCoordinatesFallback(latitude: number, longitude: number): string {
+export function getTimezoneFromCoordinatesFallback(latitude: number, longitude: number): string {
   // India coordinates (approximate)
   if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
     return 'Asia/Kolkata';
