@@ -61,7 +61,7 @@ class PerplexityAPI {
       }
 
       const {
-        model = 'llama-3.1-sonar-small-128k-online',
+        model = 'llama-3.1-sonar-small-128k',
         maxTokens = 1000,
         temperature = 0.7,
         systemPrompt = 'You are a helpful AI assistant for Voice Vedic, a spiritual and astrological application. Provide clear, accurate, and helpful responses.'
@@ -156,7 +156,7 @@ Focus on meditation, mindfulness, gratitude, and inner peace. Keep responses con
     }
 
     return this.generateText(enhancedQuery, {
-      model: 'llama-3.1-sonar-small-128k-online',
+      model: 'llama-3.1-sonar-small-128k',
       maxTokens: 800,
       temperature: 0.8,
       systemPrompt
@@ -185,7 +185,7 @@ Always emphasize that astrology is a tool for self-understanding, not determinis
     }
 
     return this.generateText(enhancedQuery, {
-      model: 'llama-3.1-sonar-small-128k-online',
+      model: 'llama-3.1-sonar-small-128k',
       maxTokens: 600,
       temperature: 0.7,
       systemPrompt
@@ -199,7 +199,7 @@ Always emphasize that astrology is a tool for self-understanding, not determinis
     const systemPrompt = `You are a helpful AI assistant for Voice Vedic. Provide accurate, informative, and helpful responses. Be concise but thorough.`;
 
     return this.generateText(query, {
-      model: 'llama-3.1-sonar-small-128k-online',
+      model: 'llama-3.1-sonar-small-128k',
       maxTokens: 1000,
       temperature: 0.5,
       systemPrompt
