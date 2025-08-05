@@ -1,0 +1,455 @@
+interface PanchangDetailedRequest {
+  date?: string; // MM/DD/YY format, defaults to today
+  latitude: number;
+  longitude: number;
+  location: string;
+  timezone?: string;
+  query?: string; // User's natural language query
+}
+
+interface PanchangDetailedResponse {
+  success: boolean;
+  data?: PanchangDetailedData;
+  error?: string;
+  spokenSummary?: string;
+}
+
+interface PanchangDetailedData {
+  date: string; // MM/DD/YY
+  time: string; // HH:MM AM/PM
+  maasa: string;
+  vasara: string;
+  tithi: string;
+  tithiStartEnd: string;
+  nakshatra: string;
+  raashi: string;
+  sunrise: string;
+  sunset: string;
+  aayana: string;
+  amruthaKalam: string;
+  varjyam: string;
+  durmuhurtham: string;
+  rahuKalam: string;
+  yamaGandam: string;
+  pradoshamTimings: string;
+}
+
+interface TithiNakshatraQuery {
+  type: 'tithi' | 'nakshatra';
+  name: string;
+  startDate: string;
+  endDate: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+}
+
+class PanchangDetailedAPI {
+  private baseURL = 'https://api.panchang.click';
+  private userId: string;
+  private authCode: string;
+
+  constructor() {
+    this.userId = import.meta.env.VITE_PANCHANG_USER_ID || '';
+    this.authCode = import.meta.env.VITE_PANCHANG_AUTH_CODE || '';
+  }
+
+  /**
+   * Parse user query to extract date and specific tithi/nakshatra requests
+   */
+  private parseUserQuery(query: string): {
+    date?: string;
+    specificTithi?: string;
+    specificNakshatra?: string;
+    isNextOccurrence: boolean;
+  } {
+    const lowerQuery = query.toLowerCase();
+    const result = {
+      date: undefined as string | undefined,
+      specificTithi: undefined as string | undefined,
+      specificNakshatra: undefined as string | undefined,
+      isNextOccurrence: false
+    };
+
+    // Check for date patterns
+    const todayPatterns = ['today', 'current', 'now'];
+    const tomorrowPatterns = ['tomorrow', 'next day'];
+    const yesterdayPatterns = ['yesterday', 'previous day'];
+
+    if (todayPatterns.some(pattern => lowerQuery.includes(pattern))) {
+      result.date = new Date().toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: '2-digit'
+      });
+    } else if (tomorrowPatterns.some(pattern => lowerQuery.includes(pattern))) {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      result.date = tomorrow.toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: '2-digit'
+      });
+    } else if (yesterdayPatterns.some(pattern => lowerQuery.includes(pattern))) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      result.date = yesterday.toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: '2-digit'
+      });
+    }
+
+    // Check for specific tithi queries
+    const tithiNames = [
+      'pratipada', 'dwitiya', 'tritiya', 'chaturthi', 'panchami', 'shashthi',
+      'saptami', 'ashtami', 'navami', 'dashami', 'ekadashi', 'dwadashi',
+      'trayodashi', 'chaturdashi', 'purnima', 'amavasya'
+    ];
+
+    for (const tithi of tithiNames) {
+      if (lowerQuery.includes(tithi)) {
+        result.specificTithi = tithi;
+        break;
+      }
+    }
+
+    // Check for specific nakshatra queries
+    const nakshatraNames = [
+      'ashwini', 'bharani', 'krittika', 'rohini', 'mrigashira', 'ardra',
+      'punarvasu', 'pushya', 'ashlesha', 'magha', 'purva phalguni', 'uttara phalguni',
+      'hasta', 'chitra', 'swati', 'vishakha', 'anuradha', 'jyestha',
+      'mula', 'purva ashadha', 'uttara ashadha', 'shravana', 'dhanishta',
+      'shatabhisha', 'purva bhadrapada', 'uttara bhadrapada', 'revati'
+    ];
+
+    for (const nakshatra of nakshatraNames) {
+      if (lowerQuery.includes(nakshatra)) {
+        result.specificNakshatra = nakshatra;
+        break;
+      }
+    }
+
+    // Check for next occurrence queries
+    if (lowerQuery.includes('next') || lowerQuery.includes('when') || lowerQuery.includes('occurrence')) {
+      result.isNextOccurrence = true;
+    }
+
+    return result;
+  }
+
+  /**
+   * Format time to 12-hour clock with AM/PM
+   */
+  private formatTime(timeString: string): string {
+    if (!timeString) return 'Not available';
+    
+    try {
+      const [hours, minutes] = timeString.split(':');
+      const hour = parseInt(hours);
+      const minute = parseInt(minutes);
+      
+      const period = hour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+      
+      return `${displayHour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${period}`;
+    } catch (error) {
+      return timeString; // Return original if parsing fails
+    }
+  }
+
+  /**
+   * Format date to MM/DD/YY
+   */
+  private formatDate(dateString: string): string {
+    if (!dateString) return 'Not available';
+    
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: '2-digit'
+      });
+    } catch (error) {
+      return dateString; // Return original if parsing fails
+    }
+  }
+
+  /**
+   * Generate spoken summary for voice output
+   */
+  private generateSpokenSummary(data: PanchangDetailedData): string {
+    const summary = `Today is ${data.vasara}, ${data.date}. The current tithi is ${data.tithi}. `;
+    
+    if (data.tithi.includes('till') || data.tithi.includes('from')) {
+      summary += `The tithi changes during the day. `;
+    }
+    
+    if (data.nakshatra.includes('till') || data.nakshatra.includes('from')) {
+      summary += `The nakshatra also changes during the day. `;
+    }
+    
+    summary += `Sunrise is at ${data.sunrise} and sunset at ${data.sunset}. `;
+    summary += `The auspicious Amrutha Kalam is from ${data.amruthaKalam}. `;
+    summary += `Avoid activities during Rahu Kalam from ${data.rahuKalam}.`;
+    
+    return summary;
+  }
+
+  /**
+   * Get detailed Panchang information
+   */
+  async getDetailedPanchang(request: PanchangDetailedRequest): Promise<PanchangDetailedResponse> {
+    try {
+      console.log('🔍 Parsing user query for Panchang details:', request.query);
+      
+      // Parse user query
+      const queryInfo = request.query ? this.parseUserQuery(request.query) : {};
+      
+      // Determine date to fetch
+      const targetDate = request.date || queryInfo.date || new Date().toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: '2-digit'
+      });
+
+      console.log('📅 Fetching Panchang for date:', targetDate);
+      console.log('📍 Location:', request.location);
+      console.log('🎯 Specific query:', queryInfo);
+
+      // Fetch Panchang data from API
+      const apiResponse = await this.fetchPanchangData({
+        date: targetDate,
+        latitude: request.latitude,
+        longitude: request.longitude,
+        location: request.location,
+        timezone: request.timezone
+      });
+
+      if (!apiResponse.success) {
+        throw new Error(apiResponse.error || 'Failed to fetch Panchang data');
+      }
+
+      // Format the data according to specifications
+      const formattedData = this.formatPanchangData(apiResponse.data, targetDate);
+      
+      // Generate spoken summary
+      const spokenSummary = this.generateSpokenSummary(formattedData);
+
+      console.log('✅ Detailed Panchang data formatted successfully');
+      console.log('🗣️ Spoken summary generated');
+
+      return {
+        success: true,
+        data: formattedData,
+        spokenSummary
+      };
+
+    } catch (error) {
+      console.error('❌ Error fetching detailed Panchang:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
+    }
+  }
+
+  /**
+   * Fetch raw Panchang data from API
+   */
+  private async fetchPanchangData(params: {
+    date: string;
+    latitude: number;
+    longitude: number;
+    location: string;
+    timezone?: string;
+  }) {
+    try {
+      const url = `${this.baseURL}/panchang`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.authCode}`,
+          'X-User-ID': this.userId
+        },
+        body: JSON.stringify({
+          date: params.date,
+          latitude: params.latitude,
+          longitude: params.longitude,
+          location: params.location,
+          timezone: params.timezone || 'Asia/Kolkata'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+
+    } catch (error) {
+      console.error('❌ API fetch error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'API request failed' };
+    }
+  }
+
+  /**
+   * Format Panchang data according to specifications
+   */
+  private formatPanchangData(rawData: any, targetDate: string): PanchangDetailedData {
+    // Extract and format all required fields
+    const formattedData: PanchangDetailedData = {
+      date: this.formatDate(targetDate),
+      time: new Date().toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }),
+      maasa: rawData.maasa || 'Not available',
+      vasara: rawData.vasara || 'Not available',
+      tithi: this.formatTithi(rawData.tithi, rawData.tithiStart, rawData.tithiEnd),
+      tithiStartEnd: this.formatTithiTimings(rawData.tithi, rawData.tithiStart, rawData.tithiEnd),
+      nakshatra: this.formatNakshatra(rawData.nakshatra, rawData.nakshatraStart, rawData.nakshatraEnd),
+      raashi: this.formatRaashi(rawData.raashi, rawData.raashiStart, rawData.raashiEnd),
+      sunrise: this.formatTime(rawData.sunrise),
+      sunset: this.formatTime(rawData.sunset),
+      aayana: rawData.aayana || 'Not available',
+      amruthaKalam: this.formatTimeRange(rawData.amruthaKalamStart, rawData.amruthaKalamEnd),
+      varjyam: this.formatTimeRange(rawData.varjyamStart, rawData.varjyamEnd),
+      durmuhurtham: this.formatTimeRange(rawData.durmuhurthamStart, rawData.durmuhurthamEnd),
+      rahuKalam: this.formatTimeRange(rawData.rahuKalamStart, rawData.rahuKalamEnd),
+      yamaGandam: this.formatTimeRange(rawData.yamaGandamStart, rawData.yamaGandamEnd),
+      pradoshamTimings: this.formatTimeRange(rawData.pradoshamStart, rawData.pradoshamEnd)
+    };
+
+    return formattedData;
+  }
+
+  /**
+   * Format tithi with paksha information
+   */
+  private formatTithi(tithi: string, startTime?: string, endTime?: string): string {
+    if (!tithi) return 'Not available';
+    
+    const paksha = tithi.includes('Shukla') ? 'Shukla' : 'Krishna';
+    const tithiName = tithi.replace('Shukla ', '').replace('Krishna ', '');
+    
+    if (startTime && endTime) {
+      const startFormatted = this.formatTime(startTime);
+      const endFormatted = this.formatTime(endTime);
+      return `${paksha} ${tithiName} (till ${endFormatted})`;
+    }
+    
+    return `${paksha} ${tithiName}`;
+  }
+
+  /**
+   * Format tithi timings with dates
+   */
+  private formatTithiTimings(tithi: string, startTime?: string, endTime?: string): string {
+    if (!tithi || !startTime || !endTime) return 'Not available';
+    
+    const paksha = tithi.includes('Shukla') ? 'Shukla' : 'Krishna';
+    const tithiName = tithi.replace('Shukla ', '').replace('Krishna ', '');
+    const startFormatted = this.formatTime(startTime);
+    const endFormatted = this.formatTime(endTime);
+    const date = this.formatDate(new Date().toISOString());
+    
+    return `${tithiName}: ${date}, ${startFormatted} – ${endFormatted}`;
+  }
+
+  /**
+   * Format nakshatra with timing changes
+   */
+  private formatNakshatra(nakshatra: string, startTime?: string, endTime?: string): string {
+    if (!nakshatra) return 'Not available';
+    
+    if (startTime && endTime) {
+      const startFormatted = this.formatTime(startTime);
+      const endFormatted = this.formatTime(endTime);
+      return `${nakshatra} (till ${endFormatted})`;
+    }
+    
+    return nakshatra;
+  }
+
+  /**
+   * Format raashi with timing changes
+   */
+  private formatRaashi(raashi: string, startTime?: string, endTime?: string): string {
+    if (!raashi) return 'Not available';
+    
+    if (startTime && endTime) {
+      const startFormatted = this.formatTime(startTime);
+      const endFormatted = this.formatTime(endTime);
+      return `${raashi} (till ${endFormatted})`;
+    }
+    
+    return raashi;
+  }
+
+  /**
+   * Format time range
+   */
+  private formatTimeRange(startTime?: string, endTime?: string): string {
+    if (!startTime || !endTime) return 'Not available';
+    
+    const startFormatted = this.formatTime(startTime);
+    const endFormatted = this.formatTime(endTime);
+    
+    return `${startFormatted} – ${endFormatted}`;
+  }
+
+  /**
+   * Get next occurrence of specific tithi or nakshatra
+   */
+  async getNextOccurrence(query: string, location: string, latitude: number, longitude: number): Promise<PanchangDetailedResponse> {
+    try {
+      const queryInfo = this.parseUserQuery(query);
+      const searchType = queryInfo.specificTithi ? 'tithi' : queryInfo.specificNakshatra ? 'nakshatra' : null;
+      const searchName = queryInfo.specificTithi || queryInfo.specificNakshatra;
+
+      if (!searchType || !searchName) {
+        throw new Error('Please specify a tithi or nakshatra to search for');
+      }
+
+      console.log(`🔍 Searching for next occurrence of ${searchType}: ${searchName}`);
+
+      // Search for next occurrence (this would require additional API calls)
+      // For now, return current day's data with a note about next occurrence
+      const currentData = await this.getDetailedPanchang({
+        date: new Date().toLocaleDateString('en-US', {
+          month: '2-digit',
+          day: '2-digit',
+          year: '2-digit'
+        }),
+        latitude,
+        longitude,
+        location,
+        query: `Next occurrence of ${searchName}`
+      });
+
+      if (currentData.success && currentData.data) {
+        currentData.spokenSummary = `The next occurrence of ${searchName} will be available in the detailed Panchang data. ${currentData.spokenSummary}`;
+      }
+
+      return currentData;
+
+    } catch (error) {
+      console.error('❌ Error getting next occurrence:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get next occurrence'
+      };
+    }
+  }
+}
+
+// Create and export singleton instance
+export const panchangDetailedAPI = new PanchangDetailedAPI();
+
+// Export the class for testing
+export { PanchangDetailedAPI }; 

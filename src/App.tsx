@@ -27,6 +27,8 @@ import GitLogTest from './components/GitLogTest';
 import ComprehensiveTest from './components/ComprehensiveTest';
 import LocationTest from './components/LocationTest';
 import PerplexityTest from './components/PerplexityTest';
+import DetailedPanchangDisplay from './components/DetailedPanchangDisplay';
+import DetailedPanchangTest from './components/DetailedPanchangTest';
 
 function App() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
@@ -1005,6 +1007,16 @@ function App() {
         {/* Perplexity API Test */}
         <div className="mt-4 max-w-4xl">
           <PerplexityTest />
+        </div>
+
+        {/* Detailed Panchang Display */}
+        <div className="mt-4 max-w-6xl">
+          <DetailedPanchangDisplay />
+        </div>
+
+        {/* Detailed Panchang Test */}
+        <div className="mt-4 max-w-4xl">
+          <DetailedPanchangTest />
         </div>
       </div>
 
