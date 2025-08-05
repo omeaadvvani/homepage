@@ -7,6 +7,7 @@ import {
   getCurrentDayInTimezone,
   calculateSunTimes,
   getTimezoneFromCoordinates,
+  getTimezoneFromCoordinatesFallback,
   getTimezoneDisplayName
 } from './timezone-utils';
 
@@ -372,6 +373,8 @@ export interface PanchangDetailedData {
   durmuhurtham: string;
   pradosham: string;
   aayana: string;
+  maasa?: string;
+  tithiStartEnd?: string;
 }
 
 export class PanchangDetailedAPI {
@@ -428,20 +431,43 @@ export class PanchangDetailedAPI {
   /**
    * Generate spoken summary for voice output
    */
-  private generateSpokenSummary(data: PanchangDetailedData): string {
-    let summary = `Today is ${data.vasara}, ${data.date}. The current tithi is ${data.tithi}. `;
+  private generateSpokenSummary(data: PanchangDetailedData, timezone: string): string {
+    const timezoneDisplay = getTimezoneDisplayName(timezone);
     
-    if (data.tithi.includes('till') || data.tithi.includes('from')) {
-      summary += `The tithi changes during the day. `;
+    // Create a brief, clear spoken summary
+    let summary = `Today is ${data.vasara}, ${data.date} in ${timezoneDisplay}. `;
+    
+    // Add tithi information
+    if (data.tithi) {
+      summary += `The current tithi is ${data.tithi}. `;
     }
     
-    if (data.nakshatra.includes('till') || data.nakshatra.includes('from')) {
-      summary += `The nakshatra also changes during the day. `;
+    // Add nakshatra information
+    if (data.nakshatra) {
+      summary += `The nakshatra is ${data.nakshatra}. `;
     }
     
-    summary += `Sunrise is at ${data.sunrise} and sunset at ${data.sunset}. `;
-    summary += `The auspicious Amrutha Kalam is from ${data.amruthaKalam}. `;
-    summary += `Avoid activities during Rahu Kalam from ${data.rahuKalam}.`;
+    // Add raashi information
+    if (data.raashi) {
+      summary += `The raashi is ${data.raashi}. `;
+    }
+    
+    // Add sunrise/sunset information
+    if (data.sunrise && data.sunset) {
+      summary += `Sunrise is at ${data.sunrise} and sunset is at ${data.sunset}. `;
+    }
+    
+    // Add auspicious timing
+    if (data.amruthaKalam) {
+      summary += `The auspicious Amrutha Kalam is from ${data.amruthaKalam}. `;
+    }
+    
+    // Add inauspicious timing
+    if (data.rahuKalam) {
+      summary += `Avoid important activities during Rahu Kalam from ${data.rahuKalam}. `;
+    }
+    
+    summary += `This information is tailored to your local timezone.`;
     
     return summary;
   }
@@ -489,7 +515,7 @@ export class PanchangDetailedAPI {
   /**
    * Get fallback data based on query and location
    */
-  private getFallbackData(query: string, location?: { latitude: number; longitude: number }): PanchangDetailedData {
+  private getFallbackData(query: string, location?: { latitude: number; longitude: number }, timezone: string = 'Asia/Kolkata'): PanchangDetailedData {
     const lowerQuery = query.toLowerCase();
     
     // Determine timezone from location
@@ -506,8 +532,8 @@ export class PanchangDetailedAPI {
       return 'Asia/Kolkata';
     };
     
-    const timezone = location ? getTimezoneFromCoords(location.latitude, location.longitude) : 'Asia/Kolkata';
-    const fallbackData = getFallbackPanchangData(timezone);
+    const fallbackTimezone = location ? getTimezoneFromCoords(location.latitude, location.longitude) : 'Asia/Kolkata';
+    const fallbackData = getFallbackPanchangData(fallbackTimezone);
     
     // Check for tomorrow
     if (lowerQuery.includes('tomorrow')) {
@@ -521,10 +547,10 @@ export class PanchangDetailedAPI {
   /**
    * Get specific tithi information
    */
-  private getTithiInfo(tithiName: string): string {
+  private getTithiInfo(tithiName: string, timezone: string): string {
     const tithi = TITHI_DATA[tithiName.toLowerCase() as keyof typeof TITHI_DATA];
     if (tithi) {
-      return tithi.formatTable('Asia/Kolkata'); // Default to India timezone for formatting
+      return tithi.formatTable(timezone); // Use provided timezone for formatting
     }
     return `Information about ${tithiName} is not available in the current database.`;
   }
@@ -532,7 +558,7 @@ export class PanchangDetailedAPI {
   /**
    * Get specific nakshatra information
    */
-  private getNakshatraInfo(nakshatraName: string): string {
+  private getNakshatraInfo(nakshatraName: string, timezone: string): string {
     const nakshatra = NAKSHATRA_DATA[nakshatraName.toLowerCase() as keyof typeof NAKSHATRA_DATA];
     if (nakshatra) {
       return `**${nakshatraName.toUpperCase()} Nakshatra Information:**
@@ -572,13 +598,29 @@ export class PanchangDetailedAPI {
     try {
       console.log('🕉️ Fetching Panchang data for query:', query);
       
-      // First try Perplexity API
+      // Get user's timezone from location
+      let userTimezone = 'Asia/Kolkata'; // Default to India
+      if (location) {
+        try {
+          userTimezone = await getTimezoneFromCoordinates(location.latitude, location.longitude);
+          console.log('📍 User timezone detected:', userTimezone);
+        } catch (error) {
+          console.log('⚠️ Could not detect timezone, using fallback');
+          userTimezone = getTimezoneFromCoordinatesFallback(location.latitude, location.longitude);
+        }
+      }
+      
+      // First try Perplexity API with user's location context
       try {
+        const locationContext = location ? 
+          `User is located at ${location.latitude}, ${location.longitude} (${userTimezone} timezone). ` : 
+          '';
+        
         const response = await perplexityAPI.generateText(query, {
           model: 'sonar-pro',
           maxTokens: 1500,
           temperature: 0.3,
-          systemPrompt: `You are an expert Vedic astrologer and Panchang specialist. Provide accurate, detailed Panchang information in a structured format. Always include specific timings and dates. Respond with comprehensive Panchang data including all traditional elements like tithi, nakshatra, auspicious/inauspicious timings, etc.`
+          systemPrompt: `You are an expert Vedic astrologer and Panchang specialist. ${locationContext}Provide accurate, detailed Panchang information in a structured format tailored to the user's location and timezone. Always include specific timings and dates in the user's local timezone. Respond with comprehensive Panchang data including all traditional elements like tithi, nakshatra, auspicious/inauspicious timings, etc. Format dates as MM/DD/YY and times as HH:MM AM/PM in the user's local timezone.`
         });
 
         if (response && response.length > 0) {
@@ -591,9 +633,9 @@ export class PanchangDetailedAPI {
             throw new Error('Citations detected in response');
           }
           
-          const parsedData = this.parsePerplexityResponse(response);
-          const tableData = this.formatPanchangData(parsedData);
-          const spokenSummary = this.generateSpokenSummary(parsedData);
+          const parsedData = this.parsePerplexityResponse(response, userTimezone);
+          const tableData = this.formatPanchangData(parsedData, userTimezone);
+          const spokenSummary = this.generateSpokenSummary(parsedData, userTimezone);
           
           return {
             tableData,
@@ -602,28 +644,12 @@ export class PanchangDetailedAPI {
           };
         }
       } catch (perplexityError) {
-        console.log('⚠️ Perplexity API failed or contained citations, trying web scraper:', perplexityError);
-        
-        // Try web scraper as second option
-        try {
-          const scrapedResponse = await perplexityWebScraper.scrapeFromPerplexity(query);
-          if (scrapedResponse.success) {
-            console.log('✅ Web scraper response received');
-            return {
-              tableData: scrapedResponse.content,
-              spokenSummary: this.generateSpokenSummaryFromContent(scrapedResponse.content),
-              source: scrapedResponse.source
-            };
-          }
-        } catch (scraperError) {
-          console.log('⚠️ Web scraper also failed:', scraperError);
-        }
-        
+        console.log('⚠️ Perplexity API failed or contained citations, using fallback data:', perplexityError);
         this.useFallback = true;
       }
 
-      // Fallback to local data
-      console.log('🔄 Using fallback data system');
+      // Use fallback data with user's timezone
+      console.log('🔄 Using fallback data system with user timezone:', userTimezone);
       const parsedQuery = this.parseUserQuery(query);
       
       // For specific queries, always use fallback data to ensure tabular format
@@ -632,27 +658,27 @@ export class PanchangDetailedAPI {
       
       if (isSpecificQuery || parsedQuery.tithi) {
         console.log('📋 Using fallback data for specific query to ensure tabular format');
-        const tithiInfo = this.getTithiInfo(parsedQuery.tithi || query.toLowerCase());
+        const tithiInfo = this.getTithiInfo(parsedQuery.tithi || query.toLowerCase(), userTimezone);
         return {
           tableData: tithiInfo,
-          spokenSummary: `Here is information about ${parsedQuery.tithi || query}. ${TITHI_DATA[parsedQuery.tithi?.toLowerCase() as keyof typeof TITHI_DATA]?.description || 'This is important information for your spiritual practice.'}`,
+          spokenSummary: `Here is information about ${parsedQuery.tithi || query} in your local timezone. ${TITHI_DATA[parsedQuery.tithi?.toLowerCase() as keyof typeof TITHI_DATA]?.description || 'This is important information for your spiritual practice.'}`,
           source: 'Local Database (Clean Format)'
         };
       }
       
       if (parsedQuery.nakshatra) {
-        const nakshatraInfo = this.getNakshatraInfo(parsedQuery.nakshatra);
+        const nakshatraInfo = this.getNakshatraInfo(parsedQuery.nakshatra, userTimezone);
         return {
           tableData: nakshatraInfo,
-          spokenSummary: `Here is information about ${parsedQuery.nakshatra} nakshatra. ${NAKSHATRA_DATA[parsedQuery.nakshatra.toLowerCase() as keyof typeof NAKSHATRA_DATA]?.description}`,
+          spokenSummary: `Here is information about ${parsedQuery.nakshatra} nakshatra in your local timezone. ${NAKSHATRA_DATA[parsedQuery.nakshatra.toLowerCase() as keyof typeof NAKSHATRA_DATA]?.description}`,
           source: 'Local Database (Clean Format)'
         };
       }
 
-      // Default fallback data
-      const fallbackData = this.getFallbackData(query, location);
-      const tableData = this.formatPanchangData(fallbackData);
-      const spokenSummary = this.generateSpokenSummary(fallbackData);
+      // Default fallback data with user's timezone
+      const fallbackData = this.getFallbackData(query, location, userTimezone);
+      const tableData = this.formatPanchangData(fallbackData, userTimezone);
+      const spokenSummary = this.generateSpokenSummary(fallbackData, userTimezone);
       
       return {
         tableData,
@@ -664,9 +690,9 @@ export class PanchangDetailedAPI {
       console.error('❌ Error in getDetailedPanchang:', error);
       
       // Ultimate fallback
-      const fallbackData = this.getFallbackData(query, location);
-      const tableData = this.formatPanchangData(fallbackData);
-      const spokenSummary = this.generateSpokenSummary(fallbackData);
+      const fallbackData = this.getFallbackData(query, location, 'Asia/Kolkata');
+      const tableData = this.formatPanchangData(fallbackData, 'Asia/Kolkata');
+      const spokenSummary = this.generateSpokenSummary(fallbackData, 'Asia/Kolkata');
       
       return {
         tableData,
@@ -679,7 +705,7 @@ export class PanchangDetailedAPI {
   /**
    * Parse Perplexity response
    */
-  private parsePerplexityResponse(response: string): PanchangDetailedData {
+  private parsePerplexityResponse(response: string, timezone: string): PanchangDetailedData {
     console.log('🔍 Parsing Perplexity response...');
     
     // Remove citations from response
@@ -694,8 +720,8 @@ export class PanchangDetailedAPI {
         console.log('✅ Parsed JSON data:', jsonData);
         
         return {
-          date: jsonData.date || getCurrentDate(),
-          vasara: jsonData.vasara || getCurrentDay(),
+          date: jsonData.date || getCurrentDate(timezone),
+          vasara: jsonData.vasara || getCurrentDay(timezone),
           tithi: jsonData.tithi || 'Shukla Ashtami',
           nakshatra: jsonData.nakshatra || 'Swati',
           raashi: jsonData.raashi || 'Tula',
@@ -742,8 +768,8 @@ export class PanchangDetailedAPI {
     
     // Fill in defaults for missing fields
     return {
-      date: data.date || getCurrentDate(),
-      vasara: data.vasara || getCurrentDay(),
+      date: data.date || getCurrentDate(timezone),
+      vasara: data.vasara || getCurrentDay(timezone),
       tithi: data.tithi || 'Shukla Ashtami',
       nakshatra: data.nakshatra || 'Swati',
       raashi: data.raashi || 'Tula',
@@ -762,25 +788,30 @@ export class PanchangDetailedAPI {
   /**
    * Format Panchang data as markdown table
    */
-  private formatPanchangData(data: PanchangDetailedData): string {
+  private formatPanchangData(data: PanchangDetailedData, timezone: string): string {
+    const timezoneDisplay = getTimezoneDisplayName(timezone);
+    
     return `# Panchang Information
 
 | Field | Value(s) |
 |-------|----------|
 | **Date** | ${data.date} |
+| **Maasa** | ${data.maasa || 'Not available'} |
 | **Vasara** | ${data.vasara} |
 | **Tithi** | ${data.tithi} |
+| **Tithi Start/End** | ${data.tithiStartEnd || 'Not available'} |
 | **Nakshatra** | ${data.nakshatra} |
 | **Raashi** | ${data.raashi} |
 | **Sunrise** | ${data.sunrise} |
 | **Sunset** | ${data.sunset} |
+| **Aayana** | ${data.aayana} |
 | **Amrutha Kalam** | ${data.amruthaKalam} |
-| **Rahu Kalam** | ${data.rahuKalam} |
-| **Yama Gandam** | ${data.yamaGandam} |
 | **Varjyam** | ${data.varjyam} |
 | **Durmuhurtham** | ${data.durmuhurtham} |
-| **Pradosham** | ${data.pradosham} |
-| **Aayana** | ${data.aayana} |
+| **Rahu Kalam** | ${data.rahuKalam} |
+| **Yama Gandam** | ${data.yamaGandam} |
+| **Pradosham Timings** | ${data.pradosham} |
+| **Timezone** | ${timezoneDisplay} |
 
 ## Auspicious Timings
 - **Amrutha Kalam:** ${data.amruthaKalam} - Best time for spiritual practices

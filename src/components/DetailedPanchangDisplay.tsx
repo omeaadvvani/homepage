@@ -33,13 +33,13 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
 
   // Auto-fetch Panchang data when component mounts or location changes
   useEffect(() => {
-    if (currentLocation && currentLocation.coordinates) {
+    if (currentLocation && currentLocation.latitude && currentLocation.longitude) {
       fetchPanchangData();
     }
   }, [currentLocation]);
 
   const fetchPanchangData = async (customQuery?: string) => {
-    if (!currentLocation?.coordinates) {
+    if (!currentLocation?.latitude || !currentLocation?.longitude) {
       setError('Location not available. Please enable location access.');
       return;
     }
@@ -48,19 +48,18 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
     setError(null);
 
     try {
-      const request = {
-        latitude: currentLocation.coordinates.latitude,
-        longitude: currentLocation.coordinates.longitude,
-        location: currentLocation.locationName || 'India',
-        query: customQuery || userQuery || 'Show me today\'s Panchang'
+      const query = customQuery || userQuery || 'Show me today\'s Panchang';
+      const location = {
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude
       };
 
-      console.log('🔍 Fetching detailed Panchang with request:', request);
+      console.log('🔍 Fetching detailed Panchang with query:', query, 'and location:', location);
 
-      const response = await panchangDetailedAPI.getDetailedPanchang(request);
+      const response = await panchangDetailedAPI.getDetailedPanchang(query, location);
 
-      if (response.success && response.data) {
-        setPanchangData(response.data);
+      if (response && response.tableData) {
+        setPanchangData(response);
         setSpokenSummary(response.spokenSummary || '');
         setLastQuery(customQuery || userQuery);
         
@@ -71,10 +70,10 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
           }, 500);
         }
 
-        console.log('✅ Detailed Panchang data received:', response.data);
+        console.log('✅ Detailed Panchang data received:', response);
       } else {
-        setError(response.error || 'Failed to fetch Panchang data');
-        console.error('❌ Panchang fetch failed:', response.error);
+        setError('Failed to fetch Panchang data');
+        console.error('❌ Panchang fetch failed: No data received');
       }
 
     } catch (error) {
@@ -116,27 +115,30 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
   };
 
   const formatTableData = (data: any) => {
-    if (!data) return [];
+    if (!data || !data.tableData) {
+      return 'No data available';
+    }
+    
+    // If tableData is already a markdown string, return it
+    if (typeof data.tableData === 'string') {
+      return data.tableData;
+    }
+    
+    // Otherwise, format as table
+    return `# Panchang Information
 
-    return [
-      { field: 'Date', value: data.date },
-      { field: 'Time', value: data.time },
-      { field: 'Maasa', value: data.maasa },
-      { field: 'Vasara', value: data.vasara },
-      { field: 'Tithi', value: data.tithi },
-      { field: 'Tithi Start/End', value: data.tithiStartEnd },
-      { field: 'Nakshatra', value: data.nakshatra },
-      { field: 'Raashi', value: data.raashi },
-      { field: 'Sunrise', value: data.sunrise },
-      { field: 'Sunset', value: data.sunset },
-      { field: 'Aayana', value: data.aayana },
-      { field: 'Amrutha Kalam', value: data.amruthaKalam },
-      { field: 'Varjyam', value: data.varjyam },
-      { field: 'Durmuhurtham', value: data.durmuhurtham },
-      { field: 'Rahu Kalam', value: data.rahuKalam },
-      { field: 'Yama Gandam', value: data.yamaGandam },
-      { field: 'Pradosham Timings', value: data.pradoshamTimings }
-    ];
+| Field | Value |
+|-------|-------|
+| **Date** | ${data.date || 'Not available'} |
+| **Vasara** | ${data.vasara || 'Not available'} |
+| **Tithi** | ${data.tithi || 'Not available'} |
+| **Nakshatra** | ${data.nakshatra || 'Not available'} |
+| **Raashi** | ${data.raashi || 'Not available'} |
+| **Sunrise** | ${data.sunrise || 'Not available'} |
+| **Sunset** | ${data.sunset || 'Not available'} |
+| **Amrutha Kalam** | ${data.amruthaKalam || 'Not available'} |
+| **Rahu Kalam** | ${data.rahuKalam || 'Not available'} |
+| **Source** | ${data.source || 'Not available'} |`;
   };
 
   const getStatusIcon = () => {
@@ -162,11 +164,16 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
           <div>
             <h1 className="text-2xl font-bold text-gray-800">Detailed Panchang Information</h1>
             <p className="text-sm text-gray-600">
-              {currentLocation?.locationName || 'Location detecting...'}
+              {currentLocation?.location_name || 'Location detecting...'}
             </p>
           </div>
         </div>
         
+        <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+          <MapPin className="w-4 h-4" />
+          <span>Location: {currentLocation?.location_name || 'Detecting...'}</span>
+        </div>
+
         <div className="flex items-center gap-2">
           {getStatusIcon()}
           <span className="text-sm text-gray-600">{getStatusText()}</span>
@@ -265,30 +272,14 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
 
           {/* Panchang Table */}
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse border border-gray-300">
-              <thead>
-                <tr className="bg-purple-50">
-                  <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
-                    Field
-                  </th>
-                  <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
-                    Value(s)
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {formatTableData(panchangData).map((row, index) => (
-                  <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="border border-gray-300 px-4 py-3 font-medium text-gray-700">
-                      {row.field}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-3 text-gray-800">
-                      {row.value}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="prose prose-sm max-w-none">
+              <div 
+                className="markdown-content"
+                dangerouslySetInnerHTML={{ 
+                  __html: formatTableData(panchangData).replace(/\n/g, '<br>') 
+                }}
+              />
+            </div>
           </div>
 
           {/* Additional Information */}
