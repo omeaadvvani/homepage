@@ -92,14 +92,14 @@ const getNextAmavasya = () => {
 };
 
 // Function to get fallback data with timezone
-const getFallbackPanchangData = (timezone: string = 'Asia/Kolkata') => {
+const getFallbackPanchangData = (timezone: string = 'America/Vancouver') => {
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
   
-  // Calculate sun times based on location (default to India coordinates)
-  const sunTimes = calculateSunTimes(28.6139, 77.209, today);
-  const tomorrowSunTimes = calculateSunTimes(28.6139, 77.209, tomorrow);
+  // Calculate sun times based on location (default to Vancouver coordinates)
+  const sunTimes = calculateSunTimes(49.2827, -123.1207, today);
+  const tomorrowSunTimes = calculateSunTimes(49.2827, -123.1207, tomorrow);
   
   return {
     today: {
@@ -116,23 +116,27 @@ const getFallbackPanchangData = (timezone: string = 'Asia/Kolkata') => {
       varjyam: '2:05 PM – 3:45 PM',
       durmuhurtham: '12:15 PM – 1:07 PM',
       pradosham: '7:15 PM – 8:15 PM',
-      aayana: 'Dakshinayana'
+      aayana: 'Dakshinayana',
+      maasa: 'Sravana',
+      tithiStartEnd: 'Ashtami: 01/15/25, 01:05 AM – 2:45 PM; Navami: 01/15/25, 2:46 PM – 01/16/25, 2:45 PM'
     },
     tomorrow: {
       date: formatDateInTimezone(tomorrow, timezone),
       vasara: getCurrentDayInTimezone(timezone),
-      tithi: 'Shukla Navami (till 1:23 PM), Shukla Dashami (from 1:24 PM)',
-      nakshatra: 'Vishakha (till 3:45 PM), Anuradha (from 3:46 PM)',
-      raashi: 'Vrishchika (till 9:32 AM), Dhanu (from 9:33 AM)',
+      tithi: 'Shukla Navami (till 1:30 PM), Shukla Dashami (from 1:31 PM)',
+      nakshatra: 'Vishakha (till 4:15 PM), Anuradha (from 4:16 PM)',
+      raashi: 'Vrishchika (till 10:30 AM), Dhanu (from 10:31 AM)',
       sunrise: tomorrowSunTimes.sunrise,
       sunset: tomorrowSunTimes.sunset,
-      amruthaKalam: '9:16 AM – 10:56 AM',
-      rahuKalam: '7:22 AM – 9:00 AM',
-      yamaGandam: '11:35 AM – 1:13 PM',
-      varjyam: '2:06 PM – 3:46 PM',
-      durmuhurtham: '12:16 PM – 1:08 PM',
-      pradosham: '7:16 PM – 8:16 PM',
-      aayana: 'Dakshinayana'
+      amruthaKalam: '9:30 AM – 11:10 AM',
+      rahuKalam: '7:45 AM – 9:23 AM',
+      yamaGandam: '11:50 AM – 1:28 PM',
+      varjyam: '2:20 PM – 4:00 PM',
+      durmuhurtham: '12:30 PM – 1:22 PM',
+      pradosham: '7:30 PM – 8:30 PM',
+      aayana: 'Dakshinayana',
+      maasa: 'Sravana',
+      tithiStartEnd: 'Navami: 01/16/25, 1:31 PM – 01/17/25, 1:30 PM; Dashami: 01/17/25, 1:31 PM – 01/18/25, 1:30 PM'
     }
   };
 };
@@ -381,7 +385,7 @@ export class PanchangDetailedAPI {
   private useFallback: boolean = false;
 
   constructor() {
-    console.log('🕉️ PanchangDetailedAPI initialized - Using Perplexity AI with fallback');
+    console.log('PanchangDetailedAPI initialized - Using Perplexity AI with fallback');
   }
 
   /**
@@ -434,7 +438,7 @@ export class PanchangDetailedAPI {
   private generateSpokenSummary(data: PanchangDetailedData, timezone: string): string {
     const timezoneDisplay = getTimezoneDisplayName(timezone);
     
-    // Create a brief, clear spoken summary
+    // Create a brief, clear spoken summary without emojis or special characters
     let summary = `Today is ${data.vasara}, ${data.date} in ${timezoneDisplay}. `;
     
     // Add tithi information
@@ -515,24 +519,24 @@ export class PanchangDetailedAPI {
   /**
    * Get fallback data based on query and location
    */
-  private getFallbackData(query: string, location?: { latitude: number; longitude: number }, timezone: string = 'Asia/Kolkata'): PanchangDetailedData {
+  private getFallbackData(query: string, location?: { latitude: number; longitude: number }, timezone: string = 'America/Vancouver'): PanchangDetailedData {
     const lowerQuery = query.toLowerCase();
     
-    // Determine timezone from location
+    // Helper function to get timezone from coordinates
     const getTimezoneFromCoords = (lat: number, lng: number): string => {
-      // India coordinates (approximate)
-      if (lat >= 6 && lat <= 37 && lng >= 68 && lng <= 97) return 'Asia/Kolkata';
-      // US coordinates (approximate)
-      if (lat >= 24 && lat <= 71 && lng >= -180 && lng <= -66) return 'America/New_York';
-      // UK coordinates (approximate)
-      if (lat >= 49 && lat <= 61 && lng >= -8 && lng <= 2) return 'Europe/London';
-      // Australia coordinates (approximate)
-      if (lat >= -44 && lat <= -10 && lng >= 113 && lng <= 154) return 'Australia/Sydney';
-      // Default to India timezone
-      return 'Asia/Kolkata';
+      // Vancouver coordinates (approximate)
+      if (lat >= 49 && lat <= 50 && lng >= -124 && lng <= -122) {
+        return 'America/Vancouver';
+      }
+      // New York coordinates (approximate)
+      if (lat >= 40 && lat <= 42 && lng >= -75 && lng <= -73) {
+        return 'America/New_York';
+      }
+      // Default to Vancouver for Canada
+      return 'America/Vancouver';
     };
     
-    const fallbackTimezone = location ? getTimezoneFromCoords(location.latitude, location.longitude) : 'Asia/Kolkata';
+    const fallbackTimezone = location ? getTimezoneFromCoords(location.latitude, location.longitude) : 'America/Vancouver';
     const fallbackData = getFallbackPanchangData(fallbackTimezone);
     
     // Check for tomorrow
@@ -540,7 +544,34 @@ export class PanchangDetailedAPI {
       return fallbackData.tomorrow;
     }
     
-    // Default to today
+    // Check for specific tithi queries
+    if (lowerQuery.includes('ekadashi')) {
+      return {
+        ...fallbackData.today,
+        tithi: 'Krishna Ekadashi',
+        tithiStartEnd: 'Ekadashi: 01/15/25, 6:35 PM – 01/16/25, 4:37 PM',
+        nakshatra: 'Swati'
+      };
+    }
+    
+    if (lowerQuery.includes('purnima')) {
+      return {
+        ...fallbackData.today,
+        tithi: 'Purnima (Full Moon)',
+        tithiStartEnd: 'Purnima: 01/15/25, 6:00 PM – 01/16/25, 6:00 PM',
+        nakshatra: 'Vishakha'
+      };
+    }
+    
+    if (lowerQuery.includes('amavasya')) {
+      return {
+        ...fallbackData.today,
+        tithi: 'Amavasya (New Moon)',
+        tithiStartEnd: 'Amavasya: 01/15/25, 6:00 PM – 01/16/25, 6:00 PM',
+        nakshatra: 'Revati'
+      };
+    }
+    
     return fallbackData.today;
   }
 
@@ -596,16 +627,16 @@ export class PanchangDetailedAPI {
     source: string;
   }> {
     try {
-      console.log('🕉️ Fetching Panchang data for query:', query);
+      console.log('Fetching Panchang data for query:', query);
       
       // Get user's timezone from location
-      let userTimezone = 'Asia/Kolkata'; // Default to India
+      let userTimezone = 'America/Vancouver'; // Default to Vancouver
       if (location) {
         try {
           userTimezone = await getTimezoneFromCoordinates(location.latitude, location.longitude);
-          console.log('📍 User timezone detected:', userTimezone);
+          console.log('User timezone detected:', userTimezone);
         } catch (error) {
-          console.log('⚠️ Could not detect timezone, using fallback');
+          console.log('Could not detect timezone, using fallback');
           userTimezone = getTimezoneFromCoordinatesFallback(location.latitude, location.longitude);
         }
       }
@@ -624,12 +655,12 @@ export class PanchangDetailedAPI {
         });
 
         if (response && response.length > 0) {
-          console.log('✅ Perplexity API response received');
+          console.log('Perplexity API response received');
           
           // Check if response contains citations
           const hasCitations = /\[\d+\]/.test(response);
           if (hasCitations) {
-            console.log('⚠️ Perplexity response contains citations, using fallback data instead');
+            console.log('Perplexity response contains citations, using fallback data instead');
             throw new Error('Citations detected in response');
           }
           
@@ -643,12 +674,12 @@ export class PanchangDetailedAPI {
           };
         }
       } catch (perplexityError) {
-        console.log('⚠️ Perplexity API failed or contained citations, using fallback data:', perplexityError);
+        console.log('Perplexity API failed or contained citations, using fallback data:', perplexityError);
         this.useFallback = true;
       }
 
       // Use fallback data with user's timezone
-      console.log('🔄 Using fallback data system with user timezone:', userTimezone);
+      console.log('Using fallback data system with user timezone:', userTimezone);
       const parsedQuery = this.parseUserQuery(query);
       
       // For specific queries, always use fallback data to ensure tabular format
@@ -656,7 +687,7 @@ export class PanchangDetailedAPI {
       const isSpecificQuery = specificQueries.some(sq => query.toLowerCase().includes(sq));
       
       if (isSpecificQuery || parsedQuery.tithi) {
-        console.log('📋 Using fallback data for specific query to ensure tabular format');
+        console.log('Using fallback data for specific query to ensure tabular format');
         const fallbackData = this.getFallbackData(query, location, userTimezone);
         return {
           tableData: fallbackData,
@@ -685,7 +716,7 @@ export class PanchangDetailedAPI {
       };
 
     } catch (error) {
-      console.error('❌ Error in getDetailedPanchang:', error);
+      console.error('Error in getDetailedPanchang:', error);
       
       // Ultimate fallback
       const fallbackData = this.getFallbackData(query, location, 'Asia/Kolkata');
@@ -703,18 +734,18 @@ export class PanchangDetailedAPI {
    * Parse Perplexity response
    */
   private parsePerplexityResponse(response: string, timezone: string): PanchangDetailedData {
-    console.log('🔍 Parsing Perplexity response...');
+    console.log('Parsing Perplexity response...');
     
     // Remove citations from response
     const cleanResponse = this.removeCitations(response);
-    console.log('🧹 Cleaned response (removed citations):', cleanResponse.substring(0, 200) + '...');
+    console.log('Cleaned response (removed citations):', cleanResponse.substring(0, 200) + '...');
     
     try {
       // Try to parse as JSON first
       const jsonMatch = cleanResponse.match(/```json\s*(\{.*?\})\s*```/s);
       if (jsonMatch) {
         const jsonData = JSON.parse(jsonMatch[1]);
-        console.log('✅ Parsed JSON data:', jsonData);
+        console.log('Parsed JSON data:', jsonData);
         
         return {
           date: jsonData.date || getCurrentDate(timezone),

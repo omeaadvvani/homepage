@@ -54,7 +54,7 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
         longitude: currentLocation.longitude
       };
 
-      console.log('🔍 Fetching detailed Panchang with query:', query, 'and location:', location);
+      console.log('Fetching detailed Panchang with query:', query, 'and location:', location);
 
       const response = await panchangDetailedAPI.getDetailedPanchang(query, location);
 
@@ -70,16 +70,16 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
           }, 500);
         }
 
-        console.log('✅ Detailed Panchang data received:', response.tableData);
+        console.log('Detailed Panchang data received:', response.tableData);
       } else {
         setError('Failed to fetch Panchang data');
-        console.error('❌ Panchang fetch failed: No data received');
+        console.error('Panchang fetch failed: No data received');
       }
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setError(errorMessage);
-      console.error('❌ Error in fetchPanchangData:', error);
+      console.error('Error in fetchPanchangData:', error);
     } finally {
       setIsLoading(false);
     }
@@ -92,7 +92,7 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
     try {
       await speakText(summary);
     } catch (error) {
-      console.error('❌ Error speaking summary:', error);
+      console.error('Error speaking summary:', error);
     } finally {
       setIsSpeaking(false);
     }
