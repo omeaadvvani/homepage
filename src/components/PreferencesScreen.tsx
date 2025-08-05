@@ -480,8 +480,7 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
 
   // Get Indian voice samples only
   const indianVoiceSamples = INDIAN_VOICE_SAMPLES;
-  const indianFemaleVoices = getVoiceSamplesByGender('female');
-  const indianMaleVoices = getVoiceSamplesByGender('male');
+  const spiritualVoice = indianVoiceSamples[0]; // Only one voice now
 
   return (
     <div className="min-h-screen bg-spiritual-diagonal relative overflow-hidden font-sans">
@@ -684,169 +683,82 @@ const PreferencesScreen: React.FC<PreferencesScreenProps> = ({
                 <div className="flex items-center gap-2">
                   <Volume2 className="w-5 h-5 text-spiritual-600" />
                   <h3 className="text-lg font-semibold text-spiritual-900 tracking-spiritual">
-                    Choose Your Voice Assistant
+                    Choose Your Spiritual Voice Assistant
                   </h3>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Indian Female Voices */}
-                  <div className="space-y-3">
-                    <h4 className="font-medium text-spiritual-800 tracking-spiritual">Indian Female Voices</h4>
-                    {indianFemaleVoices.map((voiceSample) => (
-                      <div
-                        key={voiceSample.id}
-                        className={`p-4 rounded-spiritual border-2 transition-all duration-300 ${
-                          selectedVoiceId === voiceSample.id
-                            ? 'border-spiritual-400 bg-spiritual-50 shadow-spiritual'
-                            : 'border-spiritual-200 bg-white/50 hover:border-spiritual-300'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3 flex-1">
-                            <div className={`w-5 h-5 border-2 rounded flex items-center justify-center ${
-                              selectedVoiceId === voiceSample.id
-                                ? 'border-spiritual-500 bg-spiritual-500'
-                                : 'border-spiritual-300'
-                            }`}>
-                              {selectedVoiceId === voiceSample.id && (
-                                <CheckCircle className="w-3 h-3 text-white" />
-                              )}
-                            </div>
-                            <Volume2 className={`w-5 h-5 ${
-                              selectedVoiceId === voiceSample.id ? 'text-spiritual-600' : 'text-spiritual-500'
-                            }`} />
-                            <div className="flex-1">
-                              <h4 className="font-medium text-spiritual-900 tracking-spiritual">
-                                {voiceSample.name}
-                              </h4>
-                              <p className="text-sm text-spiritual-700/70 tracking-spiritual">
-                                {voiceSample.description}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2 ml-4">
-                            <button
-                              onClick={() => handleVoiceSample(voiceSample.id)}
-                              disabled={samplingVoiceId !== ''}
-                              className={`p-2 rounded-lg transition-all duration-200 ${
-                                samplingVoiceId === voiceSample.id
-                                  ? 'bg-spiritual-300 text-spiritual-800 animate-pulse'
-                                  : samplingVoiceId !== ''
-                                    ? 'bg-spiritual-200 text-spiritual-700' 
-                                    : 'bg-spiritual-100 hover:bg-spiritual-200 text-spiritual-600 hover:scale-105'
-                              } disabled:opacity-50`}
-                              title={
-                                samplingVoiceId === voiceSample.id 
-                                  ? "Playing sample..." 
-                                  : samplingVoiceId !== ''
-                                    ? "Another voice is playing" 
-                                    : "Listen to voice sample"
-                              }
-                            >
-                              {samplingVoiceId === voiceSample.id ? (
-                                <div className="flex items-center gap-1">
-                                  <div className="w-4 h-4 border-2 border-spiritual-600 border-t-transparent rounded-full animate-spin" />
-                                  <span className="text-xs">Playing</span>
-                                </div>
-                              ) : (
-                                <Play className="w-4 h-4" />
-                              )}
-                            </button>
-                            <button
-                              onClick={() => handleVoiceSelect(voiceSample.id)}
-                              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                                selectedVoiceId === voiceSample.id
-                                  ? 'bg-spiritual-700 text-white'
-                                  : 'bg-spiritual-600 hover:bg-spiritual-700 text-white'
-                              }`}
-                            >
-                              {selectedVoiceId === voiceSample.id ? 'Selected' : 'Select'}
-                            </button>
-                          </div>
+                <div className="space-y-3">
+                  <div
+                    className={`p-4 rounded-spiritual border-2 transition-all duration-300 ${
+                      selectedVoiceId === spiritualVoice.id
+                        ? 'border-spiritual-400 bg-spiritual-50 shadow-spiritual'
+                        : 'border-spiritual-200 bg-white/50 hover:border-spiritual-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className={`w-5 h-5 border-2 rounded flex items-center justify-center ${
+                          selectedVoiceId === spiritualVoice.id
+                            ? 'border-spiritual-500 bg-spiritual-500'
+                            : 'border-spiritual-300'
+                        }`}>
+                          {selectedVoiceId === spiritualVoice.id && (
+                            <CheckCircle className="w-3 h-3 text-white" />
+                          )}
+                        </div>
+                        <Volume2 className={`w-5 h-5 ${
+                          selectedVoiceId === spiritualVoice.id ? 'text-spiritual-600' : 'text-spiritual-500'
+                        }`} />
+                        <div className="flex-1">
+                          <h4 className="font-medium text-spiritual-900 tracking-spiritual">
+                            {spiritualVoice.name}
+                          </h4>
+                          <p className="text-sm text-spiritual-700/70 tracking-spiritual">
+                            {spiritualVoice.description}
+                          </p>
                         </div>
                       </div>
-                    ))}
-                  </div>
-
-                  {/* Indian Male Voices */}
-                  <div className="space-y-3">
-                    <h4 className="font-medium text-spiritual-800 tracking-spiritual">Indian Male Voices</h4>
-                    {indianMaleVoices.map((voiceSample) => (
-                      <div
-                        key={voiceSample.id}
-                        className={`p-4 rounded-spiritual border-2 transition-all duration-300 ${
-                          selectedVoiceId === voiceSample.id
-                            ? 'border-spiritual-400 bg-spiritual-50 shadow-spiritual'
-                            : 'border-spiritual-200 bg-white/50 hover:border-spiritual-300'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3 flex-1">
-                            <div className={`w-5 h-5 border-2 rounded flex items-center justify-center ${
-                              selectedVoiceId === voiceSample.id
-                                ? 'border-spiritual-500 bg-spiritual-500'
-                                : 'border-spiritual-300'
-                            }`}>
-                              {selectedVoiceId === voiceSample.id && (
-                                <CheckCircle className="w-3 h-3 text-white" />
-                              )}
+                      
+                      <div className="flex items-center gap-2 ml-4">
+                        <button
+                          onClick={() => handleVoiceSample(spiritualVoice.id)}
+                          disabled={samplingVoiceId !== ''}
+                          className={`p-2 rounded-lg transition-all duration-200 ${
+                            samplingVoiceId === spiritualVoice.id
+                              ? 'bg-spiritual-300 text-spiritual-800 animate-pulse'
+                              : samplingVoiceId !== ''
+                                ? 'bg-spiritual-200 text-spiritual-700' 
+                                : 'bg-spiritual-100 hover:bg-spiritual-200 text-spiritual-600 hover:scale-105'
+                          } disabled:opacity-50`}
+                          title={
+                            samplingVoiceId === spiritualVoice.id 
+                              ? "Playing sample..." 
+                              : samplingVoiceId !== ''
+                                ? "Another voice is playing" 
+                                : "Listen to voice sample"
+                          }
+                        >
+                          {samplingVoiceId === spiritualVoice.id ? (
+                            <div className="flex items-center gap-1">
+                              <div className="w-4 h-4 border-2 border-spiritual-600 border-t-transparent rounded-full animate-spin" />
+                              <span className="text-xs">Playing</span>
                             </div>
-                            <Volume2 className={`w-5 h-5 ${
-                              selectedVoiceId === voiceSample.id ? 'text-spiritual-600' : 'text-spiritual-500'
-                            }`} />
-                            <div className="flex-1">
-                              <h4 className="font-medium text-spiritual-900 tracking-spiritual">
-                                {voiceSample.name}
-                              </h4>
-                              <p className="text-sm text-spiritual-700/70 tracking-spiritual">
-                                {voiceSample.description}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2 ml-4">
-                            <button
-                              onClick={() => handleVoiceSample(voiceSample.id)}
-                              disabled={samplingVoiceId !== ''}
-                              className={`p-2 rounded-lg transition-all duration-200 ${
-                                samplingVoiceId === voiceSample.id
-                                  ? 'bg-spiritual-300 text-spiritual-800 animate-pulse'
-                                  : samplingVoiceId !== ''
-                                    ? 'bg-spiritual-200 text-spiritual-700' 
-                                    : 'bg-spiritual-100 hover:bg-spiritual-200 text-spiritual-600 hover:scale-105'
-                              } disabled:opacity-50`}
-                              title={
-                                samplingVoiceId === voiceSample.id 
-                                  ? "Playing sample..." 
-                                  : samplingVoiceId !== ''
-                                    ? "Another voice is playing" 
-                                    : "Listen to voice sample"
-                              }
-                            >
-                              {samplingVoiceId === voiceSample.id ? (
-                                <div className="flex items-center gap-1">
-                                  <div className="w-4 h-4 border-2 border-spiritual-600 border-t-transparent rounded-full animate-spin" />
-                                  <span className="text-xs">Playing</span>
-                                </div>
-                              ) : (
-                                <Play className="w-4 h-4" />
-                              )}
-                            </button>
-                            <button
-                              onClick={() => handleVoiceSelect(voiceSample.id)}
-                              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                                selectedVoiceId === voiceSample.id
-                                  ? 'bg-spiritual-700 text-white'
-                                  : 'bg-spiritual-600 hover:bg-spiritual-700 text-white'
-                              }`}
-                            >
-                              {selectedVoiceId === voiceSample.id ? 'Selected' : 'Select'}
-                            </button>
-                          </div>
-                        </div>
+                          ) : (
+                            <Play className="w-4 h-4" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleVoiceSelect(spiritualVoice.id)}
+                          className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                            selectedVoiceId === spiritualVoice.id
+                              ? 'bg-spiritual-700 text-white'
+                              : 'bg-spiritual-600 hover:bg-spiritual-700 text-white'
+                          }`}
+                        >
+                          {selectedVoiceId === spiritualVoice.id ? 'Selected' : 'Select'}
+                        </button>
                       </div>
-                    ))}
+                    </div>
                   </div>
                 </div>
               </div>

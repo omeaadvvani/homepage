@@ -206,6 +206,21 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Search'}
           </button>
         </form>
+        
+        {/* Guide for Tabular Format Questions */}
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <h3 className="text-sm font-semibold text-blue-800 mb-2">Questions that show Tabular Format:</h3>
+          <ul className="text-xs text-blue-700 space-y-1">
+            <li>• "Show me today's Panchang"</li>
+            <li>• "What is today's Panchang information?"</li>
+            <li>• "Tell me about today's tithi and nakshatra"</li>
+            <li>• "When is the next Ekadashi?"</li>
+            <li>• "When is the next Purnima?"</li>
+            <li>• "When is the next Amavasya?"</li>
+            <li>• "Show me Panchang for tomorrow"</li>
+            <li>• "What are today's auspicious timings?"</li>
+          </ul>
+        </div>
       </div>
 
       {/* Controls */}
@@ -282,6 +297,7 @@ const DetailedPanchangDisplay: React.FC<DetailedPanchangDisplayProps> = ({ query
                       Speak
                     </button>
                   )}
+                  
                   <button
                     onClick={toggleMute}
                     className="flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"

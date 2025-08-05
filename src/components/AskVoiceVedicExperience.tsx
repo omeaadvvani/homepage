@@ -1013,14 +1013,25 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
                   {/* Audio Replay Button for Assistant Messages */}
                   {message.type === 'assistant' && (
                     <div className="mt-3 pt-3 border-t border-spiritual-200/30">
-                      <button
-                        onClick={() => handleReplayAudio(message.content)}
-                        className="group flex items-center gap-2 text-spiritual-600 hover:text-spiritual-700 font-medium transition-all duration-300 tracking-spiritual"
-                        title="Replay audio"
-                      >
-                        <Volume2 className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
-                        <span className="text-sm">Replay</span>
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => handleReplayAudio(message.content)}
+                          className="group flex items-center gap-2 text-spiritual-600 hover:text-spiritual-700 font-medium transition-all duration-300 tracking-spiritual"
+                          title="Replay audio"
+                        >
+                          <Volume2 className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
+                          <span className="text-sm">Replay</span>
+                        </button>
+                        
+                        <button
+                          onClick={toggleMute}
+                          className="group flex items-center gap-2 text-spiritual-600 hover:text-spiritual-700 font-medium transition-all duration-300 tracking-spiritual"
+                          title={isMuted ? "Unmute voice" : "Mute voice"}
+                        >
+                          {isMuted ? <VolumeX className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" /> : <Volume2 className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />}
+                          <span className="text-sm">{isMuted ? 'Unmute' : 'Mute'}</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

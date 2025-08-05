@@ -11,57 +11,15 @@ export interface VoiceSample {
 
 export const INDIAN_VOICE_SAMPLES: VoiceSample[] = [
   {
-    id: 'indian-female-1',
-    name: 'Priya',
-    gender: 'female',
-    accent: 'indian',
-    description: 'Warm and gentle Indian female voice with soft tone',
-    sampleText: 'Namaste. Welcome to VoiceVedic. I am Priya, your spiritual companion. I will guide you through your daily Panchang readings and spiritual practices with warmth and wisdom. Together, we will explore the ancient wisdom of the Vedas and find peace in your spiritual journey.',
-    voiceSettings: {
-      rate: 0.85,
-      pitch: 1.1,
-      volume: 1.0,
-      lang: 'en-IN'
-    }
-  },
-  {
-    id: 'indian-female-2',
-    name: 'Lakshmi',
-    gender: 'female',
-    accent: 'indian',
-    description: 'Elegant and wise Indian female voice with clear articulation',
-    sampleText: 'Greetings. I am Lakshmi, your spiritual guide in VoiceVedic. I bring you the sacred knowledge of the Panchang and spiritual wisdom. Let me share with you the divine insights that will illuminate your path and bring harmony to your daily practices.',
-    voiceSettings: {
-      rate: 0.9,
-      pitch: 1.0,
-      volume: 1.0,
-      lang: 'en-IN'
-    }
-  },
-  {
-    id: 'indian-male-1',
-    name: 'Ravi',
-    gender: 'male',
-    accent: 'indian',
-    description: 'Deep and authoritative Indian male voice with strong presence',
-    sampleText: 'Om Namah Shivaya. I am Ravi, your spiritual mentor in VoiceVedic. I will share with you the profound wisdom of the ancient texts and guide you through your spiritual practices. Together, we will discover the divine knowledge that lies within the Panchang.',
-    voiceSettings: {
-      rate: 0.8,
-      pitch: 0.9,
-      volume: 1.0,
-      lang: 'en-IN'
-    }
-  },
-  {
-    id: 'indian-male-2',
+    id: 'indian-male-spiritual',
     name: 'Arjun',
     gender: 'male',
     accent: 'indian',
-    description: 'Wise and calming Indian male voice with gentle tone',
-    sampleText: 'Namaste. Welcome to VoiceVedic. I am Arjun, here to be your spiritual companion. I will read your daily Panchang with clarity and share the sacred teachings that will bring peace and wisdom to your spiritual journey. Let us walk this path together.',
+    description: 'Calm and soothing Indian male voice with divine spiritual presence',
+    sampleText: 'Om Namah Shivaya. I am Arjun, your spiritual guide in VoiceVedic. I will share with you the sacred wisdom of the ancient texts and guide you through your spiritual practices with a voice that carries divine energy. Together, we will discover the profound knowledge that lies within the Panchang and find peace in your spiritual journey.',
     voiceSettings: {
-      rate: 0.95,
-      pitch: 1.0,
+      rate: 0.85,
+      pitch: 0.95,
       volume: 1.0,
       lang: 'en-IN'
     }
