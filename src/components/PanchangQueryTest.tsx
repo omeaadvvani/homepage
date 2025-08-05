@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { perplexityAPI } from '../lib/perplexity-api';
 
+// Utility function to remove citations from text
+const removeCitations = (text: string): string => {
+  // Remove citation patterns like [1], [2], [3], etc.
+  return text.replace(/\[\d+\]/g, '').trim();
+};
+
 const PanchangQueryTest: React.FC = () => {
   const [query, setQuery] = useState<string>('');
   const [response, setResponse] = useState<string>('');
@@ -51,8 +57,10 @@ const PanchangQueryTest: React.FC = () => {
       }
       
       if (responseText && responseText.trim()) {
+        // Remove citations from the response
+        responseText = removeCitations(responseText);
         setResponse(responseText);
-        console.log('✅ Query completed successfully with Perplexity AI');
+        console.log('✅ Query completed successfully with Perplexity AI (citations removed)');
       } else {
         setResponse('I apologize, but I am unable to process your question at the moment. Please try asking about specific Tithis, dates, spiritual topics, or Panchang information.');
         console.log('❌ Empty response from Perplexity API');

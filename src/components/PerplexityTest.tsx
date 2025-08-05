@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import { perplexityAPI } from '../lib/perplexity-api';
 import { Loader2, CheckCircle, XCircle, MessageSquare, Sparkles, BookOpen } from 'lucide-react';
 
+// Utility function to remove citations from text
+const removeCitations = (text: string): string => {
+  // Remove citation patterns like [1], [2], [3], etc.
+  return text.replace(/\[\d+\]/g, '').trim();
+};
+
 interface TestResult {
   type: string;
   success: boolean;
@@ -23,14 +29,17 @@ const PerplexityTest: React.FC = () => {
       const response = await testFunction();
       const duration = Date.now() - startTime;
       
+      // Remove citations from response
+      const cleanResponse = removeCitations(response);
+      
       setResults(prev => [...prev, {
         type: testType,
         success: true,
-        response,
+        response: cleanResponse,
         duration
       }]);
       
-      console.log(`✅ ${testType} test completed successfully`);
+      console.log(`✅ ${testType} test completed successfully (citations removed)`);
     } catch (error) {
       const duration = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

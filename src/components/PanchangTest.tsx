@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { perplexityAPI } from '../lib/perplexity-api';
 
+// Utility function to remove citations from text
+const removeCitations = (text: string): string => {
+  // Remove citation patterns like [1], [2], [3], etc.
+  return text.replace(/\[\d+\]/g, '').trim();
+};
+
 const PanchangTest: React.FC = () => {
   const [testResult, setTestResult] = useState<string>('Testing...');
   const [isLoading, setIsLoading] = useState(true);
@@ -22,8 +28,10 @@ const PanchangTest: React.FC = () => {
         console.log('Perplexity API response:', response);
         
         if (response && response.trim()) {
+          // Remove citations from response
+          const cleanResponse = removeCitations(response);
           setTestResult(`✅ Perplexity AI working! Successfully generated response for Panchang query`);
-          setDetailedError(`Response preview: ${response.substring(0, 100)}...`);
+          setDetailedError(`Response preview: ${cleanResponse.substring(0, 100)}...`);
         } else {
           setTestResult(`❌ Perplexity API returned empty response`);
           setDetailedError(`Empty response from Perplexity API`);

@@ -29,6 +29,12 @@ declare global {
   }
 }
 
+// Utility function to remove citations from text
+const removeCitations = (text: string): string => {
+  // Remove citation patterns like [1], [2], [3], etc.
+  return text.replace(/\[\d+\]/g, '').trim();
+};
+
 interface SpeechRecognition extends EventTarget {
   lang: string;
   interimResults: boolean;
@@ -491,6 +497,9 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
           
           if (responseText && responseText.trim()) {
             console.log("✅ Perplexity API response generated successfully");
+            // Remove citations from the response
+            responseText = removeCitations(responseText);
+            console.log("🧹 Citations removed from response");
           } else {
             throw new Error('Empty response from Perplexity API');
           }

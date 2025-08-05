@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import { perplexityAPI } from '../lib/perplexity-api';
 
+// Utility function to remove citations from text
+const removeCitations = (text: string): string => {
+  // Remove citation patterns like [1], [2], [3], etc.
+  return text.replace(/\[\d+\]/g, '').trim();
+};
+
 const AllTithisTest: React.FC = () => {
   const [results, setResults] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,8 +45,10 @@ const AllTithisTest: React.FC = () => {
         const response = await perplexityAPI.generateAstrologicalInsights(question);
         
         if (response && response.trim()) {
+          // Remove citations from response
+          const cleanResponse = removeCitations(response);
           newResults.push(`✅ ${tithi.name}: ${tithi.description}`);
-          newResults.push(response);
+          newResults.push(cleanResponse);
         } else {
           newResults.push(`❌ ${tithi.name}: Failed to get data from Perplexity AI`);
         }
@@ -64,7 +72,9 @@ const AllTithisTest: React.FC = () => {
       const response = await perplexityAPI.generateAstrologicalInsights(question);
       
       if (response && response.trim()) {
-        setResults([`✅ ${tithiName}`, response]);
+        // Remove citations from response
+        const cleanResponse = removeCitations(response);
+        setResults([`✅ ${tithiName}`, cleanResponse]);
       } else {
         setResults([`❌ ${tithiName}: Failed to get data from Perplexity AI`]);
       }
