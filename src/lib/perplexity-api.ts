@@ -173,8 +173,15 @@ Focus on meditation, mindfulness, gratitude, and inner peace. Keep responses con
    */
   async generateAstrologicalInsights(
     query: string,
-    panchangData?: any
+    context?: {
+      userLocation?: string;
+      currentTime?: string;
+      timezone?: string;
+    }
   ): Promise<string> {
+    const timezone = context?.timezone || 'America/Vancouver';
+    const location = context?.userLocation || 'Vancouver, Canada';
+    
     const systemPrompt = `You are an expert Vedic astrologer for Voice Vedic. Provide astrological insights that are:
 - Based on traditional Vedic astrology principles
 - Practical and actionable
@@ -182,16 +189,24 @@ Focus on meditation, mindfulness, gratitude, and inner peace. Keep responses con
 - Respectful of free will and personal choice
 - Focused on spiritual growth and self-improvement
 
+IMPORTANT: All dates, times, and astrological calculations must be provided in ${timezone} timezone (${location} local time).
+- Use MM/DD/YY format for dates
+- Use HH:MM AM/PM format for times
+- All times should be in ${timezone} timezone
+- Do NOT use IST or India timezone
+- Provide times as per ${location} local time
+
 Always emphasize that astrology is a tool for self-understanding, not deterministic.`;
 
     let enhancedQuery = query;
-    if (panchangData) {
-      enhancedQuery += `\n\nPanchang Data: ${JSON.stringify(panchangData)}`;
+    if (context?.currentTime) {
+      enhancedQuery += `\n\nCurrent time in ${timezone}: ${context.currentTime}`;
     }
+    enhancedQuery += `\n\nPlease provide all information in ${timezone} timezone for ${location}.`;
 
     return this.generateText(enhancedQuery, {
       model: 'sonar-pro',
-      maxTokens: 600,
+      maxTokens: 800,
       temperature: 0.7,
       systemPrompt
     });

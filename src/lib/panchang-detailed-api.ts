@@ -645,37 +645,56 @@ export class PanchangDetailedAPI {
         }
       }
       
-      // First try Perplexity API with user's location context
+      // Step 2: Get response using Perplexity API directly
+      let responseText = '';
+      
       try {
-        const locationContext = location ? 
-          `User is located at ${location.latitude}, ${location.longitude} (${userTimezone} timezone). ` : 
-          '';
-        
-        const response = await perplexityAPI.generateText(query, {
-          model: 'sonar-pro',
-          maxTokens: 1500,
-          temperature: 0.3,
-          systemPrompt: `You are an expert Vedic astrologer and Panchang specialist. ${locationContext}Provide accurate, detailed Panchang information in a structured format tailored to the user's location and timezone. Always include specific timings and dates in the user's local timezone. Respond with comprehensive Panchang data including all traditional elements like tithi, nakshatra, auspicious/inauspicious timings, etc. Format dates as MM/DD/YY and times as HH:MM AM/PM in the user's local timezone.`
-        });
-
-        if (response && response.length > 0) {
-          console.log('Perplexity API response received');
+        if (import.meta.env.VITE_PERPLEXITY_API_KEY) {
+          console.log("🤖 Generating response with Perplexity API...");
           
-          // Check if response contains citations
-          const hasCitations = /\[\d+\]/.test(response);
-          if (hasCitations) {
-            console.log('Perplexity response contains citations, using fallback data instead');
-            throw new Error('Citations detected in response');
+          // Determine the type of query and use appropriate Perplexity method
+          const lowerQuestion = query.toLowerCase();
+          
+          if (lowerQuestion.includes('spiritual') || lowerQuestion.includes('meditation') || 
+              lowerQuestion.includes('peace') || lowerQuestion.includes('mindfulness')) {
+            // Use spiritual guidance
+            responseText = await perplexityAPI.generateSpiritualGuidance(query, {
+              userLocation: 'Vancouver, Canada',
+              currentTime: new Date().toISOString()
+            });
+          } else if (lowerQuestion.includes('astrology') || lowerQuestion.includes('horoscope') || 
+                     lowerQuestion.includes('nakshatra') || lowerQuestion.includes('tithi') ||
+                     lowerQuestion.includes('panchang') || lowerQuestion.includes('tithi')) {
+            // Use astrological insights for Panchang-related queries with timezone
+            responseText = await perplexityAPI.generateAstrologicalInsights(query, {
+              userLocation: 'Vancouver, Canada',
+              currentTime: new Date().toISOString(),
+              timezone: userTimezone
+            });
+          } else {
+            // Use general knowledge response
+            responseText = await perplexityAPI.generateKnowledgeResponse(query);
           }
-          
-          const parsedData = this.parsePerplexityResponse(response, userTimezone);
-          const spokenSummary = this.generateSpokenSummary(parsedData, userTimezone);
-          
-          return {
-            tableData: parsedData,
-            spokenSummary,
-            source: 'Perplexity AI'
-          };
+
+          if (responseText && responseText.length > 0) {
+            console.log('Perplexity API response received');
+            
+            // Check if response contains citations
+            const hasCitations = /\[\d+\]/.test(responseText);
+            if (hasCitations) {
+              console.log('Perplexity response contains citations, using fallback data instead');
+              throw new Error('Citations detected in response');
+            }
+            
+            const parsedData = this.parsePerplexityResponse(responseText, userTimezone);
+            const spokenSummary = this.generateSpokenSummary(parsedData, userTimezone);
+            
+            return {
+              tableData: parsedData,
+              spokenSummary,
+              source: 'Perplexity AI'
+            };
+          }
         }
       } catch (perplexityError) {
         console.log('Perplexity API failed or contained citations, using fallback data:', perplexityError);

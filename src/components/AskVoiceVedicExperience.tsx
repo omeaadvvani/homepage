@@ -523,8 +523,12 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
           } else if (lowerQuestion.includes('astrology') || lowerQuestion.includes('horoscope') || 
                      lowerQuestion.includes('nakshatra') || lowerQuestion.includes('tithi') ||
                      lowerQuestion.includes('panchang') || lowerQuestion.includes('tithi')) {
-            // Use astrological insights for Panchang-related queries
-            responseText = await perplexityAPI.generateAstrologicalInsights(finalQuestion);
+            // Use astrological insights for Panchang-related queries with timezone
+            responseText = await perplexityAPI.generateAstrologicalInsights(finalQuestion, {
+              userLocation: currentLocation?.location_name || 'Vancouver, Canada',
+              currentTime: new Date().toISOString(),
+              timezone: 'America/Vancouver'
+            });
           } else {
             // Use general knowledge response
             responseText = await perplexityAPI.generateKnowledgeResponse(finalQuestion);

@@ -26,7 +26,8 @@ const PanchangQueryTest: React.FC = () => {
     try {
       const result = await perplexityAPI.generateAstrologicalInsights(query, {
         userLocation: currentLocation?.location_name || 'Vancouver, Canada',
-        currentTime: new Date().toISOString()
+        currentTime: new Date().toISOString(),
+        timezone: 'America/Vancouver'
       });
       
       setResponse(result);
