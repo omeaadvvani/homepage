@@ -462,77 +462,63 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         }
       }
 
-      // Step 2: Get Panchang guidance
-      const { panchangAPI } = await import('../lib/panchang-api');
-      
-      const guidanceResponse = await panchangAPI.getPanchangGuidance({
-        question: finalQuestion,
-        date: new Date().toISOString().split('T')[0],
-        time: new Date().toLocaleTimeString('en-IN'),
-        latitude: 28.6139, // Default to Delhi
-        longitude: 77.2090,
-        location: 'Delhi, India'
-      });
-
+      // Step 2: Get response using Perplexity API directly
       let responseText = '';
       
-      if (guidanceResponse.success && guidanceResponse.guidance) {
-        responseText = guidanceResponse.guidance;
-        console.log("✅ Panchang guidance received using your credentials");
-      } else {
-        // Fallback if API fails
-        responseText = 'Unable to generate guidance at this time. Please try again.';
-        console.log("⚠️ Using fallback response");
-      }
-
-      // Step 2.5: Enhance response with Perplexity API if available
       try {
         if (import.meta.env.VITE_PERPLEXITY_API_KEY) {
-          console.log("🤖 Enhancing response with Perplexity API...");
+          console.log("🤖 Generating response with Perplexity API...");
           
           // Determine the type of query and use appropriate Perplexity method
           const lowerQuestion = finalQuestion.toLowerCase();
           
-          let enhancedResponse = '';
-          
           if (lowerQuestion.includes('spiritual') || lowerQuestion.includes('meditation') || 
               lowerQuestion.includes('peace') || lowerQuestion.includes('mindfulness')) {
             // Use spiritual guidance
-            enhancedResponse = await perplexityAPI.generateSpiritualGuidance(finalQuestion, {
-              panchangData: guidanceResponse.panchang || {},
+            responseText = await perplexityAPI.generateSpiritualGuidance(finalQuestion, {
               userLocation: 'Delhi, India',
               currentTime: new Date().toISOString()
             });
           } else if (lowerQuestion.includes('astrology') || lowerQuestion.includes('horoscope') || 
-                     lowerQuestion.includes('nakshatra') || lowerQuestion.includes('tithi')) {
-            // Use astrological insights
-            enhancedResponse = await perplexityAPI.generateAstrologicalInsights(finalQuestion, guidanceResponse.panchang);
+                     lowerQuestion.includes('nakshatra') || lowerQuestion.includes('tithi') ||
+                     lowerQuestion.includes('panchang') || lowerQuestion.includes('tithi')) {
+            // Use astrological insights for Panchang-related queries
+            responseText = await perplexityAPI.generateAstrologicalInsights(finalQuestion);
           } else {
             // Use general knowledge response
-            enhancedResponse = await perplexityAPI.generateKnowledgeResponse(finalQuestion);
+            responseText = await perplexityAPI.generateKnowledgeResponse(finalQuestion);
           }
           
-          if (enhancedResponse && enhancedResponse.trim()) {
-            responseText = enhancedResponse;
-            console.log("✅ Perplexity API enhancement successful");
+          if (responseText && responseText.trim()) {
+            console.log("✅ Perplexity API response generated successfully");
+          } else {
+            throw new Error('Empty response from Perplexity API');
           }
+        } else {
+          throw new Error('Perplexity API key not configured');
         }
       } catch (perplexityError) {
-        console.warn("⚠️ Perplexity API enhancement failed, using original response:", perplexityError);
-        // Continue with original response if Perplexity fails
+        console.error("❌ Perplexity API error:", perplexityError);
+        responseText = 'I apologize, but I am unable to process your question at the moment. Please try asking about specific Tithis, dates, spiritual topics, or Panchang information.';
       }
 
-      // Step 3: Validate and enhance the response using AI
-      const validationResponse = await aiService.validateResponse({
-        panchangData: guidanceResponse.panchang || {},
-        userQuestion: finalQuestion,
-        response: responseText
-      });
-
+      // Step 3: Validate and enhance the response using AI (optional)
       let finalResponse = responseText;
-      if (validationResponse.success && validationResponse.validatedResponse) {
-        finalResponse = validationResponse.validatedResponse;
-        console.log("✅ AI validation completed");
+      
+      try {
+        const validationResponse = await aiService.validateResponse({
+          panchangData: {}, // No Panchang data since we're using Perplexity directly
+          userQuestion: finalQuestion,
+          response: responseText
+        });
+
+        if (validationResponse.success && validationResponse.validatedResponse) {
+          finalResponse = validationResponse.validatedResponse;
+          console.log("✅ AI validation completed");
+        }
+      } catch (validationError) {
+        console.warn("⚠️ AI validation failed, using original response:", validationError);
+        // Continue with original response if validation fails
       }
       
       const assistantMessage: Message = {
