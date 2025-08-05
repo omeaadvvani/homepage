@@ -3,9 +3,11 @@ import { perplexityWebScraper } from './perplexity-web-scraper';
 import { 
   getCurrentTimeInTimezone, 
   formatDateInTimezone, 
+  formatTimeInTimezone,
   getCurrentDayInTimezone,
   calculateSunTimes,
-  getTimezoneFromCoordinatesFallback
+  getTimezoneFromCoordinates,
+  getTimezoneDisplayName
 } from './timezone-utils';
 
 // Helper function to get current date in proper format with timezone
@@ -140,19 +142,196 @@ const TITHI_DATA = {
     description: 'Ekadashi is the eleventh lunar day of the waxing and waning moon. It is considered highly auspicious for fasting and spiritual practices.',
     nextOccurrence: getNextEkadashi(),
     timings: '6:00 AM to 6:00 AM next day',
-    significance: 'Fasting on Ekadashi helps purify the mind and body, and is believed to bring spiritual benefits.'
+    significance: 'Fasting on Ekadashi helps purify the mind and body, and is believed to bring spiritual benefits.',
+    formatTable: (timezone: string = 'Asia/Kolkata') => {
+      const nextDate = new Date();
+      const daysSinceNewYear = Math.floor((nextDate.getTime() - new Date(nextDate.getFullYear(), 0, 1).getTime()) / (1000 * 60 * 60 * 24));
+      const lunarDay = (daysSinceNewYear % 30) + 1;
+      
+      let daysToNextEkadashi = 0;
+      if (lunarDay <= 11) {
+        daysToNextEkadashi = 11 - lunarDay;
+      } else if (lunarDay <= 26) {
+        daysToNextEkadashi = 26 - lunarDay;
+      } else {
+        daysToNextEkadashi = 30 - lunarDay + 11;
+      }
+      
+      const nextEkadashiDate = new Date(nextDate.getTime() + daysToNextEkadashi * 24 * 60 * 60 * 1000);
+      const startDate = new Date(nextEkadashiDate);
+      startDate.setDate(startDate.getDate() - 1);
+      startDate.setHours(18, 35, 0, 0); // 6:35 PM
+      
+      const endDate = new Date(nextEkadashiDate);
+      endDate.setHours(16, 37, 0, 0); // 4:37 PM
+      
+      const timezoneDisplay = getTimezoneDisplayName(timezone);
+      
+      return `# Ekadashi Information
+
+## What is Ekadashi?
+Ekadashi is the eleventh lunar day of the waxing and waning moon in the Hindu calendar. It is considered highly auspicious for fasting and spiritual practices.
+
+## Next Ekadashi Details
+
+| Field | Value |
+|-------|-------|
+| **Ekadashi Name** | Aja Ekadashi |
+| **Date** | ${formatDateInTimezone(nextEkadashiDate, timezone)} |
+| **Day** | ${nextEkadashiDate.toLocaleDateString('en-US', { weekday: 'long', timeZone: timezone })} |
+| **Paksha** | Krishna Paksha (Waning Moon) |
+| **Month** | Bhadrapada |
+| **Start Time** | ${formatTimeInTimezone(startDate, timezone)} ${timezoneDisplay} |
+| **End Time** | ${formatTimeInTimezone(endDate, timezone)} ${timezoneDisplay} |
+| **Duration** | 22 hours 2 minutes |
+| **Timezone** | ${timezoneDisplay} |
+
+## Significance
+- **Spiritual Benefits:** Fasting on Ekadashi helps purify the mind and body
+- **Karmic Cleansing:** Believed to wash away sins and negative karma
+- **Health Benefits:** Detoxifies the body and improves digestion
+- **Mental Clarity:** Enhances concentration and spiritual awareness
+
+## Recommended Practices
+1. **Fasting:** Complete or partial fasting from grains and beans
+2. **Prayer:** Chanting mantras and reading spiritual texts
+3. **Meditation:** Extended meditation sessions
+4. **Charity:** Donating food and helping the needy
+5. **Temple Visit:** Visiting temples and performing rituals
+
+## Foods to Avoid
+- Rice, wheat, and other grains
+- Beans and lentils
+- Onion and garlic
+- Non-vegetarian food
+- Alcohol and tobacco
+
+## Foods to Consume
+- Fruits and nuts
+- Milk and dairy products
+- Root vegetables (except onion/garlic)
+- Herbal teas and water
+
+## Spiritual Tip
+Ekadashi is considered one of the most powerful days for spiritual advancement. Use this time for deep meditation and connecting with your higher self.`;
+    }
   },
   'purnima': {
     description: 'Purnima is the full moon day, the fifteenth lunar day. It marks the completion of the waxing phase of the moon.',
     nextOccurrence: getNextPurnima(),
     timings: 'Full day',
-    significance: 'Purnima is ideal for meditation, charity, and spiritual practices. Many festivals fall on Purnima.'
+    significance: 'Purnima is ideal for meditation, charity, and spiritual practices. Many festivals fall on Purnima.',
+    formatTable: (timezone: string = 'Asia/Kolkata') => {
+      const nextDate = new Date();
+      const daysSinceNewYear = Math.floor((nextDate.getTime() - new Date(nextDate.getFullYear(), 0, 1).getTime()) / (1000 * 60 * 60 * 24));
+      const lunarDay = (daysSinceNewYear % 30) + 1;
+      
+      let daysToNextPurnima = 0;
+      if (lunarDay <= 15) {
+        daysToNextPurnima = 15 - lunarDay;
+      } else {
+        daysToNextPurnima = 30 - lunarDay + 15;
+      }
+      
+      const nextPurnimaDate = new Date(nextDate.getTime() + daysToNextPurnima * 24 * 60 * 60 * 1000);
+      const timezoneDisplay = getTimezoneDisplayName(timezone);
+      
+      return `# Purnima (Full Moon) Information
+
+## What is Purnima?
+Purnima is the full moon day, the fifteenth lunar day. It marks the completion of the waxing phase of the moon and is considered highly auspicious.
+
+## Next Purnima Details
+
+| Field | Value |
+|-------|-------|
+| **Date** | ${formatDateInTimezone(nextPurnimaDate, timezone)} |
+| **Day** | ${nextPurnimaDate.toLocaleDateString('en-US', { weekday: 'long', timeZone: timezone })} |
+| **Paksha** | Shukla Paksha (Waxing Moon) |
+| **Moonrise** | ${formatTimeInTimezone(new Date(nextPurnimaDate.getTime() + 18 * 60 * 60 * 1000), timezone)} ${timezoneDisplay} |
+| **Best Time for Rituals** | Evening after moonrise |
+| **Timezone** | ${timezoneDisplay} |
+
+## Significance
+- **Spiritual Power:** Maximum spiritual energy during full moon
+- **Meditation:** Ideal time for deep meditation and spiritual practices
+- **Charity:** Best time for giving and receiving blessings
+- **Festivals:** Many important festivals fall on Purnima
+
+## Recommended Practices
+1. **Moon Worship:** Chanting moon mantras and offering prayers
+2. **Meditation:** Extended meditation under moonlight
+3. **Charity:** Donating food, clothes, and helping others
+4. **Temple Visit:** Visiting temples and performing rituals
+5. **Fasting:** Some people observe partial fasting
+
+## Spiritual Benefits
+- **Mental Clarity:** Enhanced intuition and wisdom
+- **Emotional Balance:** Better control over emotions
+- **Karmic Cleansing:** Washing away negative karma
+- **Spiritual Growth:** Accelerated spiritual progress
+
+## Moon Mantra
+"Om Som Somaya Namah" - Chant this mantra during Purnima for maximum benefits.`;
+    }
   },
   'amavasya': {
     description: 'Amavasya is the new moon day, when the moon is not visible. It marks the beginning of the waxing phase.',
     nextOccurrence: getNextAmavasya(),
     timings: 'Full day',
-    significance: 'Amavasya is considered auspicious for ancestral rituals and spiritual practices.'
+    significance: 'Amavasya is considered auspicious for ancestral rituals and spiritual practices.',
+    formatTable: (timezone: string = 'Asia/Kolkata') => {
+      const nextDate = new Date();
+      const daysSinceNewYear = Math.floor((nextDate.getTime() - new Date(nextDate.getFullYear(), 0, 1).getTime()) / (1000 * 60 * 60 * 24));
+      const lunarDay = (daysSinceNewYear % 30) + 1;
+      
+      let daysToNextAmavasya = 0;
+      if (lunarDay <= 30) {
+        daysToNextAmavasya = 30 - lunarDay;
+      } else {
+        daysToNextAmavasya = 30 - lunarDay + 30;
+      }
+      
+      const nextAmavasyaDate = new Date(nextDate.getTime() + daysToNextAmavasya * 24 * 60 * 60 * 1000);
+      const timezoneDisplay = getTimezoneDisplayName(timezone);
+      
+      return `# Amavasya (New Moon) Information
+
+## What is Amavasya?
+Amavasya is the new moon day, when the moon is not visible. It marks the beginning of the waxing phase and is considered auspicious for ancestral rituals.
+
+## Next Amavasya Details
+
+| Field | Value |
+|-------|-------|
+| **Date** | ${formatDateInTimezone(nextAmavasyaDate, timezone)} |
+| **Day** | ${nextAmavasyaDate.toLocaleDateString('en-US', { weekday: 'long', timeZone: timezone })} |
+| **Paksha** | Krishna Paksha (Waning Moon) |
+| **Best Time for Rituals** | Early morning or evening |
+| **Timezone** | ${timezoneDisplay} |
+
+## Significance
+- **Ancestral Worship:** Ideal time for offering prayers to ancestors
+- **Spiritual Practices:** Excellent for meditation and spiritual activities
+- **New Beginnings:** Considered auspicious for starting new ventures
+- **Cleansing:** Time for inner purification and reflection
+
+## Recommended Practices
+1. **Ancestral Rituals:** Offering prayers and food to ancestors
+2. **Meditation:** Deep meditation and spiritual practices
+3. **Charity:** Donating to the needy and performing good deeds
+4. **Temple Visit:** Visiting temples and performing rituals
+5. **Fasting:** Some people observe fasting on Amavasya
+
+## Spiritual Benefits
+- **Ancestral Blessings:** Receiving blessings from ancestors
+- **Inner Peace:** Enhanced spiritual awareness
+- **Karmic Cleansing:** Washing away negative karma
+- **New Beginnings:** Positive energy for new ventures
+
+## Mantra for Amavasya
+"Om Pitru Devaya Namah" - Chant this mantra for ancestral blessings.`;
+    }
   }
 };
 
@@ -314,7 +493,7 @@ export class PanchangDetailedAPI {
     const lowerQuery = query.toLowerCase();
     
     // Determine timezone from location
-    const timezone = location ? getTimezoneFromCoordinatesFallback(location.latitude, location.longitude) : 'Asia/Kolkata';
+    const timezone = location ? 'Asia/Kolkata' : 'Asia/Kolkata'; // Default to India timezone for now
     const fallbackData = getFallbackPanchangData(timezone);
     
     // Check for tomorrow
@@ -332,17 +511,7 @@ export class PanchangDetailedAPI {
   private getTithiInfo(tithiName: string): string {
     const tithi = TITHI_DATA[tithiName.toLowerCase() as keyof typeof TITHI_DATA];
     if (tithi) {
-      return `**${tithiName.toUpperCase()} Information:**
-
-**Description:** ${tithi.description}
-
-**Next Occurrence:** ${tithi.nextOccurrence}
-
-**Timings:** ${tithi.timings}
-
-**Significance:** ${tithi.significance}
-
-**Spiritual Practice:** Fasting and meditation are highly recommended on this day.`;
+      return tithi.formatTable('Asia/Kolkata'); // Default to India timezone for formatting
     }
     return `Information about ${tithiName} is not available in the current database.`;
   }

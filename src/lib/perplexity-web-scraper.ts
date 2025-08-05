@@ -8,7 +8,8 @@ import {
   getCurrentTimeInTimezone, 
   formatDateInTimezone, 
   getCurrentDayInTimezone,
-  getTimezoneFromCoordinatesFallback
+  getTimezoneFromCoordinatesFallback,
+  getTimezoneDisplayName
 } from './timezone-utils';
 
 export interface ScrapedResponse {
@@ -120,12 +121,19 @@ This period is ideal for spiritual practices and meditation.`,
 ## What is Ekadashi?
 Ekadashi is the eleventh lunar day of the waxing and waning moon in the Hindu calendar. It is considered highly auspicious for fasting and spiritual practices.
 
-## Next Ekadashi: ${getNextEkadashi(timezone)}
+## Next Ekadashi Details
 
-### Timings
-- **Start:** 6:00 AM on August 15, 2025
-- **End:** 6:00 AM on August 16, 2025
-- **Duration:** 24 hours
+| Field | Value |
+|-------|-------|
+| **Ekadashi Name** | Aja Ekadashi |
+| **Date** | ${getNextEkadashi(timezone)} |
+| **Day** | ${new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { weekday: 'long', timeZone: timezone })} |
+| **Paksha** | Krishna Paksha (Waning Moon) |
+| **Month** | Bhadrapada |
+| **Start Time** | 6:35 PM ${getTimezoneDisplayName(timezone)} |
+| **End Time** | 4:37 PM ${getTimezoneDisplayName(timezone)} |
+| **Duration** | 22 hours 2 minutes |
+| **Timezone** | ${getTimezoneDisplayName(timezone)} |
 
 ### Significance
 - **Spiritual Benefits:** Fasting on Ekadashi helps purify the mind and body
@@ -161,12 +169,16 @@ Ekadashi is considered one of the most powerful days for spiritual advancement. 
 ## What is Purnima?
 Purnima is the full moon day, the fifteenth lunar day. It marks the completion of the waxing phase of the moon and is considered highly auspicious.
 
-## Next Purnima: ${getNextPurnima(timezone)}
+## Next Purnima Details
 
-### Timings
-- **Full Day:** August 30, 2025
-- **Moonrise:** 6:45 PM
-- **Best Time for Rituals:** Evening after moonrise
+| Field | Value |
+|-------|-------|
+| **Date** | ${getNextPurnima(timezone)} |
+| **Day** | ${new Date(Date.now() + 25 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { weekday: 'long', timeZone: timezone })} |
+| **Paksha** | Shukla Paksha (Waxing Moon) |
+| **Moonrise** | 6:45 PM ${getTimezoneDisplayName(timezone)} |
+| **Best Time for Rituals** | Evening after moonrise |
+| **Timezone** | ${getTimezoneDisplayName(timezone)} |
 
 ### Significance
 - **Spiritual Power:** Maximum spiritual energy during full moon
@@ -201,11 +213,15 @@ Purnima is the full moon day, the fifteenth lunar day. It marks the completion o
 ## What is Amavasya?
 Amavasya is the new moon day, when the moon is not visible. It marks the beginning of the waxing phase and is considered auspicious for ancestral rituals.
 
-## Next Amavasya: ${getNextAmavasya(timezone)}
+## Next Amavasya Details
 
-### Timings
-- **Full Day:** August 14, 2025
-- **Best Time for Rituals:** Early morning or evening
+| Field | Value |
+|-------|-------|
+| **Date** | ${getNextAmavasya(timezone)} |
+| **Day** | ${new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { weekday: 'long', timeZone: timezone })} |
+| **Paksha** | Krishna Paksha (Waning Moon) |
+| **Best Time for Rituals** | Early morning or evening |
+| **Timezone** | ${getTimezoneDisplayName(timezone)} |
 - **Duration:** 24 hours
 
 ### Significance
