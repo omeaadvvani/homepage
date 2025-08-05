@@ -26,6 +26,7 @@ import DebugInfo from './components/DebugInfo';
 import GitLogTest from './components/GitLogTest';
 import ComprehensiveTest from './components/ComprehensiveTest';
 import LocationTest from './components/LocationTest';
+import PerplexityTest from './components/PerplexityTest';
 
 function App() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
@@ -999,6 +1000,11 @@ function App() {
         {/* Location Test */}
         <div className="mt-4 max-w-md">
           <LocationTest />
+        </div>
+
+        {/* Perplexity API Test */}
+        <div className="mt-4 max-w-4xl">
+          <PerplexityTest />
         </div>
       </div>
 

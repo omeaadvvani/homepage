@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { usePanchang } from '../hooks/usePanchang';
 import { aiService } from '../lib/gemini-api';
+import { perplexityAPI } from '../lib/perplexity-api';
 // Removed unused imports to fix linting errors
 // Removed complex API dependencies - using simple local responses
 // Removed ElevenLabs dependency - using browser speech synthesis instead
@@ -482,6 +483,43 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         // Fallback if API fails
         responseText = 'Unable to generate guidance at this time. Please try again.';
         console.log("⚠️ Using fallback response");
+      }
+
+      // Step 2.5: Enhance response with Perplexity API if available
+      try {
+        if (import.meta.env.VITE_PERPLEXITY_API_KEY) {
+          console.log("🤖 Enhancing response with Perplexity API...");
+          
+          // Determine the type of query and use appropriate Perplexity method
+          const lowerQuestion = finalQuestion.toLowerCase();
+          
+          let enhancedResponse = '';
+          
+          if (lowerQuestion.includes('spiritual') || lowerQuestion.includes('meditation') || 
+              lowerQuestion.includes('peace') || lowerQuestion.includes('mindfulness')) {
+            // Use spiritual guidance
+            enhancedResponse = await perplexityAPI.generateSpiritualGuidance(finalQuestion, {
+              panchangData: guidanceResponse.panchang || {},
+              userLocation: 'Delhi, India',
+              currentTime: new Date().toISOString()
+            });
+          } else if (lowerQuestion.includes('astrology') || lowerQuestion.includes('horoscope') || 
+                     lowerQuestion.includes('nakshatra') || lowerQuestion.includes('tithi')) {
+            // Use astrological insights
+            enhancedResponse = await perplexityAPI.generateAstrologicalInsights(finalQuestion, guidanceResponse.panchang);
+          } else {
+            // Use general knowledge response
+            enhancedResponse = await perplexityAPI.generateKnowledgeResponse(finalQuestion);
+          }
+          
+          if (enhancedResponse && enhancedResponse.trim()) {
+            responseText = enhancedResponse;
+            console.log("✅ Perplexity API enhancement successful");
+          }
+        }
+      } catch (perplexityError) {
+        console.warn("⚠️ Perplexity API enhancement failed, using original response:", perplexityError);
+        // Continue with original response if Perplexity fails
       }
 
       // Step 3: Validate and enhance the response using AI
