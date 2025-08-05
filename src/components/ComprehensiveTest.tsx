@@ -71,9 +71,8 @@ const ComprehensiveTest: React.FC = () => {
       test: async () => {
         const today = new Date().toISOString().split('T')[0];
         
-        // Import and clear cache before testing
-        const { panchangAPI } = await import('../lib/panchang-api');
-        panchangAPI.clearAllCache();
+        // Note: Cache clearing not needed for Perplexity API
+        console.log('Testing Perplexity API caching behavior');
         
         // First call - should hit the API
         const start1 = Date.now();
