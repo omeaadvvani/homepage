@@ -42,6 +42,16 @@ export async function getTimezoneFromCoordinates(latitude: number, longitude: nu
  * Fallback timezone determination based on coordinates
  */
 export function getTimezoneFromCoordinatesFallback(latitude: number, longitude: number): string {
+  // Vancouver coordinates (approximate)
+  if (latitude >= 49 && latitude <= 50 && longitude >= -124 && longitude <= -122) {
+    return 'America/Vancouver';
+  }
+  
+  // Canada Pacific Time (approximate)
+  if (latitude >= 48 && latitude <= 60 && longitude >= -140 && longitude <= -114) {
+    return 'America/Vancouver';
+  }
+  
   // India coordinates (approximate)
   if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
     return 'Asia/Kolkata';
@@ -62,8 +72,8 @@ export function getTimezoneFromCoordinatesFallback(latitude: number, longitude: 
     return 'Australia/Sydney';
   }
   
-  // Default to India timezone
-  return 'Asia/Kolkata';
+  // Default to Vancouver timezone for user's location
+  return 'America/Vancouver';
 }
 
 /**
@@ -255,6 +265,7 @@ export function calculateSunTimes(latitude: number, longitude: number, date: Dat
 export function getTimezoneDisplayName(timezone: string): string {
   const timezoneNames: Record<string, string> = {
     'Asia/Kolkata': 'Indian Standard Time (IST)',
+    'America/Vancouver': 'Pacific Standard Time (PST)',
     'America/New_York': 'Eastern Time (ET)',
     'Europe/London': 'Greenwich Mean Time (GMT)',
     'Australia/Sydney': 'Australian Eastern Time (AET)',

@@ -20,10 +20,14 @@ export const TimezoneInfo: React.FC<TimezoneInfoProps> = ({ location, className 
   useEffect(() => {
     const updateTime = () => {
       try {
-        let timezone = 'Asia/Kolkata'; // Default to India
+        let timezone = 'America/Vancouver'; // Default to Vancouver for user's location
         
-        if (location) {
+        if (location && location.latitude && location.longitude) {
+          // Use the user's actual location to determine timezone
           timezone = getTimezoneFromCoordinatesFallback(location.latitude, location.longitude);
+          console.log('📍 Using timezone for location:', timezone, 'at', location.latitude, location.longitude);
+        } else {
+          console.log('📍 No location provided, using default timezone:', timezone);
         }
         
         const currentTime = getCurrentTimeInTimezone(timezone);
