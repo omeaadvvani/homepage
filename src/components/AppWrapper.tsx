@@ -3,7 +3,6 @@ import { BrowserRouter } from 'react-router-dom';
 import ErrorBoundary from './ErrorBoundary';
 import ErrorPrevention from './ErrorPrevention';
 import CompilationErrorHandler from './CompilationErrorHandler';
-import DevelopmentModeIndicator from './DevelopmentModeIndicator';
 
 interface AppWrapperProps {
   children: React.ReactNode;
@@ -60,7 +59,6 @@ const AppWrapper: React.FC<AppWrapperProps> = ({ children }) => {
       <ErrorBoundary>
         <ErrorPrevention />
         <CompilationErrorHandler />
-        <DevelopmentModeIndicator />
         {children}
       </ErrorBoundary>
     </BrowserRouter>
