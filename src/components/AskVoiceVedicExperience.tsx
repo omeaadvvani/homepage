@@ -35,30 +35,35 @@ declare global {
 const checkBrowserCompatibility = () => {
   const issues = [];
   
-  // Check for modern JavaScript features
-  if (!Array.prototype.includes) {
-    issues.push('Array.includes() not supported - please use a modern browser');
-  }
-  
-  if (!String.prototype.includes) {
-    issues.push('String.includes() not supported - please use a modern browser');
-  }
-  
-  // Check for Speech Synthesis
-  const synth = getSpeechSynthesis();
-  if (!synth) {
-    issues.push('Speech synthesis not supported - voice features will be limited');
-  }
-  
-  // Check for Speech Recognition
-  const recognition = getSpeechRecognition();
-  if (!recognition) {
-    issues.push('Speech recognition not supported - voice input will not work');
-  }
-  
-  // Check for Fetch API
-  if (!window.fetch) {
-    issues.push('Fetch API not supported - please use a modern browser');
+  try {
+    // Check for modern JavaScript features
+    if (!Array.prototype.includes) {
+      issues.push('Array.includes() not supported - please use a modern browser');
+    }
+    
+    if (!String.prototype.includes) {
+      issues.push('String.includes() not supported - please use a modern browser');
+    }
+    
+    // Check for Speech Synthesis
+    const synth = getSpeechSynthesis();
+    if (!synth) {
+      issues.push('Speech synthesis not supported - voice features will be limited');
+    }
+    
+    // Check for Speech Recognition
+    const recognition = getSpeechRecognition();
+    if (!recognition) {
+      issues.push('Speech recognition not supported - voice input will not work');
+    }
+    
+    // Check for Fetch API
+    if (!window.fetch) {
+      issues.push('Fetch API not supported - please use a modern browser');
+    }
+  } catch (error) {
+    console.warn('Browser compatibility check failed:', error);
+    issues.push('Browser compatibility check failed');
   }
   
   return issues;
@@ -231,19 +236,40 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     return () => clearTimeout(timer);
   }, []);
 
-  // Check mic support on mount
+  // Simple initialization that doesn't block
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    setMicSupported(!!SpeechRecognition);
+    // Set app as ready after a short delay
+    const initTimeout = setTimeout(() => {
+      setIsAppLoading(false);
+    }, 1000); // 1 second delay
+
+    return () => clearTimeout(initTimeout);
   }, []);
+
+  // Add loading timeout to prevent infinite loading
+  useEffect(() => {
+    const loadingTimeout = setTimeout(() => {
+      if (isAppLoading) {
+        console.warn('Loading timeout reached, forcing app to ready state');
+        setIsAppLoading(false);
+      }
+    }, 5000); // 5 second timeout
+
+    return () => clearTimeout(loadingTimeout);
+  }, [isAppLoading]);
 
   // Check browser compatibility on mount
   useEffect(() => {
-    const compatibilityIssues = checkBrowserCompatibility();
-    if (compatibilityIssues.length > 0) {
-      console.warn('Browser compatibility issues detected:', compatibilityIssues);
-      setVoiceError(`Browser compatibility issues: ${compatibilityIssues.join(', ')}. Please use a modern browser like Chrome, Firefox, Safari, or Edge.`);
-    }
+    // Add timeout to prevent hanging
+    const compatibilityTimeout = setTimeout(() => {
+      const compatibilityIssues = checkBrowserCompatibility();
+      if (compatibilityIssues.length > 0) {
+        console.warn('Browser compatibility issues detected:', compatibilityIssues);
+        setVoiceError(`Browser compatibility issues: ${compatibilityIssues.join(', ')}. Please use a modern browser like Chrome, Firefox, Safari, or Edge.`);
+      }
+    }, 1000); // Wait 1 second before checking
+
+    return () => clearTimeout(compatibilityTimeout);
   }, []);
 
   // Handle visibility change to stop TTS when user leaves the screen
