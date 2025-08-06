@@ -31,6 +31,58 @@ declare global {
   }
 }
 
+// Browser compatibility check
+const checkBrowserCompatibility = () => {
+  const issues = [];
+  
+  // Check for modern JavaScript features
+  if (!Array.prototype.includes) {
+    issues.push('Array.includes() not supported - please use a modern browser');
+  }
+  
+  if (!String.prototype.includes) {
+    issues.push('String.includes() not supported - please use a modern browser');
+  }
+  
+  // Check for Speech Synthesis
+  const synth = getSpeechSynthesis();
+  if (!synth) {
+    issues.push('Speech synthesis not supported - voice features will be limited');
+  }
+  
+  // Check for Speech Recognition
+  const recognition = getSpeechRecognition();
+  if (!recognition) {
+    issues.push('Speech recognition not supported - voice input will not work');
+  }
+  
+  // Check for Fetch API
+  if (!window.fetch) {
+    issues.push('Fetch API not supported - please use a modern browser');
+  }
+  
+  return issues;
+};
+
+// Cross-browser Speech Synthesis compatibility
+const getSpeechSynthesis = () => {
+  if (typeof window !== 'undefined') {
+    return window.speechSynthesis || (window as any).webkitSpeechSynthesis || (window as any).mozSpeechSynthesis || (window as any).msSpeechSynthesis;
+  }
+  return null;
+};
+
+// Cross-browser Speech Recognition compatibility
+const getSpeechRecognition = () => {
+  if (typeof window !== 'undefined') {
+    return window.SpeechRecognition || 
+           (window as any).webkitSpeechRecognition || 
+           (window as any).mozSpeechRecognition || 
+           (window as any).msSpeechRecognition;
+  }
+  return null;
+};
+
 // Utility function to remove citations from text
 const removeCitations = (text: string): string => {
   // Remove citation patterns like [1], [2], [3], etc.
@@ -185,39 +237,13 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     setMicSupported(!!SpeechRecognition);
   }, []);
 
-  // Handle voice loading and tab switching issues
+  // Check browser compatibility on mount
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        // Reload voices when tab becomes active
-        const voices = window.speechSynthesis.getVoices();
-        if (voices.length === 0) {
-          // Wait for voices to load
-          window.speechSynthesis.onvoiceschanged = () => {
-            console.log('Voices loaded after tab switch:', window.speechSynthesis.getVoices().length);
-            setIsAppLoading(false);
-          };
-        } else {
-          setIsAppLoading(false);
-        }
-      }
-    };
-
-    // Listen for tab visibility changes
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    // Initial voice check
-    handleVisibilityChange();
-
-    // Set a timeout to stop loading if voices don't load
-    const loadingTimeout = setTimeout(() => {
-      setIsAppLoading(false);
-    }, 3000);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearTimeout(loadingTimeout);
-    };
+    const compatibilityIssues = checkBrowserCompatibility();
+    if (compatibilityIssues.length > 0) {
+      console.warn('Browser compatibility issues detected:', compatibilityIssues);
+      setVoiceError(`Browser compatibility issues: ${compatibilityIssues.join(', ')}. Please use a modern browser like Chrome, Firefox, Safari, or Edge.`);
+    }
   }, []);
 
   // Handle visibility change to stop TTS when user leaves the screen
@@ -225,8 +251,9 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     const handleVisibilityChange = () => {
       if (document.hidden) {
         // User left the screen - stop TTS immediately
-        if (window.speechSynthesis) {
-          window.speechSynthesis.cancel();
+        const synth = getSpeechSynthesis();
+        if (synth) {
+          synth.cancel();
           setIsSpeaking(false);
         }
       }
@@ -234,16 +261,18 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
 
     const handlePageHide = () => {
       // User is leaving the page - stop TTS immediately
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
+      const synth = getSpeechSynthesis();
+      if (synth) {
+        synth.cancel();
         setIsSpeaking(false);
       }
     };
 
     const handleBeforeUnload = () => {
       // User is closing/navigating away - stop TTS immediately
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
+      const synth = getSpeechSynthesis();
+      if (synth) {
+        synth.cancel();
         setIsSpeaking(false);
       }
     };
@@ -422,7 +451,11 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       setIsSpeaking(true);
       setVoiceError(null);
 
-      const synth = window.speechSynthesis;
+      const synth = getSpeechSynthesis();
+      
+      if (!synth) {
+        throw new Error('Speech synthesis not supported in this browser');
+      }
       
       // Stop any currently speaking
       synth.cancel();
@@ -741,114 +774,82 @@ Please ask questions related to Panchang, spiritual guidance, or divine informat
   };
 
   const startVoiceCapture = () => {
+    if (isListening) return;
+
     try {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
+      const SpeechRecognition = getSpeechRecognition();
+      
       if (!SpeechRecognition) {
-        alert("Voice input is not supported on this browser. Please use Chrome, Edge, or Safari.");
+        setVoiceError('Speech recognition not supported in this browser. Please use a modern browser like Chrome, Firefox, Safari, or Edge.');
         return;
-      }
-
-      // Check if microphone permission is granted
-      if (navigator.permissions) {
-        navigator.permissions.query({ name: 'microphone' as PermissionName }).then((result) => {
-          if (result.state === 'denied') {
-            alert("Microphone access is denied. Please enable microphone permissions in your browser settings and try again.");
-            return;
-          }
-        }).catch(() => {
-          // Permission API not supported, continue anyway
-        });
       }
 
       const recognition = new SpeechRecognition();
       
-      // Enhanced configuration for better accuracy
-      recognition.lang = "en-IN"; // Indian English
-      recognition.interimResults = true; // Show interim results
-      recognition.maxAlternatives = 3; // Get multiple alternatives
-      recognition.continuous = false; // Single utterance
-
-      setIsListening(true);
-      setQuestion('');
-      setShowSuggestions(false);
-
-      let finalTranscript = '';
+      // Configure recognition settings
+      recognition.lang = 'en-IN'; // Indian English
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.continuous = false;
 
       recognition.onstart = () => {
-        console.log("🎙️ VoiceVedic is listening...");
-        // Add visual feedback
-        document.body.style.cursor = 'wait';
+        console.log('🎤 Speech recognition started');
+        setIsListening(true);
+        setVoiceError(null);
       };
 
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        let interimTranscript = '';
-        
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript;
-          } else {
-            interimTranscript += transcript;
-          }
-        }
-
-        // Show interim results for better UX
-        if (interimTranscript) {
-          setQuestion(finalTranscript + interimTranscript);
-        }
-
-        // When final result is available
-        if (finalTranscript) {
-          console.log("✅ Final transcript:", finalTranscript);
-          setQuestion(finalTranscript);
-          setIsListening(false);
-          
-          // Auto-submit after a short delay
-          setTimeout(() => {
-            if (finalTranscript.trim()) {
-              handleAskQuestion();
-            }
-          }, 500);
-        }
-      };
-
-      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error("Mic Error:", event.error);
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        console.log('🎤 Speech recognized:', transcript);
+        setQuestion(transcript);
         setIsListening(false);
-        document.body.style.cursor = 'default';
         
+        // Auto-send the question
+        setTimeout(() => {
+          handleAskQuestion();
+        }, 500);
+      };
+
+      recognition.onerror = (event) => {
+        console.error('🎤 Speech recognition error:', event.error);
+        setIsListening(false);
+        
+        let errorMessage = 'Speech recognition failed';
         switch (event.error) {
-          case 'not-allowed':
-            alert("Microphone access denied. Please allow microphone permissions and try again.");
-            break;
           case 'no-speech':
-            console.log("🔇 No speech detected, resetting...");
-            setQuestion('');
+            errorMessage = 'No speech detected. Please try again.';
             break;
           case 'audio-capture':
-            alert("No microphone found. Please connect a microphone and try again.");
+            errorMessage = 'Microphone access denied. Please allow microphone access.';
+            break;
+          case 'not-allowed':
+            errorMessage = 'Microphone permission denied. Please allow microphone access in your browser settings.';
             break;
           case 'network':
-            alert("Network error occurred. Please check your internet connection.");
+            errorMessage = 'Network error. Please check your internet connection.';
+            break;
+          case 'service-not-allowed':
+            errorMessage = 'Speech recognition service not available. Please try again.';
             break;
           default:
-            console.error("Unknown speech recognition error:", event.error);
+            errorMessage = `Speech recognition error: ${event.error}`;
         }
+        
+        setVoiceError(errorMessage);
       };
 
       recognition.onend = () => {
-        console.log("🎙️ Voice recognition ended");
+        console.log('🎤 Speech recognition ended');
         setIsListening(false);
-        document.body.style.cursor = 'default';
       };
 
+      // Start recognition
       recognition.start();
       
     } catch (error) {
-      console.error("❌ Error starting voice capture:", error);
+      console.error('🎤 Failed to start speech recognition:', error);
+      setVoiceError('Speech recognition not supported in this browser. Please use a modern browser.');
       setIsListening(false);
-      alert("Failed to start voice capture. Please try again.");
     }
   };
 
@@ -858,8 +859,11 @@ Please ask questions related to Panchang, spiritual guidance, or divine informat
 
   const toggleMute = () => {
     if (isSpeaking) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
+      const synth = getSpeechSynthesis();
+      if (synth) {
+        synth.cancel();
+        setIsSpeaking(false);
+      }
     }
     setIsMuted(!isMuted);
   };
@@ -868,10 +872,9 @@ Please ask questions related to Panchang, spiritual guidance, or divine informat
     if (confirm('Are you sure you want to clear the conversation history?')) {
       setMessages([]);
       setApiError('');
-      try {
-        window.speechSynthesis.cancel();
-      } catch (error) {
-        console.warn('Could not cancel speech synthesis:', error);
+      const synth = getSpeechSynthesis();
+      if (synth) {
+        synth.cancel();
       }
       setShowSuggestions(true);
       if (messages.length === 0) {
@@ -1081,7 +1084,12 @@ Please ask questions related to Panchang, spiritual guidance, or divine informat
               {/* Voice Controls */}
               <div className="flex justify-center gap-3">
                 <button
-                  onClick={() => window.speechSynthesis.cancel()}
+                  onClick={() => {
+                    const synth = getSpeechSynthesis();
+                    if (synth) {
+                      synth.cancel();
+                    }
+                  }}
                   className="flex items-center gap-2 px-4 py-2 bg-spiritual-100 hover:bg-spiritual-200 rounded-spiritual text-spiritual-700 font-medium transition-all duration-300"
                 >
                   <VolumeX className="w-4 h-4" />
