@@ -25,7 +25,6 @@ import DebugInfo from './components/DebugInfo';
 // Removed unused import: DevelopmentModeIndicator
 import GitLogTest from './components/GitLogTest';
 import ComprehensiveTest from './components/ComprehensiveTest';
-import LocationTest from './components/LocationTest';
 import PerplexityTest from './components/PerplexityTest';
 import DetailedPanchangDisplay from './components/DetailedPanchangDisplay';
 import DetailedPanchangTest from './components/DetailedPanchangTest';
@@ -999,11 +998,6 @@ function App() {
         {/* Debug Information */}
         <div className="mt-4 max-w-md">
           <DebugInfo />
-        </div>
-
-        {/* Location Test */}
-        <div className="mt-4 max-w-md">
-          <LocationTest />
         </div>
 
         {/* Perplexity API Test */}
