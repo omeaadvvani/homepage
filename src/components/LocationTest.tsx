@@ -55,48 +55,6 @@ const LocationTest: React.FC = () => {
     }
   };
 
-  const getIPBasedLocation = async (): Promise<{ latitude: number; longitude: number; name: string }> => {
-    try {
-      console.log('🌐 Trying IP-based location...');
-      
-      const response = await fetch('https://api.bigdatacloud.net/data/ip-geolocation-full?key=free&ip=8.8.8.8');
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('📍 IP-based location response:', data);
-        
-        const latitude = data.location?.latitude || 20.5937; // Default to India
-        const longitude = data.location?.longitude || 78.9629;
-        const city = data.location?.city || '';
-        const state = data.location?.principalSubdivision || '';
-        const country = data.location?.country?.name || 'India';
-        
-        let name = '';
-        if (city && state) {
-          name = `${city}, ${state}, ${country}`;
-        } else if (city) {
-          name = `${city}, ${country}`;
-        } else if (state) {
-          name = `${state}, ${country}`;
-        } else {
-          name = country;
-        }
-        
-        return { latitude, longitude, name };
-      } else {
-        throw new Error('IP-based location failed');
-      }
-    } catch (error) {
-      console.warn('❌ IP-based location failed:', error);
-      // Return default India location
-      return { 
-        latitude: 20.5937, 
-        longitude: 78.9629, 
-        name: 'India (IP fallback)' 
-      };
-    }
-  };
-
   useEffect(() => {
     const testLocation = () => {
       console.log('🧪 Starting location test...');
@@ -174,41 +132,31 @@ const LocationTest: React.FC = () => {
                 setLocationName(name);
               },
                              (error) => {
-                 console.log('❌ Low accuracy failed, trying IP-based location...');
+                 console.log('❌ Low accuracy failed');
                  
-                 // Strategy 3: IP-based location
-                 getIPBasedLocation().then((ipLocation) => {
-                   console.log('✅ IP-based location obtained:', ipLocation);
-                   
-                   setCoordinates(`${ipLocation.latitude}, ${ipLocation.longitude} (IP-based)`);
-                   setLocationStatus('Location obtained (IP-based)!');
-                   setError('');
-                   setLocationName(ipLocation.name);
-                 }).catch((ipError) => {
-                   console.error('❌ All location strategies failed:', ipError);
-                   setLocationStatus('Location error');
-                   
-                   let errorMessage = '';
-                   switch (error.code) {
-                     case error.PERMISSION_DENIED:
-                       errorMessage = 'Location permission denied. Please allow location access in your browser settings.';
-                       break;
-                     case error.POSITION_UNAVAILABLE:
-                       errorMessage = 'Location information unavailable. This might be due to network issues or GPS not being available.';
-                       break;
-                     case error.TIMEOUT:
-                       errorMessage = 'Location request timed out. Please try again.';
-                       break;
-                     default:
-                       errorMessage = `Location error: ${error.message}`;
-                   }
-                   
-                   setError(errorMessage);
-                   
-                   // Set default location as fallback
-                   setLocationName('India (fallback)');
-                   setCoordinates('Default location used');
-                 });
+                 console.error('❌ All location strategies failed:', error);
+                 setLocationStatus('Location error');
+                 
+                 let errorMessage = '';
+                 switch (error.code) {
+                   case error.PERMISSION_DENIED:
+                     errorMessage = 'Location permission denied. Please allow location access in your browser settings.';
+                     break;
+                   case error.POSITION_UNAVAILABLE:
+                     errorMessage = 'Location information unavailable. This might be due to network issues or GPS not being available.';
+                     break;
+                   case error.TIMEOUT:
+                     errorMessage = 'Location request timed out. Please try again.';
+                     break;
+                   default:
+                     errorMessage = `Location error: ${error.message}`;
+                 }
+                 
+                 setError(errorMessage);
+                 
+                 // Set default location as fallback
+                 setLocationName('India (fallback)');
+                 setCoordinates('Default location used');
                },
               {
                 timeout: 10000,
@@ -314,35 +262,6 @@ const LocationTest: React.FC = () => {
           }}
         >
           🧪 Test Again
-        </button>
-        <button 
-          onClick={async () => {
-            setLocationStatus('Testing IP-based location...');
-            setError('');
-            setCoordinates('');
-            setLocationName('');
-            
-            try {
-              const ipLocation = await getIPBasedLocation();
-              setCoordinates(`${ipLocation.latitude}, ${ipLocation.longitude} (IP-based)`);
-              setLocationStatus('IP-based location obtained!');
-              setError('');
-              setLocationName(ipLocation.name);
-                         } catch (ipError) {
-               setLocationStatus('IP-based location failed');
-               setError('Failed to get IP-based location');
-             }
-          }}
-          style={{
-            background: '#ffc107',
-            color: 'black',
-            border: 'none',
-            padding: '8px 16px',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          🌐 Test IP Location
         </button>
       </div>
     </div>
