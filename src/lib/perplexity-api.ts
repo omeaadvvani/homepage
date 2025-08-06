@@ -139,10 +139,30 @@ class PerplexityAPI {
       .replace(/\s+/g, ' ') // Normalize whitespace
       .trim();
     
+    // Remove citations and reference numbers
+    cleaned = cleaned
+      .replace(/\b\d+\b(?=\s*$)/g, '') // Remove numbers at end of lines
+      .replace(/calculations\d+/gi, '') // Remove "calculations4" etc.
+      .replace(/references?\d+/gi, '') // Remove "reference1" etc.
+      .replace(/sources?\d+/gi, ''); // Remove "source1" etc.
+    
+    // Fix broken table formats
+    cleaned = cleaned
+      .replace(/Field\s+Value\s+[-=]+\s+Date/gi, '| Field | Value |\n|-------|-------|\n| Date |')
+      .replace(/[-=]{3,}/g, '---') // Fix broken separators
+      .replace(/\|\s*[-=]+\s*\|/g, '|-------|'); // Fix broken table headers
+    
     // Ensure it's in English only
     cleaned = cleaned.replace(/[^\x00-\x7F]/g, '');
     
-    return cleaned;
+    // Remove timezone mentions
+    cleaned = cleaned
+      .replace(/in\s+AmericaVancouver\s+timezone/gi, '')
+      .replace(/in\s+America\/Vancouver\s+timezone/gi, '')
+      .replace(/Vancouver,\s+Canada\s+local\s+time/gi, '')
+      .replace(/converted\s+from\s+Drik\s+Panchangam\s+calculations/gi, '');
+    
+    return cleaned.trim();
   }
 
   /**
@@ -207,10 +227,11 @@ CRITICAL REQUIREMENTS:
 - Use MM/DD/YY format for dates
 - Use HH:MM AM/PM format for times
 - NEVER show IST times - only ${timezone} times
-- Always specify timezone: "in ${timezone} timezone"
+- DO NOT mention timezone in output - just show the converted times
 - NO special symbols, emojis, or non-English characters
 - Output MUST be in clean tabular format
 - Use ONLY English language
+- Keep responses CONCISE and CLEAR
 
 OUTPUT FORMAT REQUIREMENTS:
 - Use clean Markdown table format
@@ -218,6 +239,9 @@ OUTPUT FORMAT REQUIREMENTS:
 - NO emojis or symbols
 - ONLY English text
 - Clean, readable format for TTS
+- DO NOT mention timezone in the output
+- NO citations or reference numbers
+- Keep it BRIEF and TO THE POINT
 
 For specific queries:
 - Tithi queries: Show start and end times in ${timezone}
@@ -234,17 +258,17 @@ Table format example:
 | Sunrise | 6:02 AM |
 | Sunset | 8:18 PM |
 
-Always convert from IST to ${timezone} timezone.`;
+Always convert from IST to ${timezone} timezone but DO NOT mention timezone in output.`;
 
     let enhancedQuery = query;
     if (context?.currentTime) {
       enhancedQuery += `\n\nCurrent time in ${timezone}: ${context.currentTime}`;
     }
-    enhancedQuery += `\n\nCRITICAL: Use Drik Panchangam calculations but convert ALL timings from IST to ${timezone} timezone for ${location}. Show all times in ${timezone} local time only. Output in clean tabular format with NO special symbols or emojis. Use ONLY English language.`;
+    enhancedQuery += `\n\nCRITICAL: Use Drik Panchangam calculations but convert ALL timings from IST to ${timezone} timezone for ${location}. Show all times in ${timezone} local time only. Output in clean tabular format with NO special symbols or emojis. Use ONLY English language. DO NOT mention timezone in the output. Keep it BRIEF and CONCISE.`;
 
     return this.generateText(enhancedQuery, {
       model: 'sonar-pro',
-      maxTokens: 1200,
+      maxTokens: 800,
       temperature: 0.5,
       systemPrompt
     });

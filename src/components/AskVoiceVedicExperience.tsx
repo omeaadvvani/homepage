@@ -43,7 +43,7 @@ const makeResponseConcise = (text: string): string => {
   let concise = text.replace(/\s+/g, ' ').trim();
   
   // If response is too long, truncate it
-  if (concise.length > 300) {
+  if (concise.length > 200) {
     // Find the first sentence that contains key information
     const sentences = concise.split('.');
     let result = '';
@@ -52,7 +52,7 @@ const makeResponseConcise = (text: string): string => {
       const trimmed = sentence.trim();
       if (trimmed.length > 0) {
         result += trimmed + '. ';
-        if (result.length > 200) {
+        if (result.length > 150) {
           break;
         }
       }
