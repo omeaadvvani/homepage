@@ -31,39 +31,31 @@ declare global {
   }
 }
 
-// Browser compatibility check
+// Browser compatibility check - Less strict version
 const checkBrowserCompatibility = () => {
   const issues = [];
   
   try {
-    // Check for modern JavaScript features
-    if (!Array.prototype.includes) {
-      issues.push('Array.includes() not supported - please use a modern browser');
-    }
-    
-    if (!String.prototype.includes) {
-      issues.push('String.includes() not supported - please use a modern browser');
-    }
-    
-    // Check for Speech Synthesis
-    const synth = getSpeechSynthesis();
-    if (!synth) {
-      issues.push('Speech synthesis not supported - voice features will be limited');
-    }
-    
-    // Check for Speech Recognition
-    const recognition = getSpeechRecognition();
-    if (!recognition) {
-      issues.push('Speech recognition not supported - voice input will not work');
-    }
-    
-    // Check for Fetch API
+    // Only check for critical features
     if (!window.fetch) {
       issues.push('Fetch API not supported - please use a modern browser');
     }
+    
+    // Check for Speech Synthesis with fallback
+    const synth = getSpeechSynthesis();
+    if (!synth) {
+      console.warn('Speech synthesis not available - will use fallback methods');
+    }
+    
+    // Check for Speech Recognition with fallback
+    const recognition = getSpeechRecognition();
+    if (!recognition) {
+      console.warn('Speech recognition not available - will use text input only');
+    }
+    
   } catch (error) {
     console.warn('Browser compatibility check failed:', error);
-    issues.push('Browser compatibility check failed');
+    // Don't add this as an issue - let the app work anyway
   }
   
   return issues;
@@ -265,7 +257,13 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       const compatibilityIssues = checkBrowserCompatibility();
       if (compatibilityIssues.length > 0) {
         console.warn('Browser compatibility issues detected:', compatibilityIssues);
-        setVoiceError(`Browser compatibility issues: ${compatibilityIssues.join(', ')}. Please use a modern browser like Chrome, Firefox, Safari, or Edge.`);
+        // Only show critical errors, not voice-related ones
+        const criticalIssues = compatibilityIssues.filter(issue => 
+          !issue.includes('Speech') && !issue.includes('voice')
+        );
+        if (criticalIssues.length > 0) {
+          setVoiceError(`Browser compatibility issues: ${criticalIssues.join(', ')}. Please use a modern browser like Chrome, Firefox, Safari, or Edge.`);
+        }
       }
     }, 1000); // Wait 1 second before checking
 
@@ -471,16 +469,14 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
 
   // Enhanced Text-to-Speech function with ElevenLabs integration
   const speak = async (text: string) => {
-    if (isMuted) return; // Don't speak if muted
+    if (isMuted) return;
     
     try {
-      setIsSpeaking(true);
-      setVoiceError(null);
-
       const synth = getSpeechSynthesis();
       
       if (!synth) {
-        throw new Error('Speech synthesis not supported in this browser');
+        console.warn('Speech synthesis not available - skipping voice output');
+        return;
       }
       
       // Stop any currently speaking
@@ -488,6 +484,11 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
 
       // Clean the text for TTS
       const cleanText = cleanTextForTTS(text);
+      if (!cleanText.trim()) {
+        console.warn('No clean text to speak');
+        return;
+      }
+      
       const utterance = new SpeechSynthesisUtterance(cleanText);
       
       // Enhanced voice selection with Indian English priority
@@ -554,7 +555,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       
       utterance.onerror = (event) => {
         console.error('Speech synthesis error:', event);
-        setVoiceError('Voice synthesis failed');
+        setVoiceError('Voice synthesis failed - continuing without voice');
         setIsSpeaking(false);
       };
 
@@ -565,11 +566,12 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         setVoice();
       }
       
+      setIsSpeaking(true);
       synth.speak(utterance);
       
     } catch (error) {
       console.error('Error in text-to-speech:', error);
-      setVoiceError('Voice synthesis failed');
+      setVoiceError('Voice synthesis failed - continuing without voice');
       setIsSpeaking(false);
     }
   };
@@ -806,16 +808,17 @@ Please ask questions related to Panchang, spiritual guidance, or divine informat
       const SpeechRecognition = getSpeechRecognition();
       
       if (!SpeechRecognition) {
-        setVoiceError('Speech recognition not supported in this browser. Please use a modern browser like Chrome, Firefox, Safari, or Edge.');
+        // Instead of showing error, provide alternative
+        setVoiceError('Voice input not available. Please type your question instead.');
         return;
       }
 
       const recognition = new SpeechRecognition();
       
-      // Configure recognition settings
+      // Configure recognition settings for better accuracy
       recognition.lang = 'en-IN'; // Indian English
       recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
+      recognition.maxAlternatives = 3; // Get multiple alternatives
       recognition.continuous = false;
 
       recognition.onstart = () => {
@@ -825,40 +828,46 @@ Please ask questions related to Panchang, spiritual guidance, or divine informat
       };
 
       recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        console.log('🎤 Speech recognized:', transcript);
-        setQuestion(transcript);
-        setIsListening(false);
-        
-        // Auto-send the question
-        setTimeout(() => {
-          handleAskQuestion();
-        }, 500);
+        const results = event.results;
+        if (results.length > 0) {
+          const transcript = results[0][0].transcript;
+          console.log('🎤 Speech recognized:', transcript);
+          setQuestion(transcript);
+          setIsListening(false);
+          
+          // Auto-send the question
+          setTimeout(() => {
+            handleAskQuestion();
+          }, 500);
+        }
       };
 
       recognition.onerror = (event) => {
         console.error('🎤 Speech recognition error:', event.error);
         setIsListening(false);
         
-        let errorMessage = 'Speech recognition failed';
+        let errorMessage = 'Voice input failed. Please try typing instead.';
         switch (event.error) {
           case 'no-speech':
-            errorMessage = 'No speech detected. Please try again.';
+            errorMessage = 'No speech detected. Please speak clearly and try again.';
             break;
           case 'audio-capture':
-            errorMessage = 'Microphone access denied. Please allow microphone access.';
+            errorMessage = 'Microphone access needed. Please allow microphone access and try again.';
             break;
           case 'not-allowed':
-            errorMessage = 'Microphone permission denied. Please allow microphone access in your browser settings.';
+            errorMessage = 'Microphone permission needed. Please allow microphone access in browser settings.';
             break;
           case 'network':
             errorMessage = 'Network error. Please check your internet connection.';
             break;
           case 'service-not-allowed':
-            errorMessage = 'Speech recognition service not available. Please try again.';
+            errorMessage = 'Voice service not available. Please try typing instead.';
+            break;
+          case 'aborted':
+            errorMessage = 'Voice input was cancelled.';
             break;
           default:
-            errorMessage = `Speech recognition error: ${event.error}`;
+            errorMessage = `Voice input error: ${event.error}. Please try typing instead.`;
         }
         
         setVoiceError(errorMessage);
@@ -869,12 +878,20 @@ Please ask questions related to Panchang, spiritual guidance, or divine informat
         setIsListening(false);
       };
 
-      // Start recognition
+      // Start recognition with timeout
       recognition.start();
+      
+      // Add timeout to prevent hanging
+      setTimeout(() => {
+        if (isListening) {
+          recognition.stop();
+          setVoiceError('Voice input timed out. Please try again or type your question.');
+        }
+      }, 10000); // 10 second timeout
       
     } catch (error) {
       console.error('🎤 Failed to start speech recognition:', error);
-      setVoiceError('Speech recognition not supported in this browser. Please use a modern browser.');
+      setVoiceError('Voice input not available. Please type your question instead.');
       setIsListening(false);
     }
   };
