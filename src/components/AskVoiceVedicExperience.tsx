@@ -400,6 +400,9 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       !/\[\d+\]/.test(line)
     );
 
+    // Remove all asterisks (**) for Markdown bold
+    lines = lines.map(line => line.replace(/\*\*/g, ""));
+
     // Remove everything before the first "🪔 Jai Shree Krishna"
     const jaiShreeIndex = lines.findIndex(line => line.includes('🪔 Jai Shree Krishna'));
     if (jaiShreeIndex > 0) {
