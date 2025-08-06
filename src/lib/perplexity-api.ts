@@ -205,6 +205,50 @@ Focus on meditation, mindfulness, gratitude, and inner peace. Keep responses con
   }
 
   /**
+   * Check if query is Panchang-related
+   */
+  private isPanchangQuery(query: string): boolean {
+    const panchangKeywords = [
+      'panchang', 'tithi', 'nakshatra', 'yoga', 'karana', 'maasa', 'paksha',
+      'sunrise', 'sunset', 'auspicious', 'inauspicious', 'muhurtham',
+      'purnima', 'amavasya', 'ekadashi', 'ashtami', 'navami', 'dashami',
+      'dwadashi', 'trayodashi', 'chaturdashi', 'pratipada', 'dwitiya',
+      'tritya', 'chaturthi', 'panchami', 'shashthi', 'saptami',
+      'rahu', 'yama', 'gulika', 'abhijit', 'varjyam', 'durmuhratham',
+      'pradosham', 'sandhya', 'brahma', 'godhuli', 'abhijit',
+      'swati', 'vishakha', 'anuraadha', 'jyeshtha', 'mula', 'purvashadha',
+      'uttarashadha', 'shravana', 'dhanishta', 'shatabhisha', 'purvabhadrapada',
+      'uttarabhadrapada', 'revati', 'ashwini', 'bharani', 'krittika', 'rohini',
+      'mrigashira', 'ardra', 'punarvasu', 'pushya', 'ashlesha', 'magha',
+      'purvaphalguni', 'uttaraphalguni', 'hasta', 'chitra', 'vishakha',
+      'divine', 'spiritual', 'vedic', 'hindu', 'astrology', 'horoscope'
+    ];
+    
+    const lowerQuery = query.toLowerCase();
+    return panchangKeywords.some(keyword => lowerQuery.includes(keyword));
+  }
+
+  /**
+   * Generate response for non-Panchang queries
+   */
+  async generateNonPanchangResponse(query: string): Promise<string> {
+    return `I apologize, but VoiceVedic is specifically designed for Panchang and divine spiritual information only. 
+
+This application can help you with:
+- Panchang information (tithi, nakshatra, yoga, karana)
+- Auspicious timings and muhurthams
+- Divine spiritual guidance
+- Vedic astrology insights
+- Hindu calendar and festival information
+
+Please ask questions related to Panchang, spiritual guidance, or divine information. For example:
+- "What is today's Panchang?"
+- "When is the next Purnima?"
+- "Tell me about today's auspicious timings"
+- "What is the spiritual significance of Ekadashi?"`;
+  }
+
+  /**
    * Generate Drik Panchangam specific responses with timezone conversion
    */
   async generateDrikPanchangamResponse(

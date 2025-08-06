@@ -645,6 +645,50 @@ export class PanchangDetailedAPI {
         }
       }
       
+      // Step 1: Check if query is Panchang-related
+      const lowerQuestion = query.toLowerCase();
+      const panchangKeywords = [
+        'panchang', 'tithi', 'nakshatra', 'yoga', 'karana', 'maasa', 'paksha',
+        'sunrise', 'sunset', 'auspicious', 'inauspicious', 'muhurtham',
+        'purnima', 'amavasya', 'ekadashi', 'ashtami', 'navami', 'dashami',
+        'dwadashi', 'trayodashi', 'chaturdashi', 'pratipada', 'dwitiya',
+        'tritya', 'chaturthi', 'panchami', 'shashthi', 'saptami',
+        'rahu', 'yama', 'gulika', 'abhijit', 'varjyam', 'durmuhratham',
+        'pradosham', 'sandhya', 'brahma', 'godhuli', 'abhijit',
+        'swati', 'vishakha', 'anuraadha', 'jyeshtha', 'mula', 'purvashadha',
+        'uttarashadha', 'shravana', 'dhanishta', 'shatabhisha', 'purvabhadrapada',
+        'uttarabhadrapada', 'revati', 'ashwini', 'bharani', 'krittika', 'rohini',
+        'mrigashira', 'ardra', 'punarvasu', 'pushya', 'ashlesha', 'magha',
+        'purvaphalguni', 'uttaraphalguni', 'hasta', 'chitra', 'vishakha',
+        'divine', 'spiritual', 'vedic', 'hindu', 'astrology', 'horoscope'
+      ];
+      
+      const isPanchangQuery = panchangKeywords.some(keyword => lowerQuestion.includes(keyword));
+      
+      if (!isPanchangQuery) {
+        // Non-Panchang query - return restriction message
+        return {
+          tableData: {
+            date: 'Not Applicable',
+            vasara: 'Not Applicable',
+            tithi: 'Not Applicable',
+            nakshatra: 'Not Applicable',
+            raashi: 'Not Applicable',
+            sunrise: 'Not Applicable',
+            sunset: 'Not Applicable',
+            amruthaKalam: 'Not Applicable',
+            rahuKalam: 'Not Applicable',
+            yamaGandam: 'Not Applicable',
+            varjyam: 'Not Applicable',
+            durmuhurtham: 'Not Applicable',
+            pradosham: 'Not Applicable',
+            aayana: 'Not Applicable'
+          },
+          spokenSummary: 'I apologize, but VoiceVedic is specifically designed for Panchang and divine spiritual information only. Please ask questions related to Panchang, spiritual guidance, or divine information.',
+          source: 'Application Restriction'
+        };
+      }
+
       // Step 2: Get response using Perplexity API directly
       let responseText = '';
       

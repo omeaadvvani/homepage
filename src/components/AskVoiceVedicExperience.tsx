@@ -220,6 +220,47 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     };
   }, []);
 
+  // Handle visibility change to stop TTS when user leaves the screen
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // User left the screen - stop TTS immediately
+        if (window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+          setIsSpeaking(false);
+        }
+      }
+    };
+
+    const handlePageHide = () => {
+      // User is leaving the page - stop TTS immediately
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        setIsSpeaking(false);
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      // User is closing/navigating away - stop TTS immediately
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        setIsSpeaking(false);
+      }
+    };
+
+    // Add event listeners
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -490,7 +531,60 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     setQuestion('');
 
     try {
-      // Step 1: Clarify the query using AI
+      // Step 1: Check if query is Panchang-related
+      const lowerQuestion = userMessage.content.toLowerCase();
+      const panchangKeywords = [
+        'panchang', 'tithi', 'nakshatra', 'yoga', 'karana', 'maasa', 'paksha',
+        'sunrise', 'sunset', 'auspicious', 'inauspicious', 'muhurtham',
+        'purnima', 'amavasya', 'ekadashi', 'ashtami', 'navami', 'dashami',
+        'dwadashi', 'trayodashi', 'chaturdashi', 'pratipada', 'dwitiya',
+        'tritya', 'chaturthi', 'panchami', 'shashthi', 'saptami',
+        'rahu', 'yama', 'gulika', 'abhijit', 'varjyam', 'durmuhratham',
+        'pradosham', 'sandhya', 'brahma', 'godhuli', 'abhijit',
+        'swati', 'vishakha', 'anuraadha', 'jyeshtha', 'mula', 'purvashadha',
+        'uttarashadha', 'shravana', 'dhanishta', 'shatabhisha', 'purvabhadrapada',
+        'uttarabhadrapada', 'revati', 'ashwini', 'bharani', 'krittika', 'rohini',
+        'mrigashira', 'ardra', 'punarvasu', 'pushya', 'ashlesha', 'magha',
+        'purvaphalguni', 'uttaraphalguni', 'hasta', 'chitra', 'vishakha',
+        'divine', 'spiritual', 'vedic', 'hindu', 'astrology', 'horoscope'
+      ];
+      
+      const isPanchangQuery = panchangKeywords.some(keyword => lowerQuestion.includes(keyword));
+      
+      if (!isPanchangQuery) {
+        // Non-Panchang query - provide restriction message
+        const restrictionMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          type: 'assistant',
+          content: `I apologize, but VoiceVedic is specifically designed for Panchang and divine spiritual information only.
+
+This application can help you with:
+- Panchang information (tithi, nakshatra, yoga, karana)
+- Auspicious timings and muhurthams
+- Divine spiritual guidance
+- Vedic astrology insights
+- Hindu calendar and festival information
+
+Please ask questions related to Panchang, spiritual guidance, or divine information. For example:
+- "What is today's Panchang?"
+- "When is the next Purnima?"
+- "Tell me about today's auspicious timings"
+- "What is the spiritual significance of Ekadashi?"`,
+          timestamp: new Date()
+        };
+        
+        setMessages(prev => [...prev, restrictionMessage]);
+        setIsAsking(false);
+        
+        // Speak the restriction message
+        setTimeout(() => {
+          speak(restrictionMessage.content);
+        }, 300);
+        
+        return;
+      }
+
+      // Step 2: Clarify the query using AI (for Panchang queries only)
       const clarificationResponse = await aiService.clarifyQuery({
         question: userMessage.content
       });
@@ -515,7 +609,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         }
       }
 
-      // Step 2: Get response using Perplexity API directly
+      // Step 3: Get response using Perplexity API directly
       let responseText = '';
       
       try {
@@ -565,7 +659,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         responseText = 'I apologize, but I am unable to process your question at the moment. Please try asking about specific Tithis, dates, spiritual topics, or Panchang information.';
       }
 
-      // Step 3: Validate and enhance the response using AI (optional)
+      // Step 4: Validate and enhance the response using AI (optional)
       let finalResponse = responseText;
       
       try {
