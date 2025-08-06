@@ -64,6 +64,16 @@ const makeResponseConcise = (text: string): string => {
   return concise;
 };
 
+// Utility function to clean text for TTS
+const cleanTextForTTS = (text: string): string => {
+  return text
+    .replace(/[*#@$%^&+=<>{}[\]|\\]/g, '') // Remove special symbols
+    .replace(/[^\x00-\x7F]/g, '') // Remove non-ASCII characters
+    .replace(/[^\w\s\-.,:;()]/g, '') // Keep only alphanumeric, spaces, and basic punctuation
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .trim();
+};
+
 interface SpeechRecognition extends EventTarget {
   lang: string;
   interimResults: boolean;
@@ -376,7 +386,9 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       // Stop any currently speaking
       synth.cancel();
 
-      const utterance = new SpeechSynthesisUtterance(text);
+      // Clean the text for TTS
+      const cleanText = cleanTextForTTS(text);
+      const utterance = new SpeechSynthesisUtterance(cleanText);
       
       // Enhanced voice selection with Indian English priority
       const setVoice = () => {

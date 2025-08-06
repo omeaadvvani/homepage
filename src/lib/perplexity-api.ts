@@ -104,29 +104,45 @@ class PerplexityAPI {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Perplexity API Error:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText,
-          requestBody: JSON.stringify(requestBody, null, 2)
-        });
-        throw new Error(`Perplexity API error: ${response.status} ${response.statusText} - ${errorText}`);
+        console.error('❌ Perplexity API error:', response.status, errorText);
+        throw new Error(`Perplexity API error: ${response.status} - ${errorText}`);
       }
 
       const data: PerplexityResponse = await response.json();
       
-      console.log('✅ Perplexity API Response:', {
-        model: data.model,
-        tokensUsed: data.usage.total_tokens,
-        responseLength: data.choices[0]?.message.content.length || 0
-      });
-
-      return data.choices[0]?.message.content || 'No response generated';
+      if (data.choices && data.choices.length > 0) {
+        const content = data.choices[0].message.content;
+        console.log('✅ Perplexity API response received');
+        
+        // Clean the response for TTS
+        const cleanedContent = this.cleanResponse(content);
+        return cleanedContent;
+      } else {
+        throw new Error('No response content from Perplexity API');
+      }
 
     } catch (error) {
       console.error('❌ Perplexity API Error:', error);
       throw error;
     }
+  }
+
+  /**
+   * Clean response by removing special symbols and ensuring English only
+   */
+  private cleanResponse(response: string): string {
+    // Remove special symbols and characters
+    let cleaned = response
+      .replace(/[*#@$%^&+=<>{}[\]|\\]/g, '') // Remove special symbols
+      .replace(/[^\x00-\x7F]/g, '') // Remove non-ASCII characters
+      .replace(/[^\w\s\-.,:;()]/g, '') // Keep only alphanumeric, spaces, and basic punctuation
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
+    
+    // Ensure it's in English only
+    cleaned = cleaned.replace(/[^\x00-\x7F]/g, '');
+    
+    return cleaned;
   }
 
   /**
@@ -192,6 +208,16 @@ CRITICAL REQUIREMENTS:
 - Use HH:MM AM/PM format for times
 - NEVER show IST times - only ${timezone} times
 - Always specify timezone: "in ${timezone} timezone"
+- NO special symbols, emojis, or non-English characters
+- Output MUST be in clean tabular format
+- Use ONLY English language
+
+OUTPUT FORMAT REQUIREMENTS:
+- Use clean Markdown table format
+- NO special characters (*, #, @, etc.)
+- NO emojis or symbols
+- ONLY English text
+- Clean, readable format for TTS
 
 For specific queries:
 - Tithi queries: Show start and end times in ${timezone}
@@ -199,10 +225,14 @@ For specific queries:
 - Auspicious timings: Convert all timings to ${timezone}
 - Festival dates: Show in ${timezone} local time
 
-Format examples:
-- "Purnima Tithi Start: 08/08/25 at 3:23 AM ${timezone}"
-- "Purnima Tithi End: 08/09/25 at 4:51 AM ${timezone}"
-- "Ekadashi begins: 08/15/25 at 2:15 AM ${timezone}"
+Table format example:
+| Field | Value |
+|-------|-------|
+| Date | 08/08/25 |
+| Tithi | Shukla Ashtami |
+| Nakshatra | Swati |
+| Sunrise | 6:02 AM |
+| Sunset | 8:18 PM |
 
 Always convert from IST to ${timezone} timezone.`;
 
@@ -210,7 +240,7 @@ Always convert from IST to ${timezone} timezone.`;
     if (context?.currentTime) {
       enhancedQuery += `\n\nCurrent time in ${timezone}: ${context.currentTime}`;
     }
-    enhancedQuery += `\n\nCRITICAL: Use Drik Panchangam calculations but convert ALL timings from IST to ${timezone} timezone for ${location}. Show all times in ${timezone} local time only.`;
+    enhancedQuery += `\n\nCRITICAL: Use Drik Panchangam calculations but convert ALL timings from IST to ${timezone} timezone for ${location}. Show all times in ${timezone} local time only. Output in clean tabular format with NO special symbols or emojis. Use ONLY English language.`;
 
     return this.generateText(enhancedQuery, {
       model: 'sonar-pro',
