@@ -248,45 +248,27 @@ export const useLocation = (userId?: string) => {
     try {
       console.log('Getting location name for coordinates:', latitude, longitude);
       
-      // Use a reliable geocoding service for precise location names
-      const response = await fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Geocoding response:', data);
-        
-        const city = data.city || data.locality || '';
-        const state = data.principalSubdivision || '';
-        const country = data.countryName || '';
-        
-        // Return precise location name
-        if (city && state) {
-          return `${city}, ${state}, ${country}`;
-        } else if (city) {
-          return `${city}, ${country}`;
-        } else if (state) {
-          return `${state}, ${country}`;
-        } else {
-          return country || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-        }
-      } else {
-        console.warn('Geocoding service failed, using fallback');
-        throw new Error('Geocoding service unavailable');
-      }
-    } catch (error) {
-      console.warn('Geocoding failed, using fallback:', error);
-      // Fallback to coordinate-based detection for major regions
+      // Simple coordinate-based detection for major regions (more reliable)
       if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
         return 'India';
       } else if (latitude >= 24 && latitude <= 49 && longitude >= -125 && longitude <= -66) {
         return 'United States';
       } else if (latitude >= 35 && latitude <= 71 && longitude >= -10 && longitude <= 40) {
         return 'Europe';
+      } else if (latitude >= -60 && latitude <= 15 && longitude >= -80 && longitude <= -35) {
+        return 'South America';
+      } else if (latitude >= -35 && latitude <= 37 && longitude >= -20 && longitude <= 55) {
+        return 'Africa';
+      } else if (latitude >= -10 && latitude <= 50 && longitude >= 60 && longitude <= 180) {
+        return 'Asia';
+      } else if (latitude >= -45 && latitude <= -10 && longitude >= 110 && longitude <= 180) {
+        return 'Australia';
       } else {
         return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
       }
+    } catch (error) {
+      console.warn('Location detection failed, using default:', error);
+      return 'India'; // Default fallback
     }
   };
 

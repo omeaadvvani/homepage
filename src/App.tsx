@@ -87,40 +87,45 @@ function App() {
       // Start real-time location tracking when user is authenticated
       startLocationTracking();
     } else if (!user?.id) {
-      console.log('No user logged in, using high-precision location detection');
-      // High-precision location detection for non-authenticated users
-        if ('geolocation' in navigator) {
-          navigator.geolocation.getCurrentPosition(
+      console.log('No user logged in, using simple location detection');
+      // Simple location detection for non-authenticated users
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
           async (position) => {
-                              try {
+            try {
               const { latitude, longitude, accuracy } = position.coords;
-              console.log(`High-precision location: ${latitude}, ${longitude} (accuracy: ${accuracy}m)`);
+              console.log(`Location detected: ${latitude}, ${longitude} (accuracy: ${accuracy}m)`);
               
-              // Use precise geocoding to get exact location name
+              // Use simple location detection
               const locationName = await getPreciseLocationName(latitude, longitude);
               
               setLocation(locationName);
-                  setLocationStatus('success');
-              console.log('Precise location detected:', locationName);
-              } catch (error) {
-              console.error('Precise location error:', error);
+              setLocationStatus('success');
+              console.log('Location detected:', locationName);
+            } catch (error) {
+              console.error('Location detection error:', error);
               setLocation('India');
               setLocationStatus('success');
               setLocationWarning('Using default location (India).');
-              }
-            },
-            (error) => {
-            console.error('High-precision location error:', error);
+            }
+          },
+          (error) => {
+            console.error('Location detection failed:', error);
             setLocation('India');
-              setLocationStatus('error');
-            setLocationWarning('Location detection failed. Using default location.');
+            setLocationStatus('success'); // Set as success to not show error
+            setLocationWarning('Location detection failed. Using default location (India).');
           },
           { 
-            timeout: 15000, 
-            enableHighAccuracy: true, 
-            maximumAge: 0 
+            timeout: 10000, // Reduced timeout
+            enableHighAccuracy: false, // Don't require high accuracy
+            maximumAge: 300000 // Allow cached location up to 5 minutes
           }
         );
+      } else {
+        console.log('Geolocation not supported, using default location');
+        setLocation('India');
+        setLocationStatus('success');
+        setLocationWarning('Geolocation not supported. Using default location (India).');
       }
     }
   }, [user?.id, isTracking, currentLocation, startLocationTracking, locationError]);
@@ -335,51 +340,27 @@ function App() {
   // High-precision location name detection
   const getPreciseLocationName = async (latitude: number, longitude: number): Promise<string> => {
     try {
-      // Use a reliable geocoding service for precise location names
-      const response = await fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        const city = data.city || data.locality || '';
-        const state = data.principalSubdivision || '';
-        const country = data.countryName || '';
-        
-        // Return precise location name
-        if (city && state) {
-          return `${city}, ${state}, ${country}`;
-        } else if (city) {
-          return `${city}, ${country}`;
-        } else if (state) {
-          return `${state}, ${country}`;
-        } else {
-          return country || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-        }
-      } else {
-        // Fallback to coordinate-based detection for major regions
-        if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
-          return 'India';
-        } else if (latitude >= 24 && latitude <= 49 && longitude >= -125 && longitude <= -66) {
-          return 'United States';
-        } else if (latitude >= 35 && latitude <= 71 && longitude >= -10 && longitude <= 40) {
-          return 'Europe';
-        } else {
-          return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-        }
-      }
-    } catch (error) {
-      console.warn('Geocoding failed, using fallback:', error);
-      // Fallback to coordinate-based detection
+      // Simple coordinate-based detection for major regions (more reliable)
       if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
         return 'India';
       } else if (latitude >= 24 && latitude <= 49 && longitude >= -125 && longitude <= -66) {
         return 'United States';
       } else if (latitude >= 35 && latitude <= 71 && longitude >= -10 && longitude <= 40) {
         return 'Europe';
+      } else if (latitude >= -60 && latitude <= 15 && longitude >= -80 && longitude <= -35) {
+        return 'South America';
+      } else if (latitude >= -35 && latitude <= 37 && longitude >= -20 && longitude <= 55) {
+        return 'Africa';
+      } else if (latitude >= -10 && latitude <= 50 && longitude >= 60 && longitude <= 180) {
+        return 'Asia';
+      } else if (latitude >= -45 && latitude <= -10 && longitude >= 110 && longitude <= 180) {
+        return 'Australia';
       } else {
         return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
       }
+    } catch (error) {
+      console.warn('Location detection failed, using default:', error);
+      return 'India'; // Default fallback
     }
   };
 
