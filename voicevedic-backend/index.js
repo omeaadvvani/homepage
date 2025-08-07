@@ -1,4 +1,4 @@
-// VoiceVedic WhatsApp Backend - Green-API Version
+// VoiceVedic WhatsApp Backend - Simple Baileys Integration
 import express from "express";
 import fetch from "node-fetch";
 
@@ -7,11 +7,6 @@ const app = express();
 // Add body parsing middleware
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-
-// Green-API Configuration
-const GREEN_API_URL = process.env.GREEN_API_URL || "https://api.green-api.com";
-const GREEN_API_ID_INSTANCE = process.env.GREEN_API_ID_INSTANCE || "your_id_instance";
-const GREEN_API_API_TOKEN = process.env.GREEN_API_API_TOKEN || "your_api_token";
 
 // Perplexity API logic
 async function getVoiceVedicAnswer(question) {
@@ -71,36 +66,6 @@ async function getVoiceVedicAnswer(question) {
   }
 }
 
-// Send message via Green-API
-async function sendGreenAPIMessage(phone, message) {
-  try {
-    const url = `${GREEN_API_URL}/waInstance${GREEN_API_ID_INSTANCE}/SendMessage/${GREEN_API_API_TOKEN}`;
-    
-    const payload = {
-      chatId: `${phone}@c.us`,
-      message: message
-    };
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-      console.error("Green-API error:", await response.text());
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error("Error sending Green-API message:", error);
-    return false;
-  }
-}
-
 // Root route for health check
 app.get("/", (req, res) => {
   res.json({
@@ -108,8 +73,8 @@ app.get("/", (req, res) => {
     status: "healthy",
     endpoints: {
       whatsapp: "/api/whatsapp (POST)",
-      greenapi: "/api/green-api (POST)",
-      health: "/health (GET)"
+      health: "/health (GET)",
+      test: "/test (GET)"
     }
   });
 });
@@ -119,54 +84,19 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Green-API webhook endpoint
-app.post("/api/green-api", async (req, res) => {
-  try {
-    console.log("Received Green-API webhook request");
-    console.log("Request body:", req.body);
-    
-    // Green-API sends webhook data in this format
-    const { body } = req.body;
-    
-    if (!body) {
-      return res.json({ status: "ok", message: "No message to process" });
-    }
-
-    const { messageData, senderData } = body;
-    
-    if (!messageData || !senderData) {
-      return res.json({ status: "ok", message: "Invalid message format" });
-    }
-
-    const message = messageData.textMessageData?.textMessage || messageData.extendedTextMessageData?.text || "";
-    const phone = senderData.sender.split("@")[0];
-    
-    console.log("Processing message:", message, "from:", phone);
-    
-    // Get VoiceVedic answer
-    const answer = await getVoiceVedicAnswer(message);
-    console.log("Generated answer:", answer);
-    
-    // Send response back via Green-API
-    const sent = await sendGreenAPIMessage(phone, answer);
-    
-    if (sent) {
-      res.json({ status: "ok", message: "Response sent successfully" });
-    } else {
-      res.status(500).json({ error: "Failed to send response" });
-    }
-    
-  } catch (error) {
-    console.error("Error in Green-API webhook:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
+// Test endpoint
+app.get("/test", (req, res) => {
+  res.json({ 
+    message: "VoiceVedic is ready!",
+    instructions: "Use the frontend at https://voivevedic.netlify.app or set up WhatsApp integration"
+  });
 });
 
-// Legacy webhook (for compatibility)
+// Simple webhook for testing
 app.post("/api/whatsapp", async (req, res) => {
   try {
-    console.log("Received legacy webhook request");
-    const incomingMsg = req.body.Body;
+    console.log("Received webhook request");
+    const incomingMsg = req.body.Body || req.body.message || "test message";
     console.log("Incoming message:", incomingMsg);
     
     const answer = await getVoiceVedicAnswer(incomingMsg);
@@ -174,15 +104,15 @@ app.post("/api/whatsapp", async (req, res) => {
     
     // Return JSON response for testing
     res.json({ 
-      message: "Webhook processed", 
+      message: "VoiceVedic processed your request", 
       question: incomingMsg,
       answer: answer 
     });
   } catch (error) {
-    console.error("Error in legacy webhook:", error);
+    console.error("Error in webhook:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`VoiceVedic Green-API webhook running on port ${PORT}`));
+app.listen(PORT, () => console.log(`VoiceVedic Simple Backend running on port ${PORT}`));
