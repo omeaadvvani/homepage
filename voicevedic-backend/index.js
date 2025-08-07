@@ -1,21 +1,13 @@
-// VoiceVedic WhatsApp Backend - Minimal Test Version
+// VoiceVedic WhatsApp Backend - Simplest Test Version
 import express from "express";
-import bodyParser from "body-parser";
-import cors from "cors";
 
 const app = express();
-app.use(cors());
-app.use(bodyParser.urlencoded({ extended: false }));
 
-// Root route for health check and basic info
+// Root route for health check
 app.get("/", (req, res) => {
   res.json({
     message: "VoiceVedic WhatsApp Backend is running!",
-    status: "healthy",
-    endpoints: {
-      whatsapp: "/api/whatsapp (POST)",
-      health: "/health (GET)"
-    }
+    status: "healthy"
   });
 });
 
@@ -24,26 +16,10 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-app.post("/api/whatsapp", async (req, res) => {
-  try {
-    console.log("Received WhatsApp webhook request");
-    const incomingMsg = req.body.Body;
-    console.log("Incoming message:", incomingMsg);
-    
-    // Simple XML response for testing
-    const xmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Message>🪔 Jai Shree Krishna. This is a test response from VoiceVedic. Your message was: ${incomingMsg}</Message>
-</Response>`;
-    
-    console.log("Generated response:", xmlResponse);
-    
-    res.writeHead(200, { "Content-Type": "text/xml" });
-    res.end(xmlResponse);
-  } catch (error) {
-    console.error("Error in WhatsApp webhook:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
+// Simple webhook test
+app.post("/api/whatsapp", (req, res) => {
+  console.log("Received webhook request");
+  res.json({ message: "Webhook received", body: req.body });
 });
 
 const PORT = process.env.PORT || 3000;
