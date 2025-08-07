@@ -92,7 +92,9 @@ app.post("/api/whatsapp", async (req, res) => {
     const incomingMsg = req.body.Body;
     console.log("Incoming message:", incomingMsg);
     
-    const answer = await getVoiceVedicAnswer(incomingMsg);
+    // TEMPORARY: Return static response for testing
+    const answer = "🪔 Jai Shree Krishna. This is a test response from VoiceVedic. Your message was: " + incomingMsg;
+    
     console.log("Generated answer:", answer);
     
     const twiml = new MessagingResponse();
