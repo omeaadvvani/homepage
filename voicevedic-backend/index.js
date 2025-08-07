@@ -1,7 +1,5 @@
-// VoiceVedic WhatsApp Backend - Full Version with Perplexity Integration
+// VoiceVedic WhatsApp Backend - Perplexity Test Version
 import express from "express";
-import pkg from "twilio/lib/twiml/MessagingResponse.js";
-const { MessagingResponse } = pkg;
 import fetch from "node-fetch";
 
 const app = express();
@@ -85,7 +83,7 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// WhatsApp webhook
+// WhatsApp webhook - JSON response for testing
 app.post("/api/whatsapp", async (req, res) => {
   try {
     console.log("Received WhatsApp webhook request");
@@ -95,10 +93,12 @@ app.post("/api/whatsapp", async (req, res) => {
     const answer = await getVoiceVedicAnswer(incomingMsg);
     console.log("Generated answer:", answer);
     
-    const twiml = new MessagingResponse();
-    twiml.message(answer);
-    res.writeHead(200, { "Content-Type": "text/xml" });
-    res.end(twiml.toString());
+    // Return JSON response for testing
+    res.json({ 
+      message: "Webhook processed", 
+      question: incomingMsg,
+      answer: answer 
+    });
   } catch (error) {
     console.error("Error in WhatsApp webhook:", error);
     res.status(500).json({ error: "Internal server error" });
