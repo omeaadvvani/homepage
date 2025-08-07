@@ -1,7 +1,9 @@
+// VoiceVedic WhatsApp Backend - Fixed Twilio Import for Render Deployment
 import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
-import { MessagingResponse } from "twilio/lib/twiml/MessagingResponse.js";
+import pkg from "twilio/lib/twiml/MessagingResponse.js";
+const { MessagingResponse } = pkg;
 import fetch from "node-fetch";
 
 // Perplexity API logic
@@ -60,4 +62,4 @@ app.post("/api/whatsapp", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`WhatsApp webhook running on port ${PORT}`));
+app.listen(PORT, () => console.log(`VoiceVedic WhatsApp webhook running on port ${PORT}`));
