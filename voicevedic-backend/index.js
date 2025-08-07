@@ -1,7 +1,11 @@
-// VoiceVedic WhatsApp Backend - Simplest Test Version
+// VoiceVedic WhatsApp Backend - Test Version with Body Parsing
 import express from "express";
 
 const app = express();
+
+// Add body parsing middleware
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
 // Root route for health check
 app.get("/", (req, res) => {
@@ -19,6 +23,7 @@ app.get("/health", (req, res) => {
 // Simple webhook test
 app.post("/api/whatsapp", (req, res) => {
   console.log("Received webhook request");
+  console.log("Request body:", req.body);
   res.json({ message: "Webhook received", body: req.body });
 });
 
