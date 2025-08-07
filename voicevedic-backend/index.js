@@ -1,4 +1,4 @@
-// VoiceVedic WhatsApp Backend - Chat-API Version
+// VoiceVedic WhatsApp Backend - Green-API Version
 import express from "express";
 import fetch from "node-fetch";
 
@@ -8,10 +8,10 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Chat-API Configuration
-const CHAT_API_URL = process.env.CHAT_API_URL || "https://api.chat-api.com";
-const CHAT_API_INSTANCE = process.env.CHAT_API_INSTANCE || "your_instance_id";
-const CHAT_API_TOKEN = process.env.CHAT_API_TOKEN || "your_token";
+// Green-API Configuration
+const GREEN_API_URL = process.env.GREEN_API_URL || "https://api.green-api.com";
+const GREEN_API_ID_INSTANCE = process.env.GREEN_API_ID_INSTANCE || "your_id_instance";
+const GREEN_API_API_TOKEN = process.env.GREEN_API_API_TOKEN || "your_api_token";
 
 // Perplexity API logic
 async function getVoiceVedicAnswer(question) {
@@ -71,14 +71,14 @@ async function getVoiceVedicAnswer(question) {
   }
 }
 
-// Send message via Chat-API
-async function sendChatAPIMessage(phone, message) {
+// Send message via Green-API
+async function sendGreenAPIMessage(phone, message) {
   try {
-    const url = `${CHAT_API_URL}/instance${CHAT_API_INSTANCE}/sendMessage?token=${CHAT_API_TOKEN}`;
+    const url = `${GREEN_API_URL}/waInstance${GREEN_API_ID_INSTANCE}/SendMessage/${GREEN_API_API_TOKEN}`;
     
     const payload = {
-      phone: phone,
-      body: message
+      chatId: `${phone}@c.us`,
+      message: message
     };
 
     const response = await fetch(url, {
@@ -90,13 +90,13 @@ async function sendChatAPIMessage(phone, message) {
     });
 
     if (!response.ok) {
-      console.error("Chat-API error:", await response.text());
+      console.error("Green-API error:", await response.text());
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error("Error sending Chat-API message:", error);
+    console.error("Error sending Green-API message:", error);
     return false;
   }
 }
@@ -108,8 +108,8 @@ app.get("/", (req, res) => {
     status: "healthy",
     endpoints: {
       whatsapp: "/api/whatsapp (POST)",
-      health: "/health (GET)",
-      chatapi: "/api/chat-api (POST)"
+      greenapi: "/api/green-api (POST)",
+      health: "/health (GET)"
     }
   });
 });
@@ -119,30 +119,36 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Chat-API webhook endpoint
-app.post("/api/chat-api", async (req, res) => {
+// Green-API webhook endpoint
+app.post("/api/green-api", async (req, res) => {
   try {
-    console.log("Received Chat-API webhook request");
+    console.log("Received Green-API webhook request");
     console.log("Request body:", req.body);
     
-    // Chat-API sends webhook data in this format
-    const { messages } = req.body;
+    // Green-API sends webhook data in this format
+    const { body } = req.body;
     
-    if (!messages || messages.length === 0) {
-      return res.json({ status: "ok", message: "No messages to process" });
+    if (!body) {
+      return res.json({ status: "ok", message: "No message to process" });
     }
 
-    const message = messages[0];
-    const { body, author, chatId } = message;
+    const { messageData, senderData } = body;
     
-    console.log("Processing message:", body, "from:", author);
+    if (!messageData || !senderData) {
+      return res.json({ status: "ok", message: "Invalid message format" });
+    }
+
+    const message = messageData.textMessageData?.textMessage || messageData.extendedTextMessageData?.text || "";
+    const phone = senderData.sender.split("@")[0];
+    
+    console.log("Processing message:", message, "from:", phone);
     
     // Get VoiceVedic answer
-    const answer = await getVoiceVedicAnswer(body);
+    const answer = await getVoiceVedicAnswer(message);
     console.log("Generated answer:", answer);
     
-    // Send response back via Chat-API
-    const sent = await sendChatAPIMessage(author, answer);
+    // Send response back via Green-API
+    const sent = await sendGreenAPIMessage(phone, answer);
     
     if (sent) {
       res.json({ status: "ok", message: "Response sent successfully" });
@@ -151,12 +157,12 @@ app.post("/api/chat-api", async (req, res) => {
     }
     
   } catch (error) {
-    console.error("Error in Chat-API webhook:", error);
+    console.error("Error in Green-API webhook:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// Legacy Twilio webhook (for compatibility)
+// Legacy webhook (for compatibility)
 app.post("/api/whatsapp", async (req, res) => {
   try {
     console.log("Received legacy webhook request");
@@ -179,4 +185,4 @@ app.post("/api/whatsapp", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`VoiceVedic Chat-API webhook running on port ${PORT}`));
+app.listen(PORT, () => console.log(`VoiceVedic Green-API webhook running on port ${PORT}`));
