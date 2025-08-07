@@ -101,6 +101,7 @@ function App() {
               
               setLocation(locationName);
               setLocationStatus('success');
+              setLocationWarning(''); // Clear any previous warnings
               console.log('Location detected:', locationName);
             } catch (error) {
               console.error('Location detection error:', error);
@@ -113,7 +114,16 @@ function App() {
             console.error('Location detection failed:', error);
             setLocation('India');
             setLocationStatus('success'); // Set as success to not show error
-            setLocationWarning('Location detection failed. Using default location (India).');
+            // Only show warning for actual errors, not fallbacks
+            if (error.code === error.PERMISSION_DENIED) {
+              setLocationWarning('Location access denied. Using default location (India).');
+            } else if (error.code === error.POSITION_UNAVAILABLE) {
+              setLocationWarning('Location unavailable. Using default location (India).');
+            } else if (error.code === error.TIMEOUT) {
+              setLocationWarning('Location request timed out. Using default location (India).');
+            } else {
+              setLocationWarning(''); // Don't show warning for normal fallbacks
+            }
           },
           { 
             timeout: 10000, // Reduced timeout
@@ -125,7 +135,7 @@ function App() {
         console.log('Geolocation not supported, using default location');
         setLocation('India');
         setLocationStatus('success');
-        setLocationWarning('Geolocation not supported. Using default location (India).');
+        setLocationWarning(''); // Don't show warning for normal fallbacks
       }
     }
   }, [user?.id, isTracking, currentLocation, startLocationTracking, locationError]);
@@ -142,6 +152,7 @@ function App() {
       console.log('Setting location to:', currentLocation.location_name);
       setLocation(currentLocation.location_name);
       setLocationStatus('success');
+      setLocationWarning(''); // Clear any warnings when location is successfully detected
       if (accuracy) {
         console.log(`Location accuracy: ${accuracy} meters`);
       }
@@ -160,10 +171,17 @@ function App() {
   useEffect(() => {
     if (locationError) {
       console.error('Location tracking error:', locationError);
-      setLocationWarning(locationError);
-      setLocation('India');
-        setLocationStatus('error');
+      // Only show warning for actual errors, not normal fallbacks
+      if (locationError.includes('permission denied') || 
+          locationError.includes('unavailable') || 
+          locationError.includes('timeout')) {
+        setLocationWarning(locationError);
+      } else {
+        setLocationWarning(''); // Clear warnings for normal fallbacks
       }
+      setLocation('India');
+      setLocationStatus('success'); // Set as success to not show error UI
+    }
   }, [locationError]);
 
   // Handle user authentication state changes
