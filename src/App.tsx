@@ -103,22 +103,22 @@ function App() {
               console.log('Location detected:', locationName);
             } catch (error) {
               console.error('Location detection error:', error);
-              setLocation('India');
+              setLocation('Location not detected');
               setLocationStatus('success');
-              setLocationWarning('Using default location (India).');
+              setLocationWarning('Location detection failed. Please try again.');
             }
           },
           (error) => {
             console.error('Location detection failed:', error);
-            setLocation('India');
+            setLocation('Location not detected');
             setLocationStatus('success'); // Set as success to not show error
             // Only show warning for actual errors, not fallbacks
             if (error.code === error.PERMISSION_DENIED) {
-              setLocationWarning('Location access denied. Using default location (India).');
+              setLocationWarning('Location access denied. Please enable location permissions.');
             } else if (error.code === error.POSITION_UNAVAILABLE) {
-              setLocationWarning('Location unavailable. Using default location (India).');
+              setLocationWarning('Location unavailable. Please check your device settings.');
             } else if (error.code === error.TIMEOUT) {
-              setLocationWarning('Location request timed out. Using default location (India).');
+              setLocationWarning('Location request timed out. Please try again.');
             } else {
               setLocationWarning(''); // Don't show warning for normal fallbacks
             }
@@ -131,7 +131,7 @@ function App() {
         );
       } else {
         console.log('Geolocation not supported, using default location');
-        setLocation('India');
+        setLocation('Location not supported');
         setLocationStatus('success');
         setLocationWarning(''); // Don't show warning for normal fallbacks
       }
@@ -177,7 +177,7 @@ function App() {
       } else {
         setLocationWarning(''); // Clear warnings for normal fallbacks
       }
-      setLocation('India');
+      setLocation('Location not detected');
       setLocationStatus('success'); // Set as success to not show error UI
     }
   }, [locationError]);
@@ -334,13 +334,26 @@ function App() {
   // High-precision location name detection
   const getPreciseLocationName = async (latitude: number, longitude: number): Promise<string> => {
     try {
-      // First try to get location from IP-API (free and reliable)
-      const response = await fetch(`http://ip-api.com/json/?lat=${latitude}&lon=${longitude}`);
-      const data = await response.json();
-      
-      if (data.status === 'success' && data.city && data.country) {
-        console.log('Location resolved via IP-API:', data.city, data.country);
-        return `${data.city}, ${data.country}`;
+      // Use HTTPS Nominatim service for reverse geocoding (works on HTTPS)
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&accept-language=en`);
+        const data = await response.json();
+        
+        if (data.address) {
+          let cityName = data.address.city || data.address.town || data.address.village;
+          let countryName = data.address.country;
+          
+          if (cityName && countryName) {
+            console.log('Location resolved via Nominatim:', cityName, countryName);
+            return `${cityName}, ${countryName}`;
+          } else if (cityName) {
+            return cityName;
+          } else if (countryName) {
+            return countryName;
+          }
+        }
+      } catch (nominatimError) {
+        console.warn('Nominatim geocoding failed:', nominatimError);
       }
       
       // Fallback to coordinate-based detection for major regions
@@ -359,25 +372,12 @@ function App() {
       } else if (latitude >= -45 && latitude <= -10 && longitude >= 110 && longitude <= 180) {
         return 'Australia';
       } else {
-        // If we can't determine region, show coordinates but try to get city name
-        try {
-          const fallbackResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`);
-          const fallbackData = await fallbackResponse.json();
-          
-          if (fallbackData.address && fallbackData.address.city) {
-            return `${fallbackData.address.city}, ${fallbackData.address.country || 'Unknown'}`;
-          } else if (fallbackData.address && fallbackData.address.town) {
-            return `${fallbackData.address.town}, ${fallbackData.address.country || 'Unknown'}`;
-          }
-        } catch (fallbackError) {
-          console.warn('Fallback geocoding failed:', fallbackError);
-        }
-        
+        // If we can't determine region, show coordinates
         return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
       }
     } catch (error) {
-      console.warn('Location detection failed, using default:', error);
-      return 'India'; // Default fallback
+      console.warn('Location detection failed, using coordinates:', error);
+      return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
     }
   };
 
@@ -468,7 +468,7 @@ function App() {
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-yellow-700 tracking-spiritual font-semibold mb-2">
-            Location unavailable. Using default location: India.
+            Location unavailable. Please check your device settings.
           </p>
           <p className="text-spiritual-700">You can continue using the app.</p>
         </div>

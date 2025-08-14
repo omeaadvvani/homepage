@@ -150,7 +150,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
   };
 
   // Get display values with fallbacks
-  const displayLocation = userProfile?.location || 'India';
+  const displayLocation = userProfile?.location || 'Location not detected';
 
   return (
     <div className="min-h-screen bg-spiritual-diagonal relative overflow-hidden font-sans">
