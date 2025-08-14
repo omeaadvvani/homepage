@@ -248,7 +248,16 @@ export const useLocation = (userId?: string) => {
     try {
       console.log('Getting location name for coordinates:', latitude, longitude);
       
-      // Simple coordinate-based detection for major regions (more reliable)
+      // First try to get location from IP-API (free and reliable)
+      const response = await fetch(`http://ip-api.com/json/?lat=${latitude}&lon=${longitude}`);
+      const data = await response.json();
+      
+      if (data.status === 'success' && data.city && data.country) {
+        console.log('Location resolved via IP-API:', data.city, data.country);
+        return `${data.city}, ${data.country}`;
+      }
+      
+      // Fallback to coordinate-based detection for major regions
       if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
         return 'India';
       } else if (latitude >= 24 && latitude <= 49 && longitude >= -125 && longitude <= -66) {
@@ -264,6 +273,20 @@ export const useLocation = (userId?: string) => {
       } else if (latitude >= -45 && latitude <= -10 && longitude >= 110 && longitude <= 180) {
         return 'Australia';
       } else {
+        // If we can't determine region, show coordinates but try to get city name
+        try {
+          const fallbackResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`);
+          const fallbackData = await fallbackResponse.json();
+          
+          if (fallbackData.address && fallbackData.address.city) {
+            return `${fallbackData.address.city}, ${fallbackData.address.country || 'Unknown'}`;
+          } else if (fallbackData.address && fallbackData.address.town) {
+            return `${fallbackData.address.town}, ${fallbackData.address.country || 'Unknown'}`;
+          }
+        } catch (fallbackError) {
+          console.warn('Fallback geocoding failed:', fallbackError);
+        }
+        
         return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
       }
     } catch (error) {

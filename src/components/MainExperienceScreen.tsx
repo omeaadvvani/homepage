@@ -1,24 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
+  Headphones, 
+  MessageCircle, 
+  Settings, 
+  LogOut, 
+  ArrowRight,
+  ChevronRight,
   MapPin, 
-  Calendar, 
-  Globe, 
   Clock, 
   Sparkles, 
-  Settings, 
   Moon, 
   Sun, 
   Bell,
-  ArrowRight,
-  MessageCircle,
-  ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { useUserPreferences } from '../hooks/useUserPreferences';
 
 interface MainExperienceScreenProps {
-  onChangePreferences: () => void;
   onShowSettings: () => void;
   onLogout?: () => void;
   locationWarning?: string;
@@ -37,13 +35,11 @@ interface SpiritualEvent {
 
 
 const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({ 
-  onChangePreferences, 
   onShowSettings,
   onLogout,
   locationWarning
 }) => {
   const { userProfile } = useAuth();
-  const { preferences } = useUserPreferences();
   const navigate = useNavigate();
   
   const [showSacredText, setShowSacredText] = useState(false);
@@ -127,7 +123,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
   useEffect(() => {
     // In production, fetch from Supabase based on user's calendar type and location
     setTodayEvent(sampleEvents[0]);
-  }, [preferences, sampleEvents]);
+  }, [sampleEvents]);
 
   const formatTime = (timeString: string) => {
     const [hours, minutes] = timeString.split(':');
@@ -149,14 +145,12 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       case 'prayer': return <Moon className="w-5 h-5" />;
       case 'festival': return <Sun className="w-5 h-5" />;
       case 'fast': return <Bell className="w-5 h-5" />;
-      default: return <Calendar className="w-5 h-5" />;
+      default: return <Bell className="w-5 h-5" />;
     }
   };
 
   // Get display values with fallbacks
-  const displayLanguage = preferences?.language || userProfile?.preferred_language || 'English';
-  const displayCalendar = preferences?.calendar_type || userProfile?.calendar_tradition || 'North Indian';
-  const displayLocation = preferences?.location || userProfile?.location || 'India';
+  const displayLocation = userProfile?.location || 'India';
 
   return (
     <div className="min-h-screen bg-spiritual-diagonal relative overflow-hidden font-sans">
@@ -213,14 +207,6 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
           
           {/* User Context Bar */}
           <div className="flex flex-wrap items-center justify-center gap-4 mt-6 text-spiritual-700">
-            <div className="flex items-center gap-2 bg-white/70 backdrop-blur-sm px-4 py-2 rounded-spiritual border border-spiritual-200/50">
-              <Calendar className="w-4 h-4 text-spiritual-600" />
-              <span className="text-sm font-medium tracking-spiritual">{displayCalendar}</span>
-            </div>
-            <div className="flex items-center gap-2 bg-white/70 backdrop-blur-sm px-4 py-2 rounded-spiritual border border-spiritual-200/50">
-              <Globe className="w-4 h-4 text-spiritual-600" />
-              <span className="text-sm font-medium tracking-spiritual">{displayLanguage}</span>
-            </div>
             <div className="flex items-center gap-2 bg-white/70 backdrop-blur-sm px-4 py-2 rounded-spiritual border border-spiritual-200/50">
               <MapPin className="w-4 h-4 text-accent-600" />
               <span className="text-sm font-medium tracking-spiritual">{displayLocation}</span>
@@ -296,11 +282,11 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
           {/* Quick Actions */}
           <div className="flex flex-col sm:flex-row gap-4">
             <button
-              onClick={onChangePreferences}
+              onClick={onShowSettings}
               className="group flex items-center justify-center gap-3 flex-1 px-6 py-4 bg-white/70 border-2 border-spiritual-300 hover:border-spiritual-400 text-spiritual-900 font-semibold rounded-spiritual shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 tracking-spiritual"
             >
               <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-              <span>Change My Preferences</span>
+              <span>Settings</span>
             </button>
             
             {onLogout && (

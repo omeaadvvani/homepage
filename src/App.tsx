@@ -7,7 +7,6 @@ import GuestOnboardingScreen from './components/GuestOnboardingScreen';
 import SignUpScreen from './components/SignUpScreen';
 import LoginScreen from './components/LoginScreen';
 import DemoScreen from './components/DemoScreen';
-import PreferencesScreen from './components/PreferencesScreen';
 import ResetPinScreen from './components/ResetPinScreen';
 import MainExperienceScreen from './components/MainExperienceScreen';
 import SettingsScreen from './components/SettingsScreen';
@@ -18,11 +17,10 @@ function App() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [showSacredText, setShowSacredText] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState<'home' | 'signup' | 'preferences' | 'guest-onboarding' | 'login' | 'demo' | 'reset-pin' | 'main-experience' | 'settings'>('home');
+  const [currentScreen, setCurrentScreen] = useState<'home' | 'signup' | 'guest-onboarding' | 'login' | 'demo' | 'reset-pin' | 'main-experience' | 'settings'>('home');
   const [location, setLocation] = useState<string>('Detecting location...');
   const [locationStatus, setLocationStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [supabaseError, setSupabaseError] = useState<string>('');
-  const [newUserNeedsPreferences, setNewUserNeedsPreferences] = useState(false);
+  const [supabaseError, setSupabaseError] = useState('');
   const [guestMode, setGuestMode] = useState(false);
   const [previousScreen, setPreviousScreen] = useState<string>('home');
   const [isNavigating, setIsNavigating] = useState(false);
@@ -187,13 +185,8 @@ function App() {
   // Handle user authentication state changes
   useEffect(() => {
     if (!authLoading && user) {
-      // If user just signed up and needs to set preferences
-      if (newUserNeedsPreferences) {
-        setCurrentScreen('preferences');
-        setNewUserNeedsPreferences(false);
-      }
-      // If user already has profile or preferences, show main experience
-      else if (userProfile || guestMode) {
+      // If user already has profile, show main experience
+      if (userProfile || guestMode) {
         setCurrentScreen('main-experience');
       }
     }
@@ -204,7 +197,7 @@ function App() {
       // If authentication fails, allow user to continue as guest or retry
       setAuthError(authHookError);
     }
-  }, [user, userProfile, authLoading, authHookError, newUserNeedsPreferences, guestMode]);
+  }, [user, userProfile, authLoading, authHookError, guestMode]);
 
   // Add a timeout for authLoading
   useEffect(() => {
@@ -262,7 +255,6 @@ function App() {
     setIsNavigating(true);
     setTimeout(() => {
       setCurrentScreen('home');
-      setNewUserNeedsPreferences(false);
       setGuestMode(false);
       setPreviousScreen('home');
       setIsNavigating(false);
@@ -282,13 +274,7 @@ function App() {
   };
 
   const handleSignUpComplete = () => {
-    // After successful sign-up, move to preferences screen
-    setNewUserNeedsPreferences(true);
-    // The useEffect will handle moving to preferences screen
-  };
-
-  const handlePreferencesComplete = () => {
-    // Preferences saved successfully - move to main experience
+    // After successful sign-up, move directly to main experience
     setIsNavigating(true);
     setTimeout(() => {
       setCurrentScreen('main-experience');
@@ -323,16 +309,6 @@ function App() {
     }, 100);
   };
 
-  const handleShowPreferences = () => {
-    // Store current screen as previous for proper back navigation
-    setPreviousScreen(currentScreen);
-    setIsNavigating(true);
-    setTimeout(() => {
-      setCurrentScreen('preferences');
-      setIsNavigating(false);
-    }, 100);
-  };
-
   const handleShowSettings = () => {
     // Store current screen as previous for proper back navigation
     setPreviousScreen(currentScreen);
@@ -358,7 +334,16 @@ function App() {
   // High-precision location name detection
   const getPreciseLocationName = async (latitude: number, longitude: number): Promise<string> => {
     try {
-      // Simple coordinate-based detection for major regions (more reliable)
+      // First try to get location from IP-API (free and reliable)
+      const response = await fetch(`http://ip-api.com/json/?lat=${latitude}&lon=${longitude}`);
+      const data = await response.json();
+      
+      if (data.status === 'success' && data.city && data.country) {
+        console.log('Location resolved via IP-API:', data.city, data.country);
+        return `${data.city}, ${data.country}`;
+      }
+      
+      // Fallback to coordinate-based detection for major regions
       if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 97) {
         return 'India';
       } else if (latitude >= 24 && latitude <= 49 && longitude >= -125 && longitude <= -66) {
@@ -374,6 +359,20 @@ function App() {
       } else if (latitude >= -45 && latitude <= -10 && longitude >= 110 && longitude <= 180) {
         return 'Australia';
       } else {
+        // If we can't determine region, show coordinates but try to get city name
+        try {
+          const fallbackResponse = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`);
+          const fallbackData = await fallbackResponse.json();
+          
+          if (fallbackData.address && fallbackData.address.city) {
+            return `${fallbackData.address.city}, ${fallbackData.address.country || 'Unknown'}`;
+          } else if (fallbackData.address && fallbackData.address.town) {
+            return `${fallbackData.address.town}, ${fallbackData.address.country || 'Unknown'}`;
+          }
+        } catch (fallbackError) {
+          console.warn('Fallback geocoding failed:', fallbackError);
+        }
+        
         return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
       }
     } catch (error) {
@@ -391,7 +390,6 @@ function App() {
       
       // Reset all state
       setGuestMode(false);
-      setNewUserNeedsPreferences(false);
       setPreviousScreen('home');
       
       // Navigate to home screen with delay to prevent loading screen flash
@@ -456,7 +454,7 @@ function App() {
   }
 
   // Show error if location detection failed or timed out
-          if (locationStatus === 'error' && currentScreen === 'home') {
+  if (locationStatus === 'error' && currentScreen === 'home') {
     // Set default location and proceed
     if (!locationWarning) {
       setLocation('India');
@@ -492,7 +490,6 @@ function App() {
             path="/" 
             element={
               <MainExperienceScreen 
-                onChangePreferences={handleShowPreferences}
                 onShowSettings={handleShowSettings}
                 onLogout={guestMode ? handleBackToHome : handleLogout}
                 locationWarning={locationWarning}
@@ -517,30 +514,6 @@ function App() {
     return <SignUpScreen onComplete={handleSignUpComplete} onBack={handleBackToHome} />;
   }
 
-  if (currentScreen === 'preferences') {
-    // Determine the correct back handler based on previous screen
-    const backHandler = previousScreen === 'main-experience' ? handleBackToMainExperience : handleBackToHome;
-    return (
-      <PreferencesScreen 
-        onComplete={handlePreferencesComplete} 
-        onBack={backHandler} 
-        detectedLocation={location} 
-      />
-    );
-  }
-
-  if (currentScreen === 'settings') {
-    // Determine the correct back handler based on previous screen
-    const backHandler = previousScreen === 'main-experience' ? handleBackToMainExperience : handleBackToHome;
-    return (
-      <SettingsScreen 
-        onBack={backHandler}
-        onChangePreferences={handleShowPreferences}
-        onLogout={handleLogout}
-      />
-    );
-  }
-
   if (currentScreen === 'guest-onboarding') {
     return <GuestOnboardingScreen onComplete={handleGuestOnboardingComplete} onBack={handleBackToHome} />;
   }
@@ -551,6 +524,17 @@ function App() {
 
   if (currentScreen === 'demo') {
     return <DemoScreen onBack={handleBackToHome} />;
+  }
+
+  if (currentScreen === 'settings') {
+    // Determine the correct back handler based on previous screen
+    const backHandler = previousScreen === 'main-experience' ? handleBackToMainExperience : handleBackToHome;
+    return (
+      <SettingsScreen 
+        onBack={backHandler}
+        onLogout={handleLogout}
+      />
+    );
   }
 
   return (
@@ -809,6 +793,8 @@ function App() {
             <Headphones className="w-5 h-5 group-hover:rotate-12 group-active:rotate-6 transition-transform duration-300 relative z-10" />
             <span className="text-lg tracking-spiritual relative z-10">Try Demo</span>
           </button>
+
+
         </div>
 
         {/* Guest Access */}

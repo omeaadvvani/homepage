@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Settings, 
-  Globe, 
   Bell, 
-  Sliders, 
   MessageCircle, 
   FileText, 
   LogOut, 
   ArrowLeft,
-  ChevronRight,
   User,
   CheckCircle
 } from 'lucide-react';
@@ -16,24 +13,19 @@ import { useAuth } from '../hooks/useAuth';
 
 interface SettingsScreenProps {
   onBack: () => void;
-  onChangePreferences: () => void;
   onLogout: () => void;
 }
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ 
   onBack, 
-  onChangePreferences, 
   onLogout 
 }) => {
   const { user, userProfile } = useAuth();
   const [showSacredText, setShowSacredText] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState('English');
-  const [showLanguageModal, setShowLanguageModal] = useState(false);
+
   const [logoutLoading, setLogoutLoading] = useState(false);
 
-  const languages = [
-    'English', 'Hindi', 'Tamil', 'Telugu', 'Malayalam', 'Kannada'
-  ];
+
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -42,20 +34,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
     return () => clearTimeout(timer);
   }, []);
 
-  // Get current language from user profile or default
-  useEffect(() => {
-    if (userProfile?.preferred_language) {
-      setSelectedLanguage(userProfile.preferred_language);
-    }
-  }, [userProfile]);
 
-  const handleLanguageChange = (language: string) => {
-    setSelectedLanguage(language);
-    setShowLanguageModal(false);
-    // In production, this would update the app language
-    // For now, just show a success message
-    console.log('Language changed to:', language);
-  };
 
   const handleLogout = async () => {
     setLogoutLoading(true);
@@ -81,15 +60,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
   };
 
   const settingsOptions = [
-    {
-      id: 'language',
-      title: 'Change App Language',
-      description: 'Switch the interface language',
-      icon: Globe,
-      action: () => setShowLanguageModal(true),
-      showChevron: true,
-      value: selectedLanguage
-    },
+
     {
       id: 'notifications',
       title: 'Notification Settings',
@@ -98,14 +69,6 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
       action: () => alert('Notification settings coming soon! This will allow you to customize when and how you receive spiritual reminders.'),
       showChevron: true,
       disabled: true
-    },
-    {
-      id: 'preferences',
-      title: 'Change Ritual Preferences',
-      description: 'Update your spiritual calendar and rituals',
-      icon: Sliders,
-      action: onChangePreferences,
-      showChevron: true
     },
     {
       id: 'feedback',

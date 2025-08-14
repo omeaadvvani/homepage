@@ -15,7 +15,9 @@ import {
   Calendar
 } from 'lucide-react';
 
-import { perplexityApi } from '../lib/perplexity-api';
+import { useVoiceVedicAPI } from '../lib/voicevedic-api';
+import { useLocation } from '../hooks/useLocation';
+import { useAuth } from '../hooks/useAuth';
 
 // Removed unused imports to fix linting errors
 // Perplexity API integration for spiritual guidance
@@ -86,12 +88,16 @@ interface AskVoiceVedicExperienceProps {
 }
 
 const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBack }) => {
+  // Enhanced API and location detection
+  const { askVoiceVedic } = useVoiceVedicAPI();
+  const { user } = useAuth();
+  const { currentLocation, startLocationTracking } = useLocation(user?.id);
+  
   // Simple local response system - no external APIs needed
   // Simple browser-based voice synthesis
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
-  
-
+  const [voiceInitialized, setVoiceInitialized] = useState(false);
   
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -128,42 +134,92 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     setMicSupported(!!SpeechRecognition);
+    
+    // Ensure app loads even if voice synthesis is not available
+    const checkVoiceSupport = () => {
+      if (!window.speechSynthesis) {
+        console.log('Speech synthesis not supported, continuing without voice');
+        setIsAppLoading(false);
+        setVoiceInitialized(true);
+        return;
+      }
+      
+      // If voices are already available, stop loading
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        console.log('Voices available immediately:', voices.length);
+        setIsAppLoading(false);
+        setVoiceInitialized(true);
+      }
+    };
+    
+    checkVoiceSupport();
   }, []);
 
   // Handle voice loading and tab switching issues
   useEffect(() => {
+    const initializeVoiceSystem = () => {
+      // Prevent multiple initializations
+      if (voiceInitialized) {
+        return;
+      }
+      
+      const voices = window.speechSynthesis.getVoices();
+      console.log('Available voices:', voices.length);
+      
+      if (voices.length > 0) {
+        // Voices are already loaded
+        console.log('Voices loaded immediately:', voices.length);
+        setIsAppLoading(false);
+        setVoiceInitialized(true);
+        return;
+      }
+      
+      // Wait for voices to load
+      const handleVoicesChanged = () => {
+        const loadedVoices = window.speechSynthesis.getVoices();
+        console.log('Voices loaded after event:', loadedVoices.length);
+        setIsAppLoading(false);
+        setVoiceInitialized(true);
+        window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+      };
+      
+      window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
+      
+      // Fallback timeout - stop loading after 3 seconds
+      const timeoutId = setTimeout(() => {
+        console.log('Voice loading timeout, continuing anyway');
+        setIsAppLoading(false);
+        setVoiceInitialized(true);
+        window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+      }, 3000);
+      
+      // Cleanup timeout if voices load
+      window.speechSynthesis.addEventListener('voiceschanged', () => {
+        clearTimeout(timeoutId);
+      });
+    };
+
     const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        // Reload voices when tab becomes active
-        const voices = window.speechSynthesis.getVoices();
-        if (voices.length === 0) {
-          // Wait for voices to load
-          window.speechSynthesis.onvoiceschanged = () => {
-            console.log('Voices loaded after tab switch:', window.speechSynthesis.getVoices().length);
-            setIsAppLoading(false);
-          };
-        } else {
-          setIsAppLoading(false);
-        }
+      if (!document.hidden && !voiceInitialized) {
+        // Reload voices when tab becomes active (only if not already initialized)
+        initializeVoiceSystem();
       }
     };
 
-    // Listen for tab visibility changes
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    // Initial voice check
-    handleVisibilityChange();
-
-    // Set a timeout to stop loading if voices don't load
-    const loadingTimeout = setTimeout(() => {
-      setIsAppLoading(false);
-    }, 3000);
+    // Initialize voice system and location tracking when component mounts
+    initializeVoiceSystem();
+    
+    if (user?.id) {
+      startLocationTracking();
+    }
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearTimeout(loadingTimeout);
     };
-  }, []);
+  }, [user?.id, startLocationTracking, voiceInitialized]);
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -324,6 +380,33 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     return () => { window.speechSynthesis.onvoiceschanged = null; };
   }, []);
 
+  // Function to clean up time strings for TTS to avoid "AM PM" reading issues
+  const cleanTextForTTS = (text: string): string => {
+    // Fix time format issues that cause TTS to read "AM PM" incorrectly
+    return text
+      // Remove special characters and symbols that cause TTS issues
+      .replace(/🪔/g, 'Jai Shree Krishna')
+      .replace(/[•·]/g, '')
+      .replace(/[–—]/g, ' to ')
+      .replace(/[^\w\s\-\.,:;()]/g, '') // Remove all special characters except basic punctuation
+      // Fix "3:40 PM to 5:20 PM" becoming "3:40 AM PM to 5:20 AM PM"
+      .replace(/(\d{1,2}:\d{2})\s+(AM|PM)\s+to\s+(\d{1,2}:\d{2})\s+(AM|PM)/g, '$1 $2 to $3 $4')
+      // Fix "9:05 AM to 10:45 AM" becoming "9:05 AM PM to 10:45 AM PM"
+      .replace(/(\d{1,2}:\d{2})\s+(AM|PM)\s+to\s+(\d{1,2}:\d{2})\s+(AM|PM)/g, '$1 $2 to $3 $4')
+      // Fix any remaining "AM PM" combinations
+      .replace(/(AM|PM)\s+(AM|PM)/g, '$1')
+      // Fix "About" and "Around" for better TTS
+      .replace(/About\s+/g, '')
+      .replace(/Around\s+/g, '')
+      // Clean up extra spaces
+      .replace(/\s+/g, ' ')
+      // Handle Panchangam format better
+      .replace(/(\d{1,2}:\d{2}\s+(?:AM|PM))/g, '$1')
+      // Clean up any remaining formatting for better TTS
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
   const playMessage = (msgId: string, text: string) => {
     if (playingMsgId === msgId) {
       window.speechSynthesis.cancel();
@@ -332,7 +415,11 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     }
     window.speechSynthesis.cancel();
     setPlayingMsgId(msgId);
-    const utterance = new window.SpeechSynthesisUtterance(text);
+    
+    // Clean the text for better TTS
+    const cleanedText = cleanTextForTTS(text);
+    
+    const utterance = new window.SpeechSynthesisUtterance(cleanedText);
     const voices = window.speechSynthesis.getVoices();
     utterance.voice = voices.find(v => v.name === selectedVoice) || voices[0];
     utterance.onend = () => setPlayingMsgId(null);
@@ -344,7 +431,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   function processPerplexityResponse(response: string, isMoreInfo: boolean = false): string {
     let lines = response.split('\n').map(line => line.trim()).filter(Boolean);
 
-    // Remove reasoning/thinking lines and blocks
+    // Remove only the most problematic reasoning/thinking lines
     const forbiddenPhrases = [
       "let's tackle this",
       "step by step", 
@@ -359,31 +446,11 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       "looking at",
       "the fifth source",
       "the fourth source",
-      "both dates are",
-      "for deeper observance",
-      "the user's location",
-      "the answer should mention",
-      "timings from",
-      "adjusted for",
-      "this confusion arises",
-      "different sources might",
-      "the user is in",
-      "i need to convert",
-      "assuming the dates",
-      "the first result",
       "the third source",
-      "might be a different",
+      "the first result",
       "please consult",
       "consult local panchang",
       "priests for precise timings",
-      "as per your location",
-      "family traditions",
-      "reference",
-      "source",
-      "please provide your location",
-      // New forbidden phrase
-      "drik panchang or similar tools provide precise timings",
-      // New forbidden phrases for self-contained answers
       "please check drik panchang",
       "refer to drik panchang",
       "consult drik panchang",
@@ -395,7 +462,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       "consult other sources"
     ];
     
-    // Remove lines containing forbidden phrases or source references
+    // Remove lines containing forbidden phrases and source references
     lines = lines.filter(line =>
       !forbiddenPhrases.some(phrase => line.toLowerCase().includes(phrase)) &&
       !/\[\d+\]/.test(line)
@@ -404,31 +471,62 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     // Remove all asterisks (**) for Markdown bold
     lines = lines.map(line => line.replace(/\*\*/g, ""));
 
-    // Remove everything before the first "🪔 Jai Shree Krishna"
-    const jaiShreeIndex = lines.findIndex(line => line.includes('🪔 Jai Shree Krishna'));
-    if (jaiShreeIndex > 0) {
+    // Keep the greeting but preserve all the actual content
+    const jaiShreeIndex = lines.findIndex(line => line.includes('🪔 Jai Shree Krishna') || line.includes('Jai Shree Krishna'));
+    if (jaiShreeIndex >= 0) {
+      // Keep the greeting and everything after it
       lines = lines.slice(jaiShreeIndex);
     }
 
-    // Ensure greeting
-    if (!lines[0]?.includes('🪔 Jai Shree Krishna')) {
+    // Ensure greeting is present
+    if (!lines[0]?.includes('Jai Shree Krishna')) {
       lines.unshift('🪔 Jai Shree Krishna.');
     }
 
-    // Limit lines
-    const maxLines = 15;
+    // For panchangam questions, preserve more content
+    const isPanchangamQuestion = /panchang|tithi|nakshatra|rahu|muhurat/i.test(response);
+    const maxLines = isPanchangamQuestion ? 25 : 15;
+    
     if (lines.length > maxLines) {
       lines = lines.slice(0, maxLines);
     }
 
-    // Each line should be 1–2 sentences only
+    // Keep meaningful content - don't truncate sentences aggressively
     lines = lines.map(line => {
+      // For panchangam data, keep the full line
+      if (isPanchangamQuestion && (line.includes(':') || line.includes('AM') || line.includes('PM') || line.includes('Tithi') || line.includes('Nakshatra'))) {
+        return line;
+      }
+      
+      // For other content, limit to 2 sentences
       const sentences = line.split('. ');
       return sentences.slice(0, 2).join('. ') + (sentences.length > 2 ? '.' : '');
     });
 
     return lines.join('\n');
   }
+
+  // Extract location from user's question
+  const extractLocationFromQuestion = (question: string): string | null => {
+    const locationPatterns = [
+      /in\s+([^,\?\.]+(?:\s+[^,\?\.]+)*)/i,
+      /at\s+([^,\?\.]+(?:\s+[^,\?\.]+)*)/i,
+      /for\s+([^,\?\.]+(?:\s+[^,\?\.]+)*)/i,
+      /location\s+([^,\?\.]+(?:\s+[^,\?\.]+)*)/i
+    ];
+    
+    for (const pattern of locationPatterns) {
+      const match = question.match(pattern);
+      if (match && match[1]) {
+        const location = match[1].trim();
+        // Filter out common words that aren't locations
+        if (!/^(today|this|the|a|an|my|your|our|their|what|when|where|how|why|is|are|was|were|will|can|could|should|would|do|does|did)$/i.test(location)) {
+          return location;
+        }
+      }
+    }
+    return null;
+  };
 
   const handleAskQuestion = async () => {
     if (!question.trim()) return;
@@ -446,11 +544,24 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
     setQuestion('');
 
     try {
-      // Call Perplexity API for spiritual guidance
-      const responseText = await perplexityApi.getResponse(userMessage.content);
+      // Call enhanced VoiceVedic API with location context
+      const extractedLocation = extractLocationFromQuestion(userMessage.content);
+      const request = {
+        question: userMessage.content,
+        location: extractedLocation || currentLocation?.location_name
+      };
+      
+      console.log('🔍 API Request:', request);
+      const response = await askVoiceVedic(request);
+      console.log('🔍 API Response:', response);
+      
+      const responseText = response.answer;
+      console.log('🔍 Response Text:', responseText);
+      
       // Determine if user asked for 'more info'
       const isMoreInfo = /more info|full panchang|all details/i.test(userMessage.content);
       const processedText = processPerplexityResponse(responseText, isMoreInfo);
+      console.log('🔍 Processed Text:', processedText);
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -812,10 +923,21 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
                     {message.type === 'assistant' && (
                       <button
                         className={`ml-2 p-1 rounded-full transition-colors duration-200 ${playingMsgId === message.id ? 'bg-yellow-200 text-yellow-800' : 'bg-spiritual-100 text-spiritual-700 hover:bg-yellow-100'}`}
-                        onClick={() => playMessage(message.id, message.content)}
+                        onClick={() => {
+                          if (playingMsgId === message.id) {
+                            // If currently playing, stop and mute
+                            window.speechSynthesis.cancel();
+                            setPlayingMsgId(null);
+                            setIsMuted(true);
+                          } else {
+                            // If not playing, start playing and unmute
+                            setIsMuted(false);
+                            playMessage(message.id, message.content);
+                          }
+                        }}
                         title={playingMsgId === message.id ? 'Stop Voice' : 'Play Voice'}
                       >
-                        {playingMsgId === message.id ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                        {playingMsgId === message.id ? <VolumeX className="w-5 h-5" /> : (isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />)}
                       </button>
                     )}
                   </div>
@@ -830,7 +952,10 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
                   {message.type === 'assistant' && (
                     <div className="mt-3 pt-3 border-t border-spiritual-200/30">
                       <button
-                        onClick={() => playMessage(message.id, message.content)}
+                        onClick={() => {
+                          setIsMuted(false);
+                          playMessage(message.id, message.content);
+                        }}
                         className="group flex items-center gap-2 text-spiritual-600 hover:text-spiritual-700 font-medium transition-all duration-300 tracking-spiritual"
                         title="Replay audio"
                       >
