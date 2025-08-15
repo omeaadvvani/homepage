@@ -405,6 +405,7 @@ function App() {
     }
   };
 
+
   // Conversation management functions with localStorage persistence
   const addMessage = (message: { id: string; type: 'user' | 'assistant'; content: string; timestamp: Date }) => {
     setConversationMessages(prev => {
@@ -417,6 +418,7 @@ function App() {
       }
       return newMessages;
     });
+
   };
 
   const clearConversation = () => {

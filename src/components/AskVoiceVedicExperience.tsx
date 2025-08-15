@@ -692,7 +692,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
 
   const clearConversation = () => {
     if (confirm('Are you sure you want to clear the conversation history?')) {
-              onClearConversation();
+      onClearConversation();
       setApiError('');
       try {
         window.speechSynthesis.cancel();
