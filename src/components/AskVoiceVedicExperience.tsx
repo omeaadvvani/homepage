@@ -85,9 +85,22 @@ interface Message {
 
 interface AskVoiceVedicExperienceProps {
   onBack: () => void;
+  messages: Array<{
+    id: string;
+    type: 'user' | 'assistant';
+    content: string;
+    timestamp: Date;
+  }>;
+  onAddMessage: (message: { id: string; type: 'user' | 'assistant'; content: string; timestamp: Date }) => void;
+  onClearConversation: () => void;
 }
 
-const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBack }) => {
+const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ 
+  onBack, 
+  messages, 
+  onAddMessage, 
+  onClearConversation 
+}) => {
   // Enhanced API and location detection
   const { askVoiceVedic } = useVoiceVedicAPI();
   const { user } = useAuth();
@@ -100,7 +113,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   const [voiceInitialized, setVoiceInitialized] = useState(false);
   
   const [question, setQuestion] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
+  // Messages are now managed by parent component to persist across navigation
   const [isAsking, setIsAsking] = useState(false);
   const [apiError, setApiError] = useState('');
   const [showSacredText, setShowSacredText] = useState(false);
@@ -538,7 +551,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       timestamp: new Date()
     };
 
-    setMessages(prev => [...prev, userMessage]);
+            onAddMessage(userMessage);
     setIsAsking(true);
     setApiError('');
     setQuestion('');
@@ -570,7 +583,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         timestamp: new Date()
       };
 
-      setMessages(prev => [...prev, assistantMessage]);
+              onAddMessage(assistantMessage);
 
       // Trigger text-to-speech for the response
       if (responseText && responseText.trim() !== "") {
@@ -599,7 +612,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         timestamp: new Date()
       };
 
-      setMessages(prev => [...prev, errorResponse]);
+              onAddMessage(errorResponse);
     } finally {
       setIsAsking(false);
     }
@@ -667,7 +680,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
 
   const clearConversation = () => {
     if (confirm('Are you sure you want to clear the conversation history?')) {
-      setMessages([]);
+      onClearConversation();
       setApiError('');
       try {
         window.speechSynthesis.cancel();
