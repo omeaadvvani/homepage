@@ -29,6 +29,30 @@ function App() {
   const [authTimeout, setAuthTimeout] = useState(false);
   const [authError, setAuthError] = useState('');
   const [locationWarning, setLocationWarning] = useState('');
+  
+  // Conversation state to persist across navigation and app switching
+  const [conversationMessages, setConversationMessages] = useState<Array<{
+    id: string;
+    type: 'user' | 'assistant';
+    content: string;
+    timestamp: Date;
+  }>>(() => {
+    // Load conversations from localStorage on app start
+    try {
+      const saved = localStorage.getItem('voicevedic-conversations');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Convert timestamp strings back to Date objects
+        return parsed.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+      }
+    } catch (error) {
+      console.warn('Failed to load conversations from localStorage:', error);
+    }
+    return [];
+  });
 
   const { user, userProfile, loading: authLoading, error: authHookError, signOut } = useAuth();
   const { 
@@ -381,6 +405,30 @@ function App() {
     }
   };
 
+  // Conversation management functions with localStorage persistence
+  const addMessage = (message: { id: string; type: 'user' | 'assistant'; content: string; timestamp: Date }) => {
+    setConversationMessages(prev => {
+      const newMessages = [...prev, message];
+      // Save to localStorage
+      try {
+        localStorage.setItem('voicevedic-conversations', JSON.stringify(newMessages));
+      } catch (error) {
+        console.warn('Failed to save conversation to localStorage:', error);
+      }
+      return newMessages;
+    });
+  };
+
+  const clearConversation = () => {
+    setConversationMessages([]);
+    // Clear from localStorage
+    try {
+      localStorage.removeItem('voicevedic-conversations');
+    } catch (error) {
+      console.warn('Failed to clear conversation from localStorage:', error);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       setIsNavigating(true);
@@ -391,6 +439,13 @@ function App() {
       // Reset all state
       setGuestMode(false);
       setPreviousScreen('home');
+      setConversationMessages([]); // Clear conversation on logout
+      // Also clear from localStorage
+      try {
+        localStorage.removeItem('voicevedic-conversations');
+      } catch (error) {
+        console.warn('Failed to clear localStorage on logout:', error);
+      }
       
       // Navigate to home screen with delay to prevent loading screen flash
       setTimeout(() => {
@@ -501,6 +556,9 @@ function App() {
             element={
               <AskVoiceVedicExperience 
                 onBack={() => window.history.back()}
+                messages={conversationMessages}
+                onAddMessage={addMessage}
+                onClearConversation={clearConversation}
               />
             } 
           />

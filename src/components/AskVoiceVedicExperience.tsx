@@ -85,9 +85,22 @@ interface Message {
 
 interface AskVoiceVedicExperienceProps {
   onBack: () => void;
+  messages: Array<{
+    id: string;
+    type: 'user' | 'assistant';
+    content: string;
+    timestamp: Date;
+  }>;
+  onAddMessage: (message: { id: string; type: 'user' | 'assistant'; content: string; timestamp: Date }) => void;
+  onClearConversation: () => void;
 }
 
-const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBack }) => {
+const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ 
+  onBack, 
+  messages, 
+  onAddMessage, 
+  onClearConversation 
+}) => {
   // Enhanced API and location detection
   const { askVoiceVedic } = useVoiceVedicAPI();
   const { user } = useAuth();
@@ -100,7 +113,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
   const [voiceInitialized, setVoiceInitialized] = useState(false);
   
   const [question, setQuestion] = useState('');
-  const [messages, setMessages] = useState<Message[]>([]);
+  // Messages are now managed by parent component to persist across navigation
   const [isAsking, setIsAsking] = useState(false);
   const [apiError, setApiError] = useState('');
   const [showSacredText, setShowSacredText] = useState(false);
@@ -158,22 +171,26 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
 
   // Handle voice loading and tab switching issues
   useEffect(() => {
-    const initializeVoiceSystem = () => {
-      // Prevent multiple initializations
-      if (voiceInitialized) {
-        return;
-      }
-      
-      const voices = window.speechSynthesis.getVoices();
-      console.log('Available voices:', voices.length);
-      
-      if (voices.length > 0) {
-        // Voices are already loaded
-        console.log('Voices loaded immediately:', voices.length);
-        setIsAppLoading(false);
-        setVoiceInitialized(true);
-        return;
-      }
+      const initializeVoiceSystem = () => {
+    // Prevent multiple initializations
+    if (voiceInitialized) {
+      return;
+    }
+    
+    // Quick check - if voices are already available, skip loading
+    const voices = window.speechSynthesis.getVoices();
+    console.log('Available voices:', voices.length);
+    
+    if (voices.length > 0) {
+      // Voices are already loaded
+      console.log('Voices loaded immediately:', voices.length);
+      setIsAppLoading(false);
+      setVoiceInitialized(true);
+      return;
+    }
+    
+    // Only show loading if voices are actually not available
+    setIsAppLoading(true);
       
       // Wait for voices to load
       const handleVoicesChanged = () => {
@@ -186,13 +203,13 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       
       window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
       
-      // Fallback timeout - stop loading after 3 seconds
+      // Fallback timeout - stop loading after 1 second (voices are usually already loaded)
       const timeoutId = setTimeout(() => {
         console.log('Voice loading timeout, continuing anyway');
         setIsAppLoading(false);
         setVoiceInitialized(true);
         window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
-      }, 3000);
+      }, 1000);
       
       // Cleanup timeout if voices load
       window.speechSynthesis.addEventListener('voiceschanged', () => {
@@ -202,8 +219,16 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
 
     const handleVisibilityChange = () => {
       if (!document.hidden && !voiceInitialized) {
-        // Reload voices when tab becomes active (only if not already initialized)
-        initializeVoiceSystem();
+        // Only reload voices if they're not already available
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length === 0) {
+          // Quick check - if voices are available, don't show loading
+          initializeVoiceSystem();
+        } else {
+          // Voices are already available, skip loading
+          setIsAppLoading(false);
+          setVoiceInitialized(true);
+        }
       }
     };
 
@@ -538,7 +563,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
       timestamp: new Date()
     };
 
-    setMessages(prev => [...prev, userMessage]);
+            onAddMessage(userMessage);
     setIsAsking(true);
     setApiError('');
     setQuestion('');
@@ -570,7 +595,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         timestamp: new Date()
       };
 
-      setMessages(prev => [...prev, assistantMessage]);
+              onAddMessage(assistantMessage);
 
       // Trigger text-to-speech for the response
       if (responseText && responseText.trim() !== "") {
@@ -599,7 +624,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
         timestamp: new Date()
       };
 
-      setMessages(prev => [...prev, errorResponse]);
+              onAddMessage(errorResponse);
     } finally {
       setIsAsking(false);
     }
@@ -667,7 +692,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({ onBac
 
   const clearConversation = () => {
     if (confirm('Are you sure you want to clear the conversation history?')) {
-      setMessages([]);
+              onClearConversation();
       setApiError('');
       try {
         window.speechSynthesis.cancel();
