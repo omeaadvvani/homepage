@@ -550,6 +550,7 @@ function App() {
                 onShowSettings={handleShowSettings}
                 onLogout={guestMode ? handleBackToHome : handleLogout}
                 locationWarning={locationWarning}
+                currentLocation={location}
               />
             } 
           />

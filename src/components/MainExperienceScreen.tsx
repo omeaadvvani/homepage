@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Headphones, 
   MessageCircle, 
-  Settings, 
   LogOut, 
   ArrowRight,
   ChevronRight,
@@ -16,10 +15,12 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
+
 interface MainExperienceScreenProps {
   onShowSettings: () => void;
   onLogout?: () => void;
   locationWarning?: string;
+  currentLocation?: string;
 }
 
 interface SpiritualEvent {
@@ -37,7 +38,8 @@ interface SpiritualEvent {
 const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({ 
   onShowSettings,
   onLogout,
-  locationWarning
+  locationWarning,
+  currentLocation
 }) => {
   const { userProfile } = useAuth();
   const navigate = useNavigate();
@@ -125,6 +127,8 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
     setTodayEvent(sampleEvents[0]);
   }, [sampleEvents]);
 
+
+
   const formatTime = (timeString: string) => {
     const [hours, minutes] = timeString.split(':');
     const hour = parseInt(hours);
@@ -149,8 +153,8 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
     }
   };
 
-  // Get display values with fallbacks
-  const displayLocation = userProfile?.location || 'Location not detected';
+  // Get display values with fallbacks - use current location if available
+  const displayLocation = currentLocation || userProfile?.location || 'Location not detected';
 
   return (
     <div className="min-h-screen bg-spiritual-diagonal relative overflow-hidden font-sans">
@@ -165,14 +169,7 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
       
       {/* Settings Button - Top Right */}
       <div className="absolute top-6 right-6 z-20">
-        <button
-          onClick={onShowSettings}
-          className="group flex items-center gap-3 px-4 py-3 bg-white/90 backdrop-blur-sm rounded-spiritual shadow-spiritual border border-spiritual-200/50 hover:bg-white hover:shadow-spiritual-lg transition-all duration-300 text-spiritual-800 font-medium tracking-spiritual"
-          title="App Settings"
-        >
-          <Settings className="w-5 h-5 text-spiritual-600 group-hover:rotate-90 transition-transform duration-300" />
-          <span className="text-sm">Settings</span>
-        </button>
+
       </div>
       
       {/* Sacred Beginning Text - Bottom Right */}
@@ -281,18 +278,10 @@ const MainExperienceScreen: React.FC<MainExperienceScreenProps> = ({
 
           {/* Quick Actions */}
           <div className="flex flex-col sm:flex-row gap-4">
-            <button
-              onClick={onShowSettings}
-              className="group flex items-center justify-center gap-3 flex-1 px-6 py-4 bg-white/70 border-2 border-spiritual-300 hover:border-spiritual-400 text-spiritual-900 font-semibold rounded-spiritual shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-spiritual-200/50 tracking-spiritual"
-            >
-              <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-              <span>Settings</span>
-            </button>
-            
             {onLogout && (
               <button
                 onClick={onLogout}
-                className="group flex items-center justify-center gap-3 px-6 py-4 bg-gray-100 border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-semibold rounded-spiritual shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-gray-200/50 tracking-spiritual"
+                className="group flex items-center justify-center gap-3 w-full px-6 py-4 bg-gray-100 border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-semibold rounded-spiritual shadow-spiritual hover:shadow-spiritual-lg transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-gray-200/50 tracking-spiritual"
               >
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                 <span>Logout</span>
