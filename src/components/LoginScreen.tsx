@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Shield, ArrowLeft, Mail, Eye, EyeOff, LogIn, RotateCcw, AlertCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import Logo from './Logo';
 import ForgotPinScreen from './ForgotPinScreen';
 
 interface LoginScreenProps {
@@ -190,6 +191,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onComplete, onBack }) => {
         
         {/* Header Section */}
         <div className="text-center mb-12 max-w-lg animate-fade-in">
+          {/* Logo */}
+          <div className="mb-6">
+            <Logo size="medium" />
+          </div>
+          
           <h1 className="text-4xl md:text-5xl font-bold text-spiritual-900 mb-6 leading-spiritual tracking-spiritual">
             Welcome Back
           </h1>

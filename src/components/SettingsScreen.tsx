@@ -10,6 +10,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import Logo from './Logo';
 
 interface SettingsScreenProps {
   onBack: () => void;
@@ -129,6 +130,11 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
         
         {/* Header Section */}
         <div className="text-center mb-12 max-w-2xl mt-16 animate-fade-in">
+          {/* Logo */}
+          <div className="mb-6">
+            <Logo size="medium" />
+          </div>
+          
           <div className="flex items-center justify-center gap-3 mb-4">
             <Settings className="w-8 h-8 text-spiritual-600" />
             <h1 className="text-3xl md:text-4xl font-bold text-spiritual-900 leading-spiritual tracking-spiritual">

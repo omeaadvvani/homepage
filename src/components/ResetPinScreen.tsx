@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Shield, Lock, CheckCircle, AlertCircle, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import Logo from './Logo';
 
 interface ResetPinScreenProps {
   onComplete: () => void;
@@ -166,7 +167,12 @@ const ResetPinScreen: React.FC<ResetPinScreenProps> = ({ onComplete, onBack }) =
         <div className="w-full max-w-md animate-fade-in">
           {/* Header */}
           <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold text-spiritual-900 mb-6 leading-spiritual tracking-spiritual">
+            {/* Logo */}
+            <div className="mb-6">
+              <Logo size="medium" />
+            </div>
+            
+            <h1 className="text-4xl md:text-2xl font-bold text-spiritual-900 mb-6 leading-spiritual tracking-spiritual">
               Set a New PIN
             </h1>
             <p className="text-lg text-spiritual-800/80 font-medium tracking-spiritual line-height-spiritual-relaxed">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, ArrowLeft, Send, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import Logo from './Logo';
 
 interface ForgotPinScreenProps {
   onBack: () => void;
@@ -108,6 +109,11 @@ const ForgotPinScreen: React.FC<ForgotPinScreenProps> = ({ onBack, onComplete })
         <div className="w-full max-w-md animate-fade-in">
           {/* Header */}
           <div className="text-center mb-12">
+            {/* Logo */}
+            <div className="mb-6">
+              <Logo size="medium" />
+            </div>
+            
             <h1 className="text-4xl md:text-5xl font-bold text-spiritual-900 mb-6 leading-spiritual tracking-spiritual">
               Forgot Your PIN?
             </h1>

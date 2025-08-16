@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Globe, LogIn, UserPlus, Headphones, ChevronDown, MapPin, AlertCircle, Navigation } from 'lucide-react';
 import { useAuth } from './hooks/useAuth';
 import { useLocation } from './hooks/useLocation';
+import Logo from './components/Logo';
 import GuestOnboardingScreen from './components/GuestOnboardingScreen';
 import SignUpScreen from './components/SignUpScreen';
 import LoginScreen from './components/LoginScreen';
@@ -801,6 +802,11 @@ function App() {
         
         {/* Center Block */}
         <div className="text-center mb-12 max-w-2xl animate-fade-in">
+          {/* Logo */}
+          <div className="mb-8">
+            <Logo size="large" />
+          </div>
+          
           <h1 className="text-4xl md:text-6xl font-bold text-spiritual-900 mb-6 leading-spiritual tracking-spiritual">
             Namaste. Welcome to
             <br />

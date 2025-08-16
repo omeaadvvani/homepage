@@ -5,6 +5,7 @@ import {
   Sparkles,
   ArrowRight
 } from 'lucide-react';
+import Logo from './Logo';
 
 interface GuestOnboardingScreenProps {
   onComplete: () => void;
@@ -53,6 +54,11 @@ const GuestOnboardingScreen: React.FC<GuestOnboardingScreenProps> = ({ onComplet
         
         {/* Header Section */}
         <div className="text-center mb-12 max-w-2xl mt-16 animate-fade-in">
+          {/* Logo */}
+          <div className="mb-6">
+            <Logo size="medium" />
+          </div>
+          
           <h1 className="text-3xl md:text-4xl font-bold text-spiritual-900 mb-4 leading-spiritual tracking-spiritual">
             Welcome, Guest! Let's
             <br />

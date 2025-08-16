@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, MessageCircle, Sparkles, RotateCcw, Volume2 } from 'lucide-react';
+import Logo from './Logo';
 
 interface DemoScreenProps {
   onBack: () => void;
@@ -125,6 +126,11 @@ const DemoScreen: React.FC<DemoScreenProps> = ({ onBack }) => {
         
         {/* Header Section */}
         <div className="text-center mb-12 max-w-2xl animate-fade-in">
+          {/* Logo */}
+          <div className="mb-6">
+            <Logo size="medium" />
+          </div>
+          
           <h1 className="text-4xl md:text-5xl font-bold text-spiritual-900 mb-6 leading-spiritual tracking-spiritual">
             Ask VoiceVedic
           </h1>

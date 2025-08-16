@@ -14,6 +14,7 @@ import {
   VolumeX,
   Calendar
 } from 'lucide-react';
+import Logo from './Logo';
 
 import { useVoiceVedicAPI } from '../lib/voicevedic-api';
 import { useLocation } from '../hooks/useLocation';
@@ -753,6 +754,11 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
         </button>
 
         <div className="text-center">
+          {/* Logo */}
+          <div className="mb-2">
+            <Logo size="small" />
+          </div>
+          
           <h1 className="text-2xl md:text-3xl font-bold text-spiritual-900 tracking-spiritual">
             Ask VoiceVedic
           </h1>

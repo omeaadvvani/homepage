@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Shield, Lock, CheckCircle, ArrowLeft, Mail, Eye, EyeOff, RotateCcw, AlertCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import Logo from './Logo';
 
 interface SignUpScreenProps {
   onComplete: () => void;
@@ -235,6 +236,11 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ onComplete, onBack }) => {
         
         {/* Header Section */}
         <div className="text-center mb-12 max-w-lg mt-16 animate-fade-in">
+          {/* Logo */}
+          <div className="mb-6">
+            <Logo size="medium" />
+          </div>
+          
           <div className="flex items-center justify-center gap-3 mb-4">
             <CheckCircle className="w-8 h-8 text-accent-600" />
             <h1 className="text-3xl md:text-4xl font-bold text-spiritual-900 leading-spiritual tracking-spiritual">
