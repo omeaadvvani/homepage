@@ -10,9 +10,7 @@ import {
   Trash2,
   Lightbulb,
   ArrowRight,
-  Settings,
-  VolumeX,
-  Calendar
+  VolumeX
 } from 'lucide-react';
 import Logo from './Logo';
 
@@ -20,9 +18,40 @@ import { useVoiceVedicAPI } from '../lib/voicevedic-api';
 import { useLocation } from '../hooks/useLocation';
 import { useAuth } from '../hooks/useAuth';
 
-// Removed unused imports to fix linting errors
-// Perplexity API integration for spiritual guidance
-// Browser-based voice synthesis
+// Function to properly parse and format Vedic timing content with separate line items
+const formatVedicTiming = (content: string): string => {
+  // Check if this looks like Vedic timing content
+  const vedicKeywords = ['Jai Shree Krishna', 'TIMING DETAILS', 'Sunrise', 'Sunset', 'Vaara', 'Maasa', 'Tithi', 'Nakshatra', 'Rahu Kalam', 'Yama Gandam', 'Brahma Muhurtham'];
+  const hasVedicContent = vedicKeywords.some(keyword => content.includes(keyword));
+  
+  if (!hasVedicContent) {
+    return content; // Return original content if not Vedic timing
+  }
+  
+  let formattedContent = content;
+  
+  // First, handle the greeting - ensure it's on its own line
+  formattedContent = formattedContent.replace(/(Jai Shree Krishna.*?)(📅)/, '$1\n\n$2');
+  
+  // Handle TIMING DETAILS header - ensure it's on its own line
+  formattedContent = formattedContent.replace(/(📅 TIMING DETAILS:)/, '\n$1\n');
+  
+  // Split content by bullet points and create separate lines
+  formattedContent = formattedContent.replace(/•\s*/g, '\n• ');
+  
+  // Clean up any remaining inline separators and ensure proper spacing
+  formattedContent = formattedContent.replace(/\s*•\s*/g, '\n• ');
+  
+  // Handle the footer text - ensure it's separated
+  formattedContent = formattedContent.replace(/(All timings are.*?)$/m, '\n\n$1');
+  
+  // Clean up multiple newlines and ensure consistent spacing
+  formattedContent = formattedContent.replace(/\n{3,}/g, '\n\n');
+  
+  return formattedContent;
+};
+
+// VoiceVedic Experience Component - Clean and optimized version
 
 // Type definitions for Web Speech API
 declare global {
@@ -107,10 +136,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
   const { user } = useAuth();
   const { currentLocation, startLocationTracking } = useLocation(user?.id);
   
-  // Simple local response system - no external APIs needed
-  // Simple browser-based voice synthesis
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [voiceError, setVoiceError] = useState<string | null>(null);
+  // Voice system state
   const [voiceInitialized, setVoiceInitialized] = useState(false);
   
   const [question, setQuestion] = useState('');
@@ -123,12 +149,11 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
-  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
+
   const [isAppLoading, setIsAppLoading] = useState(true);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
   
   // Fallback suggestions when API fails
   const fallbackSuggestions = useMemo(() => [
@@ -406,9 +431,8 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     return () => { window.speechSynthesis.onvoiceschanged = null; };
   }, []);
 
-  // Function to clean up time strings for TTS to avoid "AM PM" reading issues
+  // Consolidated function to clean up text for TTS
   const cleanTextForTTS = (text: string): string => {
-    // Fix time format issues that cause TTS to read "AM PM" incorrectly
     return text
       // Remove special characters and symbols that cause TTS issues
       .replace(/🪔/g, 'Jai Shree Krishna')
@@ -417,18 +441,17 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       .replace(/[^\w\s\-\.,:;()]/g, '') // Remove all special characters except basic punctuation
       // Fix "3:40 PM to 5:20 PM" becoming "3:40 AM PM to 5:20 AM PM"
       .replace(/(\d{1,2}:\d{2})\s+(AM|PM)\s+to\s+(\d{1,2}:\d{2})\s+(AM|PM)/g, '$1 $2 to $3 $4')
-      // Fix "9:05 AM to 10:45 AM" becoming "9:05 AM PM to 10:45 AM PM"
-      .replace(/(\d{1,2}:\d{2})\s+(AM|PM)\s+to\s+(\d{1,2}:\d{2})\s+(AM|PM)/g, '$1 $2 to $3 $4')
       // Fix any remaining "AM PM" combinations
       .replace(/(AM|PM)\s+(AM|PM)/g, '$1')
       // Fix "About" and "Around" for better TTS
       .replace(/About\s+/g, '')
       .replace(/Around\s+/g, '')
-      // Clean up extra spaces
-      .replace(/\s+/g, ' ')
+      // Remove any "pause" text that might have been added
+      .replace(/\.\.\.\s*pause\s*\.\.\./g, '')
+      .replace(/pause/gi, '')
       // Handle Panchangam format better
       .replace(/(\d{1,2}:\d{2}\s+(?:AM|PM))/g, '$1')
-      // Clean up any remaining formatting for better TTS
+      // Clean up extra spaces and trim
       .replace(/\s+/g, ' ')
       .trim();
   };
@@ -442,15 +465,87 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     window.speechSynthesis.cancel();
     setPlayingMsgId(msgId);
     
-    // Clean the text for better TTS
-    const cleanedText = cleanTextForTTS(text);
+    // Check if this is Vedic timing content that needs pauses
+    const vedicKeywords = ['Jai Shree Krishna', 'TIMING DETAILS', 'Sunrise', 'Sunset', 'Vaara', 'Maasa', 'Tithi', 'Nakshatra', 'Rahu Kalam', 'Yama Gandam', 'Brahma Muhurtham'];
+    const isVedicTiming = vedicKeywords.some(keyword => text.includes(keyword));
     
-    const utterance = new window.SpeechSynthesisUtterance(cleanedText);
+    if (isVedicTiming) {
+      // Play Vedic timing with pauses between bullet points
+      playVedicTimingWithPauses(msgId, text);
+    } else {
+      // Regular content - use existing logic
+      const cleanedText = cleanTextForTTS(text);
+      const utterance = new window.SpeechSynthesisUtterance(cleanedText);
+      const voices = window.speechSynthesis.getVoices();
+      utterance.voice = voices.find(v => v.name === selectedVoice) || voices[0];
+      utterance.onend = () => setPlayingMsgId(null);
+      utterance.onerror = () => setPlayingMsgId(null);
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  // Function to play Vedic timing content with natural pauses between bullet points
+  const playVedicTimingWithPauses = (msgId: string, text: string) => {
+    // Use the formatted text from our formatting function
+    const formattedText = formatVedicTiming(text);
+    const lines = formattedText.split('\n').filter(line => line.trim());
+    const utterances: SpeechSynthesisUtterance[] = [];
     const voices = window.speechSynthesis.getVoices();
-    utterance.voice = voices.find(v => v.name === selectedVoice) || voices[0];
-    utterance.onend = () => setPlayingMsgId(null);
-    utterance.onerror = () => setPlayingMsgId(null);
-    window.speechSynthesis.speak(utterance);
+    const selectedVoiceObj = voices.find(v => v.name === selectedVoice) || voices[0];
+    
+    let currentIndex = 0;
+    
+    const playNextUtterance = () => {
+      if (currentIndex >= utterances.length) {
+        setPlayingMsgId(null);
+        return;
+      }
+      
+      const utterance = utterances[currentIndex];
+      const isLastUtterance = currentIndex === utterances.length - 1;
+      const currentLine = lines[currentIndex];
+      
+      utterance.onend = () => {
+        if (isLastUtterance) {
+          setPlayingMsgId(null);
+        } else {
+          currentIndex++;
+          // Add pause only for bullet points
+          if (currentLine.includes('•')) {
+            setTimeout(() => {
+              playNextUtterance();
+            }, 350); // 0.35 second pause - more natural timing
+          } else {
+            // No pause for headers, greeting, or footer
+            setTimeout(() => {
+              playNextUtterance();
+            }, 100); // Minimal pause
+          }
+        }
+      };
+      
+      utterance.onerror = () => setPlayingMsgId(null);
+      window.speechSynthesis.speak(utterance);
+    };
+    
+    // Create all utterances
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      
+      // Clean the line for TTS (remove any "pause" text)
+      const cleanedLine = cleanTextForTTS(line);
+      if (!cleanedLine) continue;
+      
+      const utterance = new window.SpeechSynthesisUtterance(cleanedLine);
+      utterance.voice = selectedVoiceObj;
+      utterances.push(utterance);
+    }
+    
+    // Start playing the first utterance
+    if (utterances.length > 0) {
+      playNextUtterance();
+    }
   };
 
   // Output post-processing for Perplexity responses
@@ -719,11 +814,6 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
 
   return (
     <div className="min-h-screen bg-spiritual-diagonal relative overflow-hidden font-sans flex flex-col">
-      {/* Hidden audio element for ElevenLabs playback */}
-      <audio
-        ref={audioRef}
-        style={{ display: 'none' }}
-      />
       {/* Spiritual Visual Layer */}
       <div className="absolute inset-0 bg-gradient-to-br from-spiritual-400/10 via-spiritual-300/5 to-spiritual-900/5"></div>
       
@@ -790,108 +880,6 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
           </button>
         </div>
       </div>
-      
-
-      
-      {/* Voice Settings Panel */}
-      {showVoiceSettings && (
-        <div className="relative z-30 bg-white/95 backdrop-blur-sm border-b border-spiritual-200/50 p-6 animate-slide-down">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-spiritual-900 tracking-spiritual">
-                Voice Settings
-              </h3>
-              <button
-                onClick={() => setShowVoiceSettings(false)}
-                className="text-spiritual-600 hover:text-spiritual-800 transition-colors"
-              >
-                ×
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              {/* Available Voices List */}
-              <div>
-                <label className="block text-sm font-medium text-spiritual-700 mb-2 tracking-spiritual">
-                  Available Voices
-                </label>
-                <div className="max-h-40 overflow-y-auto space-y-2">
-                  {(() => {
-                    const voices = window.speechSynthesis.getVoices();
-                    const catherineVoice = voices.find(voice => 
-                      voice.name.toLowerCase().includes('catherine') && 
-                      voice.lang.toLowerCase().includes('en-au')
-                    );
-                    
-                    if (voices.length === 0) {
-                      return (
-                        <div className="text-center py-4 text-spiritual-600">
-                          <div className="flex items-center justify-center gap-2">
-                            <div className="w-4 h-4 border-2 border-spiritual-400 border-t-transparent rounded-full animate-spin"></div>
-                            Loading voices...
-                          </div>
-                        </div>
-                      );
-                    } else if (catherineVoice) {
-                      return (
-                        <button
-                          onClick={() => console.log('Voice selected:', catherineVoice.name)}
-                          className="w-full text-left p-3 rounded-spiritual border border-spiritual-400 bg-spiritual-100 text-spiritual-900 transition-all duration-300"
-                        >
-                          <div className="font-medium text-sm">{catherineVoice.name}</div>
-                          <div className="text-spiritual-600 text-xs">{catherineVoice.lang}</div>
-                          <div className="w-2 h-2 bg-spiritual-500 rounded-full mt-2"></div>
-                        </button>
-                      );
-                    } else {
-                      return (
-                        <div className="text-center py-4 text-spiritual-600">
-                          <div>Catherine (en-AU) voice not found.</div>
-                          <div className="text-xs text-spiritual-500 mt-1">Available voices: {voices.length}</div>
-                          <button
-                            onClick={() => window.location.reload()}
-                            className="mt-2 px-3 py-1 bg-spiritual-100 hover:bg-spiritual-200 rounded text-xs text-spiritual-700 transition-colors"
-                          >
-                            Reload Page
-                          </button>
-                        </div>
-                      );
-                    }
-                  })()}
-                </div>
-              </div>
-              
-              {/* Voice Status */}
-              <div className="text-center">
-                <div className="text-sm text-spiritual-600 tracking-spiritual">
-                  <div>Voice: <span className="font-medium text-spiritual-800">Catherine (en-AU)</span></div>
-                  <div className="text-xs text-spiritual-500 mt-1">Australian English - Soothing & Clear</div>
-                  {isSpeaking && (
-                    <div className="text-spiritual-600 mt-2 flex items-center justify-center gap-2">
-                      <div className="w-2 h-2 bg-spiritual-500 rounded-full animate-pulse"></div>
-                      Speaking...
-                    </div>
-                  )}
-                  {voiceError && (
-                    <div className="text-red-600 mt-2">Error: {voiceError}</div>
-                  )}
-                </div>
-              </div>
-              
-              {/* Voice Controls */}
-              <div className="flex justify-center gap-3">
-                <button
-                  onClick={() => window.speechSynthesis.cancel()}
-                  className="flex items-center gap-2 px-4 py-2 bg-spiritual-100 hover:bg-spiritual-200 rounded-spiritual text-spiritual-700 font-medium transition-all duration-300"
-                >
-                  <VolumeX className="w-4 h-4" />
-                  Stop Voice
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       
       {/* Sacred Beginning Text - Bottom Right */}
       <div className={`absolute bottom-24 right-8 z-10 transition-opacity duration-1000 ${showSacredText ? 'opacity-100' : 'opacity-0'}`}>
@@ -973,10 +961,50 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                     )}
                   </div>
                   
-                  <div className={`leading-relaxed tracking-spiritual whitespace-pre-line ${
+                  <div className={`leading-relaxed tracking-spiritual ${
                     message.type === 'user' ? 'text-white' : 'text-spiritual-800'
                   }`}>
-                    {message.content}
+                    {message.type === 'assistant' ? (
+                      <div className="space-y-0.5">
+                        {formatVedicTiming(message.content).split('\n').map((line, index) => {
+                          const trimmedLine = line.trim();
+                          if (trimmedLine.startsWith('•')) {
+                            return (
+                              <div key={index} className="flex items-start gap-1.5 pl-1 py-0">
+                                <span className="text-spiritual-600 font-bold mt-0">•</span>
+                                <span className="flex-1">{trimmedLine.substring(1).trim()}</span>
+                              </div>
+                            );
+                          } else if (trimmedLine.includes('TIMING DETAILS')) {
+                            return (
+                              <div key={index} className="font-semibold text-spiritual-700 text-lg py-0.5 mt-1 mb-0.5">
+                                {trimmedLine}
+                              </div>
+                            );
+                          } else if (trimmedLine.includes('Jai Shree Krishna')) {
+                            return (
+                              <div key={index} className="text-center font-semibold text-spiritual-800 text-lg py-0.5 mb-1">
+                                {trimmedLine}
+                              </div>
+                            );
+                          } else if (trimmedLine.includes('All timings are')) {
+                            return (
+                              <div key={index} className="text-sm text-spiritual-600 italic py-0.5 border-t border-spiritual-200 pt-1 mt-1">
+                                {trimmedLine}
+                              </div>
+                            );
+                          } else {
+                            return (
+                              <div key={index} className="py-0">
+                                {trimmedLine}
+                              </div>
+                            );
+                          }
+                        })}
+                      </div>
+                    ) : (
+                      <div className="whitespace-pre-line">{message.content}</div>
+                    )}
                   </div>
 
                   {/* Audio Replay Button for Assistant Messages */}
@@ -1160,10 +1188,10 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
           </div>
         </div>
       </div>
-      {isSpeaking && (
+      {playingMsgId && (
         <button
           className="fixed bottom-8 right-8 z-50 bg-red-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2"
-          onClick={() => { setIsMuted(true); window.speechSynthesis.cancel(); }}
+          onClick={() => { setIsMuted(true); window.speechSynthesis.cancel(); setPlayingMsgId(null); }}
         >
           <VolumeX className="w-5 h-5" /> Mute
         </button>
