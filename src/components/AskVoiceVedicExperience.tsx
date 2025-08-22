@@ -379,17 +379,114 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     }, 100);
   };
 
-  // Voice options for Indian/neutral accents
+  // Voice options for ALL available system voices
   const getAvailableVoices = () => {
     const voices = window.speechSynthesis.getVoices();
-    return [
-      ...voices.filter(v => v.lang === "en-IN" && v.name.toLowerCase().includes("female")).map(v => ({ label: `Indian English Female – ${v.name}`, value: v.name })),
-      ...voices.filter(v => v.lang === "en-IN" && v.name.toLowerCase().includes("male")).map(v => ({ label: `Indian English Male – ${v.name}`, value: v.name })),
-      ...voices.filter(v => v.lang === "en-GB" && v.name.toLowerCase().includes("female")).map(v => ({ label: `Neutral English Female – ${v.name}`, value: v.name })),
-      ...voices.filter(v => v.lang === "en-GB" && v.name.toLowerCase().includes("male")).map(v => ({ label: `Neutral English Male – ${v.name}`, value: v.name })),
-      ...voices.filter(v => v.lang === "en-US" && v.name.toLowerCase().includes("female")).map(v => ({ label: `US English Female – ${v.name}`, value: v.name })),
-      ...voices.filter(v => v.lang === "en-US" && v.name.toLowerCase().includes("male")).map(v => ({ label: `US English Male – ${v.name}`, value: v.name })),
-    ];
+    console.log('All available voices:', voices.map(v => `${v.name} (${v.lang})`));
+    
+    // Define voice option type
+    interface VoiceOption {
+      label: string;
+      value: string;
+      lang: string;
+      language: string;
+    }
+    
+    // Group voices by language and type
+    const voiceGroups = {
+      hindi: voices.filter(v => v.lang.startsWith('hi')),
+      kannada: voices.filter(v => v.lang.startsWith('kn')),
+      tamil: voices.filter(v => v.lang.startsWith('ta')),
+      telugu: voices.filter(v => v.lang.startsWith('te')),
+      malayalam: voices.filter(v => v.lang.startsWith('ml')),
+      english: voices.filter(v => v.lang.startsWith('en')),
+      other: voices.filter(v => !v.lang.startsWith('hi') && !v.lang.startsWith('kn') && !v.lang.startsWith('ta') && !v.lang.startsWith('te') && !v.lang.startsWith('ml') && !v.lang.startsWith('en'))
+    };
+
+    const allVoices: VoiceOption[] = [];
+    
+    // Add Hindi voices first
+    voiceGroups.hindi.forEach(voice => {
+      allVoices.push({
+        label: `हिंदी - ${voice.name}`,
+        value: voice.name,
+        lang: voice.lang,
+        language: 'hi'
+      });
+    });
+    
+    // Add Kannada voices
+    voiceGroups.kannada.forEach(voice => {
+      allVoices.push({
+        label: `ಕನ್ನಡ - ${voice.name}`,
+        value: voice.name,
+        lang: voice.lang,
+        language: 'kn'
+      });
+    });
+    
+    // Add Tamil voices
+    voiceGroups.tamil.forEach(voice => {
+      allVoices.push({
+        label: `தமிழ் - ${voice.name}`,
+        value: voice.name,
+        lang: voice.lang,
+        language: 'ta'
+      });
+    });
+    
+    // Add Telugu voices
+    voiceGroups.telugu.forEach(voice => {
+      allVoices.push({
+        label: `తెలుగు - ${voice.name}`,
+        value: voice.name,
+        lang: voice.lang,
+        language: 'te'
+      });
+    });
+    
+    // Add Malayalam voices
+    voiceGroups.malayalam.forEach(voice => {
+      allVoices.push({
+        label: `മലയാളം - ${voice.name}`,
+        value: voice.name,
+        lang: voice.lang,
+        language: 'ml'
+      });
+    });
+    
+    // Add English voices
+    voiceGroups.english.forEach(voice => {
+      const accent = voice.lang.includes('IN') ? 'Indian' : voice.lang.includes('GB') ? 'British' : 'American';
+      allVoices.push({
+        label: `English (${accent}) - ${voice.name}`,
+        value: voice.name,
+        lang: voice.lang,
+        language: 'en'
+      });
+    });
+    
+    // Add other available voices
+    voiceGroups.other.forEach(voice => {
+      allVoices.push({
+        label: `${voice.lang} - ${voice.name}`,
+        value: voice.name,
+        lang: voice.lang,
+        language: voice.lang.split('-')[0]
+      });
+    });
+    
+    // If no voices found, return a default
+    if (allVoices.length === 0) {
+      return [{
+        label: 'Default System Voice',
+        value: 'default',
+        lang: 'en-US',
+        language: 'en'
+      }];
+    }
+    
+    return allVoices;
   };
 
   // Language options for multi-language support
@@ -406,20 +503,26 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
   const [selectedVoice, setSelectedVoice] = useState(voiceOptions[0]?.value || "");
   const [selectedLanguage, setSelectedLanguage] = useState("en");
   const [playingMsgId, setPlayingMsgId] = useState<string | null>(null);
-  const [isMuted, setIsMuted] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState<'ready' | 'loading' | 'error' | 'no-voices'>('ready');
+  const [voiceErrorMessage, setVoiceErrorMessage] = useState<string>('');
 
   useEffect(() => {
     const updateVoices = () => {
       const options = getAvailableVoices();
       setVoiceOptions(options);
-      if (!options.find(v => v.value === selectedVoice)) {
+      
+      // Auto-select appropriate voice for selected language
+      const languageSpecificVoice = options.find(v => v.language === selectedLanguage);
+      if (languageSpecificVoice && !options.find(v => v.value === selectedVoice)) {
+        setSelectedVoice(languageSpecificVoice.value);
+      } else if (!options.find(v => v.value === selectedVoice)) {
         setSelectedVoice(options[0]?.value || "");
       }
     };
     window.speechSynthesis.onvoiceschanged = updateVoices;
     updateVoices();
     return () => { window.speechSynthesis.onvoiceschanged = null; };
-  }, []);
+  }, [selectedLanguage]); // Add selectedLanguage as dependency
 
   // Function to clean up time strings for TTS to avoid "AM PM" reading issues
   const cleanTextForTTS = (text: string): string => {
@@ -455,7 +558,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       return;
     }
     window.speechSynthesis.cancel();
-    setPlayingMsgId(msgId); // FIXED: Set to message ID, not null
+    setPlayingMsgId(msgId);
     
     // Clean the text for better TTS
     const cleanedText = cleanTextForTTS(text);
@@ -463,8 +566,22 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     const utterance = new window.SpeechSynthesisUtterance(cleanedText);
     const voices = window.speechSynthesis.getVoices();
     
-    // Set voice based on selected voice
-    utterance.voice = voices.find(v => v.name === selectedVoice) || voices[0];
+    // Find the selected voice
+    const selectedVoiceObj = voiceOptions.find(v => v.value === selectedVoice);
+    let targetVoice = voices.find(v => v.name === selectedVoice);
+    
+    // If selected voice not found, try to find a voice for the selected language
+    if (!targetVoice && selectedVoiceObj) {
+      targetVoice = voices.find(v => v.lang.startsWith(selectedVoiceObj.language));
+    }
+    
+    // If still no voice found, use the first available voice
+    if (!targetVoice) {
+      targetVoice = voices[0];
+    }
+    
+    // Set the voice
+    utterance.voice = targetVoice;
     
     // Set language based on selected language
     switch (selectedLanguage) {
@@ -487,8 +604,17 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
         utterance.lang = 'en-US';
     }
     
+    // Set speech rate and pitch for better quality
+    utterance.rate = 0.9; // Slightly slower for better clarity
+    utterance.pitch = 1.0; // Normal pitch
+    utterance.volume = 1.0; // Full volume
+    
     utterance.onend = () => setPlayingMsgId(null);
-    utterance.onerror = () => setPlayingMsgId(null);
+    utterance.onerror = (event) => {
+      console.error('Speech synthesis error:', event);
+      setPlayingMsgId(null);
+    };
+    
     window.speechSynthesis.speak(utterance);
   };
 
@@ -682,7 +808,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
 
       const recognition = new SpeechRecognition();
       
-      // Set language based on selected language
+      // Set language based on selected language with proper language codes
       switch (selectedLanguage) {
         case 'hi':
           recognition.lang = 'hi-IN';
@@ -699,13 +825,15 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
         case 'ml':
           recognition.lang = 'ml-IN';
           break;
+        case 'en':
         default:
           recognition.lang = 'en-IN';
+          break;
       }
       
       recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-
+      recognition.maxAlternatives = 3; // Get multiple alternatives for better accuracy
+      
       setIsListening(true);
       setQuestion('');
       setShowSuggestions(false);
@@ -1076,7 +1204,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                     message.type === 'user' ? 'text-white' : 'text-spiritual-800'
                   }`}>
                     {message.type === 'assistant' ? (
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         {/* Format the content with better structure */}
                         {message.content.split('\n').map((line, index) => {
                           // Check if this is a timing detail line
@@ -1084,9 +1212,9 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                             const [key, value] = line.split(':').map(part => part.trim());
                             if (key && value) {
                               return (
-                                <div key={index} className="flex items-start gap-3 py-1">
-                                  <span className="font-semibold text-spiritual-700 min-w-[80px]">{key}:</span>
-                                  <span className="text-spiritual-800">{value}</span>
+                                <div key={index} className="flex flex-col sm:flex-row sm:items-start gap-2 py-2 border-b border-spiritual-100/30 last:border-b-0">
+                                  <span className="font-semibold text-spiritual-700 min-w-[100px] flex-shrink-0">{key}:</span>
+                                  <span className="text-spiritual-800 break-words">{value}</span>
                                 </div>
                               );
                             }
@@ -1094,17 +1222,30 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                           // Check if this is a title or heading
                           if (line.includes('🪔') || line.includes('Jai Shree Krishna') || line.includes('TIMING DETAILS')) {
                             return (
-                              <div key={index} className="font-bold text-lg text-spiritual-900 mb-2">
+                              <div key={index} className="font-bold text-xl text-spiritual-900 mb-4 text-center border-b-2 border-spiritual-200 pb-2">
                                 {line}
                               </div>
                             );
                           }
-                          // Regular content
-                          return (
-                            <div key={index} className="text-spiritual-800">
-                              {line}
-                            </div>
-                          );
+                          // Check if this is a bullet point or list item
+                          if (line.trim().startsWith('•') || line.trim().startsWith('-') || line.trim().startsWith('*')) {
+                            return (
+                              <div key={index} className="flex items-start gap-3 py-1">
+                                <span className="text-spiritual-600 mt-1">•</span>
+                                <span className="text-spiritual-800 flex-1">{line.replace(/^[•\-*]\s*/, '')}</span>
+                              </div>
+                            );
+                          }
+                          // Regular content with proper spacing
+                          if (line.trim()) {
+                            return (
+                              <div key={index} className="text-spiritual-800 py-1 leading-relaxed">
+                                {line}
+                              </div>
+                            );
+                          }
+                          // Empty lines for spacing
+                          return <div key={index} className="h-2"></div>;
                         })}
                       </div>
                     ) : (
@@ -1123,7 +1264,6 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                             setPlayingMsgId(null);
                           } else {
                             // If not playing, start playing
-                            setIsMuted(false);
                             playMessage(message.id, message.content);
                           }
                         }}
@@ -1313,9 +1453,12 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       {isSpeaking && (
         <button
           className="fixed bottom-8 right-8 z-50 bg-red-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2"
-          onClick={() => { setIsMuted(true); window.speechSynthesis.cancel(); }}
+          onClick={() => { 
+            window.speechSynthesis.cancel(); 
+            setPlayingMsgId(null);
+          }}
         >
-          <VolumeX className="w-5 h-5" /> Mute
+          <VolumeX className="w-5 h-5" /> Stop
         </button>
       )}
     </div>
