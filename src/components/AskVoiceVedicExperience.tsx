@@ -19,6 +19,7 @@ import Logo from './Logo';
 import { useVoiceVedicAPI } from '../lib/voicevedic-api';
 import { useLocation } from '../hooks/useLocation';
 import { useAuth } from '../hooks/useAuth';
+import { perplexityApi } from '../lib/perplexity-api';
 
 // Removed unused imports to fix linting errors
 // Perplexity API integration for spiritual guidance
@@ -172,27 +173,27 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
 
   // Handle voice loading and tab switching issues
   useEffect(() => {
-      const initializeVoiceSystem = () => {
-    // Prevent multiple initializations
-    if (voiceInitialized) {
-      return;
-    }
-    
-    // Quick check - if voices are already available, skip loading
-    const voices = window.speechSynthesis.getVoices();
-    console.log('Available voices:', voices.length);
-    
-    if (voices.length > 0) {
-      // Voices are already loaded
-      console.log('Voices loaded immediately:', voices.length);
-      setIsAppLoading(false);
-      setVoiceInitialized(true);
-      return;
-    }
-    
-    // Only show loading if voices are actually not available
-    setIsAppLoading(true);
+    const initializeVoiceSystem = () => {
+      // Prevent multiple initializations
+      if (voiceInitialized) {
+        return;
+      }
       
+      // Quick check - if voices are already available, skip loading
+      const voices = window.speechSynthesis.getVoices();
+      console.log('Available voices:', voices.length);
+      
+      if (voices.length > 0) {
+        // Voices are already loaded
+        console.log('Voices loaded immediately:', voices.length);
+        setIsAppLoading(false);
+        setVoiceInitialized(true);
+        return;
+      }
+      
+      // Only show loading if voices are actually not available
+      setIsAppLoading(true);
+        
       // Wait for voices to load
       const handleVoicesChanged = () => {
         const loadedVoices = window.speechSynthesis.getVoices();
@@ -454,7 +455,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       return;
     }
     window.speechSynthesis.cancel();
-    setPlayingMsgId(null);
+    setPlayingMsgId(msgId); // FIXED: Set to message ID, not null
     
     // Clean the text for better TTS
     const cleanedText = cleanTextForTTS(text);
@@ -617,10 +618,10 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       };
       
       console.log('🔍 API Request:', request);
-      const response = await askVoiceVedic(request);
+      const response = await perplexityApi.getResponse(userMessage.content);
       console.log('🔍 API Response:', response);
       
-      const responseText = response.answer;
+      const responseText = response;
       console.log('🔍 Response Text:', responseText);
       
       // Determine if user asked for 'more info'
@@ -1045,22 +1046,28 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                     {/* Sound icon for assistant messages */}
                     {message.type === 'assistant' && (
                       <button
-                        className={`ml-2 p-1 rounded-full transition-colors duration-200 ${playingMsgId === message.id ? 'bg-yellow-200 text-yellow-800' : 'bg-spiritual-100 text-spiritual-700 hover:bg-yellow-100'}`}
+                        className={`ml-2 p-1 rounded-full transition-colors duration-200 ${
+                          playingMsgId === message.id 
+                            ? 'bg-red-200 text-red-800 hover:bg-red-300' 
+                            : 'bg-spiritual-100 text-spiritual-700 hover:bg-spiritual-200'
+                        }`}
                         onClick={() => {
                           if (playingMsgId === message.id) {
-                            // If currently playing, stop and mute
+                            // If currently playing, stop
                             window.speechSynthesis.cancel();
                             setPlayingMsgId(null);
-                            setIsMuted(true);
                           } else {
-                            // If not playing, start playing and unmute
-                            setIsMuted(false);
+                            // If not playing, start playing
                             playMessage(message.id, message.content);
                           }
                         }}
                         title={playingMsgId === message.id ? 'Stop Voice' : 'Play Voice'}
                       >
-                        {playingMsgId === message.id ? <VolumeX className="w-5 h-5" /> : (isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />)}
+                        {playingMsgId === message.id ? (
+                          <VolumeX className="w-5 h-5" />
+                        ) : (
+                          <Volume2 className="w-5 h-5" />
+                        )}
                       </button>
                     )}
                   </div>
@@ -1110,14 +1117,31 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                     <div className="mt-3 pt-3 border-t border-spiritual-200/30">
                       <button
                         onClick={() => {
-                          setIsMuted(false);
-                          playMessage(message.id, message.content);
+                          if (playingMsgId === message.id) {
+                            // If currently playing, stop
+                            window.speechSynthesis.cancel();
+                            setPlayingMsgId(null);
+                          } else {
+                            // If not playing, start playing
+                            setIsMuted(false);
+                            playMessage(message.id, message.content);
+                          }
                         }}
-                        className="group flex items-center gap-2 text-spiritual-600 hover:text-spiritual-700 font-medium transition-all duration-300 tracking-spiritual"
-                        title="Replay audio"
+                        className={`group flex items-center gap-2 font-medium transition-all duration-300 tracking-spiritual ${
+                          playingMsgId === message.id 
+                            ? 'text-red-600 hover:text-red-700' 
+                            : 'text-spiritual-600 hover:text-spiritual-700'
+                        }`}
+                        title={playingMsgId === message.id ? 'Stop audio' : 'Replay audio'}
                       >
-                        <Volume2 className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
-                        <span className="text-sm">Replay</span>
+                        {playingMsgId === message.id ? (
+                          <VolumeX className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
+                        ) : (
+                          <Volume2 className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
+                        )}
+                        <span className="text-sm">
+                          {playingMsgId === message.id ? 'Stop' : 'Replay'}
+                        </span>
                       </button>
                     </div>
                   )}
