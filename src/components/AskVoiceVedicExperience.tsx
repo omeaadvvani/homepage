@@ -386,10 +386,24 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       ...voices.filter(v => v.lang === "en-IN" && v.name.toLowerCase().includes("male")).map(v => ({ label: `Indian English Male – ${v.name}`, value: v.name })),
       ...voices.filter(v => v.lang === "en-GB" && v.name.toLowerCase().includes("female")).map(v => ({ label: `Neutral English Female – ${v.name}`, value: v.name })),
       ...voices.filter(v => v.lang === "en-GB" && v.name.toLowerCase().includes("male")).map(v => ({ label: `Neutral English Male – ${v.name}`, value: v.name })),
+      ...voices.filter(v => v.lang === "en-US" && v.name.toLowerCase().includes("female")).map(v => ({ label: `US English Female – ${v.name}`, value: v.name })),
+      ...voices.filter(v => v.lang === "en-US" && v.name.toLowerCase().includes("male")).map(v => ({ label: `US English Male – ${v.name}`, value: v.name })),
     ];
   };
+
+  // Language options for multi-language support
+  const languageOptions = [
+    { label: "English (English)", value: "en" },
+    { label: "हिंदी (Hindi)", value: "hi" },
+    { label: "ಕನ್ನಡ (Kannada)", value: "kn" },
+    { label: "தமிழ் (Tamil)", value: "ta" },
+    { label: "తెలుగు (Telugu)", value: "te" },
+    { label: "മലയാളം (Malayalam)", value: "ml" }
+  ];
+
   const [voiceOptions, setVoiceOptions] = useState(getAvailableVoices());
   const [selectedVoice, setSelectedVoice] = useState(voiceOptions[0]?.value || "");
+  const [selectedLanguage, setSelectedLanguage] = useState("en");
   const [playingMsgId, setPlayingMsgId] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
 
@@ -440,14 +454,38 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       return;
     }
     window.speechSynthesis.cancel();
-    setPlayingMsgId(msgId);
+    setPlayingMsgId(null);
     
     // Clean the text for better TTS
     const cleanedText = cleanTextForTTS(text);
     
     const utterance = new window.SpeechSynthesisUtterance(cleanedText);
     const voices = window.speechSynthesis.getVoices();
+    
+    // Set voice based on selected voice
     utterance.voice = voices.find(v => v.name === selectedVoice) || voices[0];
+    
+    // Set language based on selected language
+    switch (selectedLanguage) {
+      case 'hi':
+        utterance.lang = 'hi-IN';
+        break;
+      case 'kn':
+        utterance.lang = 'kn-IN';
+        break;
+      case 'ta':
+        utterance.lang = 'ta-IN';
+        break;
+      case 'te':
+        utterance.lang = 'te-IN';
+        break;
+      case 'ml':
+        utterance.lang = 'ml-IN';
+        break;
+      default:
+        utterance.lang = 'en-US';
+    }
+    
     utterance.onend = () => setPlayingMsgId(null);
     utterance.onerror = () => setPlayingMsgId(null);
     window.speechSynthesis.speak(utterance);
@@ -570,11 +608,12 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     setQuestion('');
 
     try {
-      // Call enhanced VoiceVedic API with location context
+      // Call enhanced VoiceVedic API with location context and language
       const extractedLocation = extractLocationFromQuestion(userMessage.content);
       const request = {
         question: userMessage.content,
-        location: extractedLocation || currentLocation?.location_name
+        location: extractedLocation || currentLocation?.location_name,
+        language: selectedLanguage
       };
       
       console.log('🔍 API Request:', request);
@@ -596,9 +635,9 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
         timestamp: new Date()
       };
 
-              onAddMessage(assistantMessage);
+      onAddMessage(assistantMessage);
 
-      // Trigger text-to-speech for the response
+      // Trigger text-to-speech for the response with selected language
       if (responseText && responseText.trim() !== "") {
         setTimeout(() => {
           playMessage(assistantMessage.id, responseText);
@@ -641,7 +680,28 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       }
 
       const recognition = new SpeechRecognition();
-      recognition.lang = "en-IN";
+      
+      // Set language based on selected language
+      switch (selectedLanguage) {
+        case 'hi':
+          recognition.lang = 'hi-IN';
+          break;
+        case 'kn':
+          recognition.lang = 'kn-IN';
+          break;
+        case 'ta':
+          recognition.lang = 'ta-IN';
+          break;
+        case 'te':
+          recognition.lang = 'te-IN';
+          break;
+        case 'ml':
+          recognition.lang = 'ml-IN';
+          break;
+        default:
+          recognition.lang = 'en-IN';
+      }
+      
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
 
@@ -768,17 +828,49 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Language Selection Dropdown */}
           <select
-            className="px-2 py-1 rounded border text-sm text-spiritual-700 bg-white shadow"
+            className="px-3 py-2 rounded-spiritual border border-spiritual-200 text-sm text-spiritual-700 bg-white shadow-spiritual focus:border-spiritual-400 focus:outline-none focus:ring-2 focus:ring-spiritual-200/50 transition-all duration-300"
+            value={selectedLanguage}
+            onChange={e => setSelectedLanguage(e.target.value)}
+            style={{ minWidth: 160 }}
+            title="Choose Language"
+          >
+            {languageOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+
+          {/* Voice Selection Dropdown */}
+          <select
+            className="px-3 py-2 rounded-spiritual border border-spiritual-200 text-sm text-spiritual-700 bg-white shadow-spiritual focus:border-spiritual-400 focus:outline-none focus:ring-2 focus:ring-spiritual-200/50 transition-all duration-300"
             value={selectedVoice}
             onChange={e => setSelectedVoice(e.target.value)}
-            style={{ minWidth: 180 }}
+            style={{ minWidth: 200 }}
             title="Choose Voice Accent"
           >
             {voiceOptions.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
+
+          {/* Test Voice Button */}
+          <button
+            onClick={() => {
+              const testText = selectedLanguage === "hi" ? "नमस्ते, मैं VoiceVedic हूं" : "Hello, I am VoiceVedic";
+              const utterance = new window.SpeechSynthesisUtterance(testText);
+              const voices = window.speechSynthesis.getVoices();
+              utterance.voice = voices.find(v => v.name === selectedVoice) || voices[0];
+              utterance.lang = selectedLanguage === "hi" ? "hi-IN" : "en-US";
+              window.speechSynthesis.speak(utterance);
+            }}
+            className="px-3 py-2 bg-spiritual-100 hover:bg-spiritual-200 rounded-spiritual text-spiritual-700 font-medium transition-all duration-300 border border-spiritual-200 shadow-spiritual"
+            title="Test selected voice"
+          >
+            Test Voice
+          </button>
+
+          {/* Clear Button */}
           <button
             onClick={clearConversation}
             disabled={messages.length === 0}
@@ -976,7 +1068,41 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                   <div className={`leading-relaxed tracking-spiritual whitespace-pre-line ${
                     message.type === 'user' ? 'text-white' : 'text-spiritual-800'
                   }`}>
-                    {message.content}
+                    {message.type === 'assistant' ? (
+                      <div className="space-y-3">
+                        {/* Format the content with better structure */}
+                        {message.content.split('\n').map((line, index) => {
+                          // Check if this is a timing detail line
+                          if (line.includes(':')) {
+                            const [key, value] = line.split(':').map(part => part.trim());
+                            if (key && value) {
+                              return (
+                                <div key={index} className="flex items-start gap-3 py-1">
+                                  <span className="font-semibold text-spiritual-700 min-w-[80px]">{key}:</span>
+                                  <span className="text-spiritual-800">{value}</span>
+                                </div>
+                              );
+                            }
+                          }
+                          // Check if this is a title or heading
+                          if (line.includes('🪔') || line.includes('Jai Shree Krishna') || line.includes('TIMING DETAILS')) {
+                            return (
+                              <div key={index} className="font-bold text-lg text-spiritual-900 mb-2">
+                                {line}
+                              </div>
+                            );
+                          }
+                          // Regular content
+                          return (
+                            <div key={index} className="text-spiritual-800">
+                              {line}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      message.content
+                    )}
                   </div>
 
                   {/* Audio Replay Button for Assistant Messages */}
