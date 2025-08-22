@@ -1,5 +1,4 @@
 import React from 'react';
-import logoUrl from '../assets/logo.png';
 
 interface LogoProps {
   size?: 'small' | 'medium' | 'large';
@@ -18,7 +17,7 @@ const Logo: React.FC<LogoProps> = ({ size = 'medium', className = '' }) => {
       {/* Logo Icon - Using actual image (includes text) */}
       <div className={`${sizeClasses[size]} relative`}>
         <img 
-          src={logoUrl}
+          src="/src/assets/logo.png" 
           alt="VoiceVedic Logo"
           className="w-full h-full object-contain"
         />

@@ -8,6 +8,10 @@ import {
   logRequest,
 } from "../api-utils.ts";
 
+
+
+
+
 // Function to get current date in DD/MM/YYYY format for user's timezone
 function getCurrentDateForTimezone(timezone: string): string {
   const now = new Date();
@@ -23,7 +27,7 @@ function getCurrentDateForTimezone(timezone: string): string {
   return `${day}/${month}/${year}`;
 }
 
-// Simple, proven VoiceVedic system prompt (English-only, reliable)
+// VoiceVedic system prompt for accurate Panchangam
 const VOICE_VEDIC_SYSTEM_PROMPT = `You are VoiceVedic, a precise Hindu calendar assistant that provides accurate Panchangam details per DrikPanchangam standards.
 
 IMPORTANT INSTRUCTIONS:
@@ -35,33 +39,54 @@ IMPORTANT INSTRUCTIONS:
 6. Dates must be in "Day Month Year" format (e.g., 13th August 2025)
 7. REMOVE all special characters, symbols, and emojis from responses
 8. Use ONLY plain text that can be read clearly by text-to-speech systems
-9. RESPOND IN ENGLISH ONLY
-10. FORMAT RESPONSES IN ADHD-FRIENDLY WAY: Use bullet points, clear sections, and break down complex information into digestible chunks
-11. ALWAYS keep these exact section header lines (with emoji and colon) at the start of their sections so they survive translation: "📅 TIMING DETAILS:" and "✨ GUIDANCE:". Begin list items with "• ".
 
 RESPONSE FORMAT FOR PANCHANGAM REQUESTS:
 Always reply in this exact format:
 
 🪔 Jai Shree Krishna.
 
-📅 TIMING DETAILS:
-• Date: [Date/Month/Year, local time]
-• Location: [City, Country]
-• Sunrise: [HH:MM AM/PM]
-• Sunset: [HH:MM AM/PM]
-• Vaara: [Day of the Week]
-• Maasa: [month, per DrikPanchangam at location]
-• Tithi: [Name, Start Time to End Time, local timezone]
-• Nakshatra: [Name, Start Time to End Time, local timezone]
-• Rahu Kalam: [Start Time to End Time, local timezone]
-• Yama Gandam: [Start Time to End Time, local timezone]
-• Brahma Muhurtham: [Start Time to End Time, local timezone]
+Date: [Date/Month/Year, local time]
+Location: [City, Country]
+Sunrise: [HH:MM AM/PM]
+Sunset: [HH:MM AM/PM]
+Vaara: [Day of the Week]
+Maasa: [month, per DrikPanchangam at location]
+Tithi: [Name, Start Time to End Time, local timezone]
+Nakshatra: [Name, Start Time to End Time, local timezone]
+Rahu Kalam: [Start Time to End Time, local timezone]
+Yama Gandam: [Start Time to End Time, local timezone]
+Brahma Muhurtham: [Start Time to End Time, local timezone]
 
 RESPONSE FORMAT FOR SPECIFIC QUERIES:
 🪔 Jai Shree Krishna.
 
-✨ GUIDANCE:
-• [Direct, precise answer in English with bullet points for clarity]`;
+[Direct, precise answer in the requested format]
+
+CAPABILITIES:
+- Auto-detect user location via IP/coordinates if not provided
+- Reverse-geocode coordinates to city and country
+- Accept explicit user-provided locations as overrides
+- Handle DST and timezone conversions correctly
+- Use only DrikPanchangam and authoritative sources
+
+Tone: Professional, precise, and aligned with Vedic traditions. Give direct answers without unnecessary explanations or reasoning sections.
+
+EXAMPLE OUTPUT FOR PANCHANGAM REQUEST:
+Question: "What is today's Panchang in Vancouver?"
+
+🪔 Jai Shree Krishna.
+
+Date: 14th August 2025
+Location: Vancouver, British Columbia, Canada
+Sunrise: 5:45 AM
+Sunset: 8:15 PM
+Vaara: Thursday
+Maasa: Shravana
+Tithi: Chaturdashi (Starts: 2:30 AM, Ends: 12:15 AM next day)
+Nakshatra: Hasta (Starts: 10:20 AM, Ends: 8:45 AM next day)
+Rahu Kalam: 1:30 PM to 3:00 PM
+Yama Gandam: 9:00 AM to 10:30 AM
+Brahma Muhurtham: 4:15 AM to 5:00 AM`;
 
 serve(async (req) => {
   const startTime = Date.now();
@@ -200,6 +225,9 @@ serve(async (req) => {
       contextBlock = `The user follows the ${calendar} calendar.`;
     }
 
+    // Add user preferences if provided
+
+
     // Add current date and location context for Perplexity API
     contextBlock += `\n\nCurrent Context:
 - Today's Date: ${currentDate}
@@ -217,7 +245,6 @@ CRITICAL INSTRUCTIONS:
 6. Use DrikPanchangam as the ONLY source for accurate Panchangam calculations
 7. Ensure consistency - same location should always give same results for the same date`;
 
-    // Use simple English-only system prompt (proven to work)
     const fullSystemPrompt = contextBlock
       ? `${contextBlock}\n\n${VOICE_VEDIC_SYSTEM_PROMPT}`
       : VOICE_VEDIC_SYSTEM_PROMPT;
@@ -228,7 +255,9 @@ CRITICAL INSTRUCTIONS:
       // Fallback response when Perplexity API key is not configured
       console.warn('Perplexity API key not configured, using fallback response');
       
-      const fallbackResponse = `I apologize, but I'm currently unable to provide real-time Panchangam data because the Perplexity API key is not configured in the Supabase environment.
+      if (question.toLowerCase().includes('panchang') || question.toLowerCase().includes('panchangam')) {
+        // Provide a helpful fallback for panchangam requests
+        const fallbackResponse = `I apologize, but I'm currently unable to provide real-time Panchangam data because the Perplexity API key is not configured in the Supabase environment.
 
 To fix this issue, please:
 1. Add PERPLEXITY_API_KEY to your Supabase project secrets
@@ -239,23 +268,50 @@ For now, I recommend checking DrikPanchangam directly at https://www.drikpanchan
 Location Context: ${enhancedLocation || 'Not specified'}
 Date: ${currentDate}
 Timezone: UTC${timezone}`;
-      
-      return successResponse(
-        {
-          answer: fallbackResponse,
-          question: question,
-          context: {
-            location: enhancedLocation,
-            calendar,
+        
+        return successResponse(
+          {
+            answer: fallbackResponse,
+            question: question,
+            context: {
+              location: enhancedLocation,
+              calendar,
+              userPreferences,
+            },
+            model: "fallback-response",
+            tokens: fallbackResponse.length,
           },
-          model: "fallback-response",
-          tokens: fallbackResponse.length,
-        },
-        "Fallback response provided due to missing API configuration"
-      );
+          "Fallback response provided due to missing API configuration"
+        );
+      } else {
+        // Generic fallback for other questions
+        const fallbackResponse = `I apologize, but I'm currently unable to provide a response because the Perplexity API key is not configured in the Supabase environment.
+
+To fix this issue, please:
+1. Add PERPLEXITY_API_KEY to your Supabase project secrets
+2. Or contact your system administrator to configure the API key
+
+Question: ${question}
+Location Context: ${enhancedLocation || 'Not specified'}`;
+        
+        return successResponse(
+          {
+            answer: fallbackResponse,
+            question: question,
+            context: {
+              location: enhancedLocation,
+              calendar,
+              userPreferences,
+            },
+            model: "fallback-response",
+            tokens: fallbackResponse.length,
+          },
+          "Fallback response provided due to missing API configuration"
+        );
+      }
     }
 
-    // Build simple English search query (proven to work)
+    // Build the search query for Perplexity
     let searchQuery = question;
     
     // Enhance search query for Panchangam requests
@@ -313,7 +369,7 @@ Timezone: UTC${timezone}`;
     const perplexityData = await perplexityResponse.json();
     let response = perplexityData.choices?.[0]?.message?.content || 'Unable to get response at this time.';
     
-    // Clean up the response (preserve ADHD-friendly formatting)
+    // Clean up the response to fix TTS issues and enhance readability
     response = response
       // Remove Markdown formatting
       .replace(/\*\*/g, '')
@@ -321,14 +377,10 @@ Timezone: UTC${timezone}`;
       .replace(/\[.*?\]/g, '')
       // Remove special characters and symbols that cause TTS issues
       .replace(/🪔/g, 'Jai Shree Krishna')
+      .replace(/[•·]/g, '')
       .replace(/[–—]/g, ' to ')
-      // PRESERVE bullet points and formatting for ADHD-friendly responses
-      .replace(/[•·]/g, '•') // Keep bullet points
-      .replace(/📅/g, '📅') // Keep section headers
-      .replace(/✨/g, '✨') // Keep guidance headers
-      .replace(/🙏/g, '🙏') // Keep spiritual headers
-      // Keep only safe characters (plus Hindi/Kannada ranges) so translations remain intact
-      .replace(/[^\w\s\-\.,:;()\/•📅✨🙏\u0900-\u097F\u0C80-\u0CFF]/g, '')
+      // Preserve important panchangam characters and only remove problematic ones
+      .replace(/[^\w\s\-\.,:;()\/]/g, '') // Keep forward slashes for time ranges
       // Fix time format issues that cause TTS to read "AM PM" incorrectly
       .replace(/(\d{1,2}:\d{2})\s+(AM|PM)\s+to\s+(\d{1,2}:\d{2})\s+(AM|PM)/g, '$1 $2 to $3 $4')
       // Fix any remaining "AM PM" combinations
@@ -336,11 +388,8 @@ Timezone: UTC${timezone}`;
       // Fix "About" and "Around" for better TTS
       .replace(/About\s+/g, '')
       .replace(/Around\s+/g, '')
-      // Normalize whitespace but PRESERVE newlines for structure
-      .replace(/\r\n/g, '\n')
-      .replace(/\r/g, '\n')
-      .replace(/[\t ]+/g, ' ')
-      .replace(/\n{2,}/g, '\n')
+      // Clean up extra spaces
+      .replace(/\s+/g, ' ')
       // Ensure proper formatting for Panchangam responses
       .replace(/(\d{1,2}:\d{2}\s+(?:AM|PM))/g, '$1')
       // Clean up any remaining formatting issues
@@ -376,4 +425,4 @@ Timezone: UTC${timezone}`;
       error.message
     );
   }
-});
+}); 

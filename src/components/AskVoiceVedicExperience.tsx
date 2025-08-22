@@ -10,17 +10,15 @@ import {
   Trash2,
   Lightbulb,
   ArrowRight,
-  VolumeX
+  Settings,
+  VolumeX,
+  Calendar
 } from 'lucide-react';
 import Logo from './Logo';
 
 import { useVoiceVedicAPI } from '../lib/voicevedic-api';
 import { useLocation } from '../hooks/useLocation';
 import { useAuth } from '../hooks/useAuth';
-import { useGoogleTranslate } from '../lib/translation-service';
-import SectionedAssistantMessage from './SectionedAssistantMessage';
-
-
 
 // Removed unused imports to fix linting errors
 // Perplexity API integration for spiritual guidance
@@ -109,12 +107,6 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
   const { user } = useAuth();
   const { currentLocation, startLocationTracking } = useLocation(user?.id);
   
-  // Google Translate service for multilingual support
-  const translateService = useGoogleTranslate();
-  
-  // CRITICAL: Define language state FIRST to avoid circular dependency
-  const [selectedLanguage, setSelectedLanguage] = useState<'en-IN' | 'kn-IN' | 'hi-IN'>('en-IN');
-  
   // Simple local response system - no external APIs needed
   // Simple browser-based voice synthesis
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -137,13 +129,6 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
-  
-  // Language options for English, Kannada and Hindi
-  const languageOptions = [
-    { label: 'English', value: 'en-IN' as const, name: 'English' },
-    { label: 'हिंदी', value: 'hi-IN' as const, name: 'Hindi' },
-    { label: 'ಕನ್ನಡ', value: 'kn-IN' as const, name: 'Kannada' }
-  ];
   
   // Fallback suggestions when API fails
   const fallbackSuggestions = useMemo(() => [
@@ -187,79 +172,64 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
 
   // Handle voice loading and tab switching issues
   useEffect(() => {
-    const initializeVoiceSystem = () => {
-      // Prevent multiple initializations
-      if (voiceInitialized) {
-        return;
-      }
+      const initializeVoiceSystem = () => {
+    // Prevent multiple initializations
+    if (voiceInitialized) {
+      return;
+    }
+    
+    // Quick check - if voices are already available, skip loading
+    const voices = window.speechSynthesis.getVoices();
+    console.log('Available voices:', voices.length);
+    
+    if (voices.length > 0) {
+      // Voices are already loaded
+      console.log('Voices loaded immediately:', voices.length);
+      setIsAppLoading(false);
+      setVoiceInitialized(true);
+      return;
+    }
+    
+    // Only show loading if voices are actually not available
+    setIsAppLoading(true);
       
-      console.log('🎙️ Initializing voice system...');
-      
-      // Check if speech synthesis is supported
-      if (!window.speechSynthesis) {
-        console.warn('Speech synthesis not supported in this browser');
-        setVoiceError('Voice playback not supported in this browser');
+      // Wait for voices to load
+      const handleVoicesChanged = () => {
+        const loadedVoices = window.speechSynthesis.getVoices();
+        console.log('Voices loaded after event:', loadedVoices.length);
         setIsAppLoading(false);
         setVoiceInitialized(true);
-        return;
-      }
-      
-      // Function to update voices and initialize
-      const updateVoicesAndInitialize = () => {
-        const voices = window.speechSynthesis.getVoices();
-        console.log('🔊 Available voices found:', voices.length);
-        
-        if (voices.length > 0) {
-          console.log('✅ Voices are available, system ready');
-          
-          setVoiceError(null);
-          setIsAppLoading(false);
-          setVoiceInitialized(true);
-          console.log('✅ Voice system initialized successfully');
-          return true;
-        }
-        return false;
-      };
-      
-      // Try immediate initialization
-      if (updateVoicesAndInitialize()) {
-        return;
-      }
-      
-      // If voices not immediately available, wait for them to load
-      setIsAppLoading(true);
-      console.log('⏳ Waiting for voices to load...');
-      
-      const handleVoicesChanged = () => {
-        console.log('🔄 Voices changed event triggered');
-        if (updateVoicesAndInitialize()) {
-          window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
-        }
+        window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
       };
       
       window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
       
-      // Fallback timeout - continue even if voices don't load
+      // Fallback timeout - stop loading after 1 second (voices are usually already loaded)
       const timeoutId = setTimeout(() => {
-        console.log('⚠️ Voice loading timeout - continuing without voices');
-        setVoiceError('Voice system unavailable - text responses only');
+        console.log('Voice loading timeout, continuing anyway');
         setIsAppLoading(false);
         setVoiceInitialized(true);
         window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
-      }, 3000); // Increased timeout to 3 seconds
+      }, 1000);
       
-      // Cleanup timeout if voices load successfully
-      const originalHandler = handleVoicesChanged;
+      // Cleanup timeout if voices load
       window.speechSynthesis.addEventListener('voiceschanged', () => {
         clearTimeout(timeoutId);
-        originalHandler();
       });
     };
 
     const handleVisibilityChange = () => {
       if (!document.hidden && !voiceInitialized) {
-        console.log('👁️ Tab became visible, reinitializing voice system');
-        initializeVoiceSystem();
+        // Only reload voices if they're not already available
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length === 0) {
+          // Quick check - if voices are available, don't show loading
+          initializeVoiceSystem();
+        } else {
+          // Voices are already available, skip loading
+          setIsAppLoading(false);
+          setVoiceInitialized(true);
+        }
       }
     };
 
@@ -274,50 +244,8 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (window.speechSynthesis) {
-        window.speechSynthesis.removeEventListener('voiceschanged', () => {});
-      }
     };
   }, [user?.id, startLocationTracking, voiceInitialized]);
-
-  // CRITICAL: Cleanup voice when component unmounts or user navigates away
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      console.log('🧹 Cleaning up voice on page unload');
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        console.log('🧹 Page hidden, stopping voice');
-        if (window.speechSynthesis && window.speechSynthesis.speaking) {
-          window.speechSynthesis.cancel();
-          setPlayingMsgId(null);
-          setIsSpeaking(false);
-        }
-      }
-    };
-
-    // Add event listeners for cleanup
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Cleanup function when component unmounts
-    return () => {
-      console.log('🧹 AskVoiceVedic component unmounting - stopping all voice');
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      
-      // Stop any ongoing speech
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
-      setPlayingMsgId(null);
-      setIsSpeaking(false);
-    };
-  }, []); // Run once on mount
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -450,332 +378,79 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     }, 100);
   };
 
-  // Voice options - ONLY female voices, limited to 3-4 options  
-  const getAvailableVoices = useCallback((currentLanguage: string) => {
+  // Voice options for Indian/neutral accents
+  const getAvailableVoices = () => {
     const voices = window.speechSynthesis.getVoices();
-    console.log('🔊 Getting available voices for language:', currentLanguage);
-    
-    if (voices.length === 0) {
-      return [{ label: 'Loading voices...', value: '' }];
-    }
-    
-    // Get voices based on current language parameter
-    let targetVoices: SpeechSynthesisVoice[] = [];
-    
-    if (currentLanguage === 'hi-IN') {
-      // Hindi voices
-      targetVoices = voices.filter(v => 
-        (v.lang.includes('hi') || v.lang.includes('Hindi')) &&
-        (v.name.toLowerCase().includes('female') || 
-         v.name.toLowerCase().includes('woman') ||
-         !v.name.toLowerCase().includes('male'))
-      );
-    } else if (currentLanguage === 'kn-IN') {
-      // Kannada voices (very rare on most systems)
-      targetVoices = voices.filter(v => 
-        v.lang.includes('kn') || 
-        v.lang.includes('Kannada') ||
-        v.lang === 'kn-IN'
-      );
-      
-      // Fallback hierarchy for Kannada
-      if (targetVoices.length === 0) {
-        console.log('⚠️ No Kannada voices found, using Indian English fallback');
-        targetVoices = voices.filter(v => v.lang.includes('en-IN'));
-      }
-      if (targetVoices.length === 0) {
-        console.log('⚠️ No Indian English voices found, using any English fallback');
-        targetVoices = voices.filter(v => v.lang.includes('en'));
-      }
-    } else {
-      // English voices (default)
-      targetVoices = voices.filter(v => v.lang.includes('en'));
-    }
-    
-    // Filter to ONLY female voices and limit to 4
-    const femaleVoices = targetVoices.filter(v => 
-      v.name.toLowerCase().includes('female') || 
-      v.name.toLowerCase().includes('woman') ||
-      v.name.toLowerCase().includes('samantha') ||
-      v.name.toLowerCase().includes('karen') ||
-      v.name.toLowerCase().includes('victoria') ||
-      v.name.toLowerCase().includes('susan') ||
-      (!v.name.toLowerCase().includes('male') && !v.name.toLowerCase().includes('man'))
-    ).slice(0, 4); // Limit to 4 voices max
-    
-    // If no female voices found, take first 3 available voices
-    const finalVoices = femaleVoices.length > 0 ? femaleVoices : targetVoices.slice(0, 3);
-    
-    const voiceOptions = finalVoices.map(v => ({
-      label: `${v.name} (${v.lang})`,
-      value: v.name
-    }));
-    
-    console.log('🎯 Filtered voice options:', voiceOptions.length, voiceOptions.map(v => v.label));
-    return voiceOptions;
-  }, []); // No dependencies to avoid circular reference
-  const [voiceOptions, setVoiceOptions] = useState<Array<{label: string, value: string}>>([]);
-  const [selectedVoice, setSelectedVoice] = useState<string>("");
+    return [
+      ...voices.filter(v => v.lang === "en-IN" && v.name.toLowerCase().includes("female")).map(v => ({ label: `Indian English Female – ${v.name}`, value: v.name })),
+      ...voices.filter(v => v.lang === "en-IN" && v.name.toLowerCase().includes("male")).map(v => ({ label: `Indian English Male – ${v.name}`, value: v.name })),
+      ...voices.filter(v => v.lang === "en-GB" && v.name.toLowerCase().includes("female")).map(v => ({ label: `Neutral English Female – ${v.name}`, value: v.name })),
+      ...voices.filter(v => v.lang === "en-GB" && v.name.toLowerCase().includes("male")).map(v => ({ label: `Neutral English Male – ${v.name}`, value: v.name })),
+    ];
+  };
+  const [voiceOptions, setVoiceOptions] = useState(getAvailableVoices());
+  const [selectedVoice, setSelectedVoice] = useState(voiceOptions[0]?.value || "");
   const [playingMsgId, setPlayingMsgId] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
 
-  // Helper functions for multilingual speech recognition
-  const getRecognitionConfig = (language: string) => {
-    const configs = {
-      'en-IN': { maxAlternatives: 1, interimResults: false },
-      'hi-IN': { maxAlternatives: 3, interimResults: true },
-      'kn-IN': { maxAlternatives: 3, interimResults: true }
-    };
-    return configs[language] || configs['en-IN'];
-  };
-
-  const getLanguageDisplayName = (language: string) => {
-    const names = {
-      'en-IN': 'English',
-      'hi-IN': 'हिंदी (Hindi)',
-      'kn-IN': 'ಕನ್ನಡ (Kannada)'
-    };
-    return names[language] || 'English';
-  };
-
-  // Update voices when language changes or voices become available
   useEffect(() => {
     const updateVoices = () => {
-      console.log('🔄 Updating voice options for language:', selectedLanguage);
-      const options = getAvailableVoices(selectedLanguage);
+      const options = getAvailableVoices();
       setVoiceOptions(options);
-      
-      // Set appropriate voice for the selected language
-      setSelectedVoice(prev => {
-        // If no voice selected or current voice doesn't match language, pick best one
-        if (!prev || !options.find(v => v.value === prev)) {
-          const newVoice = options.find(v => v.value !== '')?.value || "";
-          console.log('🎯 Setting voice for', selectedLanguage, ':', newVoice);
-          return newVoice;
-        }
-        return prev;
-      });
-    };
-    
-    // Set up voice change listener
-    const handleVoicesChanged = () => {
-      console.log('🎵 Browser voices changed');
-      updateVoices();
-    };
-    
-    if (window.speechSynthesis) {
-      window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged);
-      updateVoices(); // Update when language changes
-    }
-    
-    return () => {
-      if (window.speechSynthesis) {
-        window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged);
+      if (!options.find(v => v.value === selectedVoice)) {
+        setSelectedVoice(options[0]?.value || "");
       }
     };
-  }, [selectedLanguage]); // Update when language changes
+    window.speechSynthesis.onvoiceschanged = updateVoices;
+    updateVoices();
+    return () => { window.speechSynthesis.onvoiceschanged = null; };
+  }, []);
 
-  // Function to clean up text for TTS - handles multiple languages
+  // Function to clean up time strings for TTS to avoid "AM PM" reading issues
   const cleanTextForTTS = (text: string): string => {
-    // Detect if text contains Hindi or Kannada characters
-    const containsHindi = /[\u0900-\u097F]/.test(text);
-    const containsKannada = /[\u0C80-\u0CFF]/.test(text);
-    
-    if (containsHindi) {
-      // For Hindi text, minimal cleaning to preserve Devanagari script
-      return text
-        .replace(/🪔/g, 'जय श्री कृष्ण')
-        .replace(/[•·]/g, '')
-        .replace(/[–—]/g, ' से ')
-        .replace(/\s+/g, ' ')
-        .trim();
-    } else if (containsKannada) {
-      // For Kannada text, minimal cleaning to preserve script
-      return text
-        .replace(/🪔/g, 'ಜೈ ಶ್ರೀ ಕೃಷ್ಣ')
-        .replace(/[•·]/g, '')
-        .replace(/[–—]/g, ' ರಿಂದ ')
-        .replace(/\s+/g, ' ')
-        .trim();
-    } else {
-      // English text cleaning (existing logic)
-      return text
-        .replace(/🪔/g, 'Jai Shree Krishna')
-        .replace(/[•·]/g, '')
-        .replace(/[–—]/g, ' to ')
-        .replace(/[^\w\s\-.,;:()]/g, '') // Remove special chars for English only
-        // Fix time format issues
-        .replace(/(\d{1,2}:\d{2})\s+(AM|PM)\s+to\s+(\d{1,2}:\d{2})\s+(AM|PM)/g, '$1 $2 to $3 $4')
-        .replace(/(AM|PM)\s+(AM|PM)/g, '$1')
-        .replace(/About\s+/g, '')
-        .replace(/Around\s+/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-    }
+    // Fix time format issues that cause TTS to read "AM PM" incorrectly
+    return text
+      // Remove special characters and symbols that cause TTS issues
+      .replace(/🪔/g, 'Jai Shree Krishna')
+      .replace(/[•·]/g, '')
+      .replace(/[–—]/g, ' to ')
+      .replace(/[^\w\s\-\.,:;()]/g, '') // Remove all special characters except basic punctuation
+      // Fix "3:40 PM to 5:20 PM" becoming "3:40 AM PM to 5:20 AM PM"
+      .replace(/(\d{1,2}:\d{2})\s+(AM|PM)\s+to\s+(\d{1,2}:\d{2})\s+(AM|PM)/g, '$1 $2 to $3 $4')
+      // Fix "9:05 AM to 10:45 AM" becoming "9:05 AM PM to 10:45 AM PM"
+      .replace(/(\d{1,2}:\d{2})\s+(AM|PM)\s+to\s+(\d{1,2}:\d{2})\s+(AM|PM)/g, '$1 $2 to $3 $4')
+      // Fix any remaining "AM PM" combinations
+      .replace(/(AM|PM)\s+(AM|PM)/g, '$1')
+      // Fix "About" and "Around" for better TTS
+      .replace(/About\s+/g, '')
+      .replace(/Around\s+/g, '')
+      // Clean up extra spaces
+      .replace(/\s+/g, ' ')
+      // Handle Panchangam format better
+      .replace(/(\d{1,2}:\d{2}\s+(?:AM|PM))/g, '$1')
+      // Clean up any remaining formatting for better TTS
+      .replace(/\s+/g, ' ')
+      .trim();
   };
 
-  const playMessage = async (msgId: string, text: string) => {
-    try {
-      // If already playing this message, stop it
-      if (playingMsgId === msgId) {
-        window.speechSynthesis.cancel();
-        setPlayingMsgId(null);
-        setIsSpeaking(false);
-        return;
-      }
-      
-      // Check if speech synthesis is available
-      if (!window.speechSynthesis) {
-        console.warn('Speech synthesis not available');
-        setVoiceError('Voice playback not supported');
-        return;
-      }
-      
-      // Stop any current speech gracefully
-      if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
-        // Wait a moment for cancellation to complete
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      
-      setPlayingMsgId(msgId);
-      setIsSpeaking(true);
-      setVoiceError(null);
-      
-      // Clean the text for better TTS
-      const cleanedText = cleanTextForTTS(text);
-      console.log('🔊 Playing message:', cleanedText.substring(0, 50) + '...');
-      
-      // Create speech utterance
-      const utterance = new window.SpeechSynthesisUtterance(cleanedText);
-      
-      // Get and set voice
-      const voices = window.speechSynthesis.getVoices();
-      if (voices.length === 0) {
-        console.warn('No voices available for speech synthesis');
-        setVoiceError('No voices available');
-        setPlayingMsgId(null);
-        setIsSpeaking(false);
-        return;
-      }
-      
-      // Find appropriate voice based on text content and selected language
-      let selectedVoiceObj: SpeechSynthesisVoice | null = null;
-      
-      // Detect if text contains Hindi characters
-      const containsHindi = /[\u0900-\u097F]/.test(cleanedText);
-      const containsKannada = /[\u0C80-\u0CFF]/.test(cleanedText);
-      
-      if (containsHindi || selectedLanguage === 'hi-IN') {
-        // Use Hindi voice for Hindi text
-        selectedVoiceObj = voices.find(v => 
-          v.lang.includes('hi') || 
-          v.lang.includes('Hindi') ||
-          v.lang === 'hi-IN'
-        );
-        console.log('🇮🇳 Using Hindi voice for Hindi text');
-      } else if (containsKannada || selectedLanguage === 'kn-IN') {
-        // Try to find Kannada voice first
-        selectedVoiceObj = voices.find(v => 
-          v.lang.includes('kn') || 
-          v.lang.includes('Kannada') ||
-          v.lang === 'kn-IN'
-        );
-        
-        if (selectedVoiceObj) {
-          console.log('🇮🇳 Using Kannada voice for Kannada text:', selectedVoiceObj.name);
-        } else {
-          // Fallback to Indian English for Kannada text if no Kannada voice
-          selectedVoiceObj = voices.find(v => v.lang.includes('en-IN')) || 
-                           voices.find(v => v.lang.includes('en'));
-          console.log('⚠️ No Kannada voice available, using English fallback for Kannada text:', selectedVoiceObj?.name);
-          
-          // Show user-friendly message about Kannada voice limitation
-          if (containsKannada) {
-            setTimeout(() => {
-              setVoiceError('Kannada voice not available - using English voice');
-              setTimeout(() => setVoiceError(null), 4000);
-            }, 1000);
-          }
-        }
-      } else {
-        // Use selected English voice for English text
-        selectedVoiceObj = voices.find(v => v.name === selectedVoice);
-        console.log('🇬🇧 Using selected English voice');
-      }
-      
-      // Fallback to any available voice
-      utterance.voice = selectedVoiceObj || voices[0];
-      
-      if (utterance.voice) {
-        console.log('🎤 Voice selected:', utterance.voice.name, '- Language:', utterance.voice.lang);
-      }
-      
-      // Configure speech settings
-      utterance.rate = 0.9; // Slightly slower for clarity
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
-      
-      // Set up event handlers
-      utterance.onstart = () => {
-        console.log('🎤 Speech started');
-        setIsSpeaking(true);
-      };
-      
-      utterance.onend = () => {
-        console.log('🎤 Speech ended');
-        setPlayingMsgId(null);
-        setIsSpeaking(false);
-      };
-      
-      utterance.onerror = (event) => {
-        console.error('🚨 Speech synthesis error:', event.error);
-        setPlayingMsgId(null);
-        setIsSpeaking(false);
-        
-        // Handle different error types more gracefully
-        if (event.error === 'interrupted') {
-          // Don't show error for interruptions - it's normal behavior
-          console.log('ℹ️ Speech was interrupted (normal behavior)');
-          setVoiceError(null); // Clear any previous errors
-        } else if (event.error === 'not-allowed') {
-          setVoiceError('Audio permission denied. Please allow audio in your browser.');
-        } else if (event.error === 'network') {
-          setVoiceError('Network error during voice playback.');
-        } else if (event.error === 'synthesis-failed') {
-          setVoiceError('Voice synthesis failed. Try a different voice.');
-        } else {
-          // For other errors, show them but don't make them permanent
-          setVoiceError(`Voice issue: ${event.error}`);
-          // Clear error after 3 seconds
-          setTimeout(() => setVoiceError(null), 3000);
-        }
-      };
-      
-      // Request audio permission and play
-      try {
-        // On some browsers, we need to request permission first
-        if (navigator.permissions) {
-          const permission = await navigator.permissions.query({ name: 'microphone' as PermissionName });
-          console.log('🎙️ Audio permission status:', permission.state);
-        }
-        
-        // Start speech synthesis
-        window.speechSynthesis.speak(utterance);
-        console.log('✅ Speech synthesis started successfully');
-        
-      } catch (permissionError) {
-        console.warn('Permission check failed, trying direct speech:', permissionError);
-        // Try direct speech synthesis anyway
-        window.speechSynthesis.speak(utterance);
-      }
-      
-    } catch (error) {
-      console.error('🚨 Error in playMessage:', error);
+  const playMessage = (msgId: string, text: string) => {
+    if (playingMsgId === msgId) {
+      window.speechSynthesis.cancel();
       setPlayingMsgId(null);
-      setIsSpeaking(false);
-      setVoiceError('Failed to play voice message');
+      return;
     }
+    window.speechSynthesis.cancel();
+    setPlayingMsgId(msgId);
+    
+    // Clean the text for better TTS
+    const cleanedText = cleanTextForTTS(text);
+    
+    const utterance = new window.SpeechSynthesisUtterance(cleanedText);
+    const voices = window.speechSynthesis.getVoices();
+    utterance.voice = voices.find(v => v.name === selectedVoice) || voices[0];
+    utterance.onend = () => setPlayingMsgId(null);
+    utterance.onerror = () => setPlayingMsgId(null);
+    window.speechSynthesis.speak(utterance);
   };
 
   // Output post-processing for Perplexity responses
@@ -859,12 +534,12 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
 
   // Extract location from user's question
   const extractLocationFromQuestion = (question: string): string | null => {
-          const locationPatterns = [
-        /in\s+([^,?.]+(?:\s+[^,?.]+)*)/i,
-        /at\s+([^,?.]+(?:\s+[^,?.]+)*)/i,
-        /for\s+([^,?.]+(?:\s+[^,?.]+)*)/i,
-        /location\s+([^,?.]+(?:\s+[^,?.]+)*)/i
-      ];
+    const locationPatterns = [
+      /in\s+([^,\?\.]+(?:\s+[^,\?\.]+)*)/i,
+      /at\s+([^,\?\.]+(?:\s+[^,\?\.]+)*)/i,
+      /for\s+([^,\?\.]+(?:\s+[^,\?\.]+)*)/i,
+      /location\s+([^,\?\.]+(?:\s+[^,\?\.]+)*)/i
+    ];
     
     for (const pattern of locationPatterns) {
       const match = question.match(pattern);
@@ -889,37 +564,16 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       timestamp: new Date()
     };
 
-    onAddMessage(userMessage);
+            onAddMessage(userMessage);
     setIsAsking(true);
     setApiError('');
     setQuestion('');
 
     try {
-      // VETERAN APPROACH: Translation Layer
-      let questionToSend = userMessage.content;
-      
-      // Step 1: Translate question to English if needed (for reliable API processing)
-      if (selectedLanguage !== 'en-IN' && translateService) {
-        try {
-          console.log('🔄 Translating question to English for API:', userMessage.content);
-          const translatedQuestion = await translateService.translateText(
-            userMessage.content, 
-            'en', 
-            selectedLanguage.split('-')[0] // 'hi' or 'kn'
-          );
-          questionToSend = translatedQuestion.translatedText;
-          console.log('✅ Translated question:', questionToSend);
-        } catch (translationError) {
-          console.warn('Translation failed, using original question:', translationError);
-          // Fallback: use original question
-        }
-      }
-      
-      // Step 2: Call API with English question (guaranteed to work)
-      const extractedLocation = extractLocationFromQuestion(questionToSend);
-      
+      // Call enhanced VoiceVedic API with location context
+      const extractedLocation = extractLocationFromQuestion(userMessage.content);
       const request = {
-        question: questionToSend, // Send English question to API
+        question: userMessage.content,
         location: extractedLocation || currentLocation?.location_name
       };
       
@@ -927,30 +581,13 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       const response = await askVoiceVedic(request);
       console.log('🔍 API Response:', response);
       
-      let responseText = response.answer;
-      console.log('🔍 Response Text (English):', responseText);
+      const responseText = response.answer;
+      console.log('🔍 Response Text:', responseText);
       
-      // Step 3: Translate response back to user's language if needed
-      if (selectedLanguage !== 'en-IN' && translateService) {
-        try {
-          console.log('🔄 Translating response to user language:', selectedLanguage);
-          const translatedResponse = await translateService.translateText(
-            responseText,
-            selectedLanguage.split('-')[0], // 'hi' or 'kn'
-            'en'
-          );
-          responseText = translatedResponse.translatedText;
-          console.log('✅ Translated response:', responseText);
-        } catch (translationError) {
-          console.warn('Response translation failed, using English response:', translationError);
-          // Fallback: keep English response
-        }
-      }
-      
-      // Process the final response (minimal processing to preserve translations)
-      const processedText = selectedLanguage === 'en-IN' 
-        ? processPerplexityResponse(responseText, false)
-        : responseText; // Don't over-process translated text
+      // Determine if user asked for 'more info'
+      const isMoreInfo = /more info|full panchang|all details/i.test(userMessage.content);
+      const processedText = processPerplexityResponse(responseText, isMoreInfo);
+      console.log('🔍 Processed Text:', processedText);
       
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -959,34 +596,12 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
         timestamp: new Date()
       };
 
-      onAddMessage(assistantMessage);
+              onAddMessage(assistantMessage);
 
       // Trigger text-to-speech for the response
       if (responseText && responseText.trim() !== "") {
         setTimeout(() => {
-          // Check if we have appropriate voice for the response language
-          const voices = window.speechSynthesis.getVoices();
-          const containsHindi = /[\u0900-\u097F]/.test(responseText);
-          const containsKannada = /[\u0C80-\u0CFF]/.test(responseText);
-          
-          let textToSpeak = responseText;
-          
-          // Smart language-voice matching
-          if (containsHindi && !voices.find(v => v.lang.includes('hi'))) {
-            console.log('⚠️ Hindi text detected but no Hindi voice available, using original English');
-            textToSpeak = response.answer; // Use original English response
-          } else if (containsKannada && !voices.find(v => v.lang.includes('kn'))) {
-            console.log('⚠️ Kannada text detected but no Kannada voice available, using original English');
-            textToSpeak = response.answer; // Use original English response
-            
-            // Show helpful guidance for getting Kannada voice
-            setTimeout(() => {
-              setVoiceError('Kannada voice not installed. Click to learn how to add it.');
-              // Don't auto-clear this error - let user dismiss it
-            }, 500);
-          }
-          
-          playMessage(assistantMessage.id, textToSpeak);
+          playMessage(assistantMessage.id, responseText);
         }, 300);
       }
 
@@ -1026,10 +641,9 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       }
 
       const recognition = new SpeechRecognition();
-      const config = getRecognitionConfig(selectedLanguage);
-      recognition.lang = selectedLanguage;
-      recognition.interimResults = config.interimResults;
-      recognition.maxAlternatives = config.maxAlternatives;
+      recognition.lang = "en-IN";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
 
       setIsListening(true);
       setQuestion('');
@@ -1131,16 +745,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       {/* Header */}
       <div className="relative z-20 flex items-center justify-between p-6 bg-white/90 backdrop-blur-sm border-b border-spiritual-200/50">
         <button
-          onClick={() => {
-            // Stop any ongoing voice when navigating back
-            if (window.speechSynthesis && window.speechSynthesis.speaking) {
-              console.log('🧹 Stopping voice before navigation');
-              window.speechSynthesis.cancel();
-            }
-            setPlayingMsgId(null);
-            setIsSpeaking(false);
-            onBack();
-          }}
+          onClick={onBack}
           className="group flex items-center gap-3 px-4 py-2 bg-spiritual-50 hover:bg-spiritual-100 rounded-spiritual shadow-spiritual border border-spiritual-200/50 transition-all duration-300 text-spiritual-800 font-medium tracking-spiritual"
           title="Back to Main Experience"
         >
@@ -1163,158 +768,17 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Language Selection */}
           <select
-            className="px-3 py-2 rounded-spiritual border-2 border-spiritual-200 text-sm text-spiritual-700 bg-white shadow-spiritual hover:border-spiritual-300 focus:border-spiritual-400 focus:outline-none focus:ring-2 focus:ring-spiritual-200/50 transition-all duration-300"
-            value={selectedLanguage}
-            onChange={e => setSelectedLanguage(e.target.value as 'en-IN' | 'kn-IN' | 'hi-IN')}
-            style={{ minWidth: 120 }}
-            title="Choose Language"
+            className="px-2 py-1 rounded border text-sm text-spiritual-700 bg-white shadow"
+            value={selectedVoice}
+            onChange={e => setSelectedVoice(e.target.value)}
+            style={{ minWidth: 180 }}
+            title="Choose Voice Accent"
           >
-            {languageOptions.map(opt => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label} ({opt.name})
-              </option>
+            {voiceOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
-          
-          {/* Voice Selection */}
-          <div className="relative">
-            <select
-              className={`px-3 py-2 rounded-spiritual border-2 text-sm bg-white shadow-spiritual transition-all duration-300 ${
-                voiceError 
-                  ? 'border-red-300 text-red-700 bg-red-50' 
-                  : 'border-spiritual-200 text-spiritual-700 hover:border-spiritual-300 focus:border-spiritual-400'
-              } focus:outline-none focus:ring-2 focus:ring-spiritual-200/50`}
-              value={selectedVoice}
-              onChange={e => setSelectedVoice(e.target.value)}
-              style={{ minWidth: 140 }}
-              title={voiceError || "Choose Voice Accent"}
-              disabled={voiceOptions.length === 0 || voiceOptions[0]?.value === ''}
-            >
-              {voiceOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-            
-            {/* Voice Error Indicator */}
-            {voiceError && voiceError !== 'Voice error: interrupted' && (
-              <div className="absolute -bottom-1 left-0 right-0 text-xs text-red-600 bg-red-50 px-2 py-1 rounded-b border border-t-0 border-red-200">
-                {voiceError.includes('Kannada voice not installed') ? (
-                  <button 
-                    onClick={() => {
-                      alert(`To get Kannada voice on macOS:
-
-1. Open System Preferences
-2. Go to Accessibility > Speech
-3. Click "System Voice" dropdown
-4. Click "Customize..."
-5. Find and check "Kannada" voices
-6. Click "OK" to download
-7. Refresh this page
-
-Alternative: You can continue using English voice for Kannada text.`);
-                      setVoiceError(null);
-                    }}
-                    className="text-blue-600 underline hover:text-blue-800"
-                  >
-                    {voiceError} (Click for help)
-                  </button>
-                ) : (
-                  <>
-                    {voiceError}
-                    {voiceError.includes('interrupted') && (
-                      <button 
-                        onClick={() => setVoiceError(null)}
-                        className="ml-2 text-blue-600 underline"
-                      >
-                        Retry
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-          
-          {/* Voice Test Button */}
-          <button
-            onClick={() => {
-              // Advanced voice diagnostic and test
-              try {
-                if (!window.speechSynthesis) {
-                  alert('Speech synthesis not supported in this browser');
-                  return;
-                }
-                
-                const voices = window.speechSynthesis.getVoices();
-                console.log('🔍 VOICE DIAGNOSTIC:');
-                console.log('Total voices available:', voices.length);
-                
-                // Check for Kannada voices specifically
-                const kannadaVoices = voices.filter(v => 
-                  v.lang.includes('kn') || 
-                  v.lang.includes('Kannada') ||
-                  v.name.toLowerCase().includes('kannada')
-                );
-                console.log('Kannada voices found:', kannadaVoices.length);
-                kannadaVoices.forEach(v => console.log(`- ${v.name} (${v.lang})`));
-                
-                // Check for Hindi voices
-                const hindiVoices = voices.filter(v => 
-                  v.lang.includes('hi') || 
-                  v.lang.includes('Hindi')
-                );
-                console.log('Hindi voices found:', hindiVoices.length);
-                hindiVoices.forEach(v => console.log(`- ${v.name} (${v.lang})`));
-                
-                // Test with appropriate voice
-                window.speechSynthesis.cancel();
-                let testText = 'Hello! This is a voice test.';
-                let testVoice = voices.find(v => v.lang.includes('en')) || voices[0];
-                
-                if (selectedLanguage === 'kn-IN' && kannadaVoices.length > 0) {
-                  testText = 'ನಮಸ್ಕಾರ! ಇದು ಧ್ವನಿ ಪರೀಕ್ಷೆ.';
-                  testVoice = kannadaVoices[0];
-                  console.log('🎯 Testing with Kannada voice:', testVoice.name);
-                } else if (selectedLanguage === 'hi-IN' && hindiVoices.length > 0) {
-                  testText = 'नमस्ते! यह एक आवाज़ परीक्षण है।';
-                  testVoice = hindiVoices[0];
-                  console.log('🎯 Testing with Hindi voice:', testVoice.name);
-                }
-                
-                const testUtterance = new SpeechSynthesisUtterance(testText);
-                testUtterance.voice = testVoice;
-                testUtterance.rate = 0.9;
-                
-                testUtterance.onstart = () => console.log('🎤 Voice test started with:', testVoice.name);
-                testUtterance.onend = () => console.log('🎤 Voice test completed');
-                testUtterance.onerror = (e) => {
-                  console.error('🚨 Voice test error:', e.error);
-                  alert(`Voice test failed: ${e.error}`);
-                };
-                
-                window.speechSynthesis.speak(testUtterance);
-                
-                // Show diagnostic info to user
-                if (selectedLanguage === 'kn-IN' && kannadaVoices.length === 0) {
-                  setTimeout(() => {
-                    alert('No Kannada voices found on your system. To get Kannada voice:\n\n1. Go to System Preferences > Accessibility > Speech\n2. Click "System Voice" dropdown\n3. Click "Customize..." \n4. Check "Kannada" voices and download\n5. Refresh this page');
-                  }, 1000);
-                }
-                
-              } catch (error) {
-                console.error('🚨 Voice test exception:', error);
-                alert('Voice test failed with error');
-              }
-            }}
-            className="group flex items-center gap-2 px-3 py-2 bg-green-50 hover:bg-green-100 rounded-spiritual shadow-spiritual border border-green-200/50 transition-all duration-300 text-green-700 font-medium tracking-spiritual"
-            title="Test voice playback and diagnose available voices"
-          >
-            <Volume2 className="w-4 h-4" />
-            <span className="text-sm">Test Voice</span>
-          </button>
-          
           <button
             onClick={clearConversation}
             disabled={messages.length === 0}
@@ -1509,15 +973,11 @@ Alternative: You can continue using English voice for Kannada text.`);
                     )}
                   </div>
                   
-                  {message.type === 'assistant' ? (
-                    <SectionedAssistantMessage content={message.content} />
-                  ) : (
-                    <div className={`leading-relaxed tracking-spiritual whitespace-pre-line ${
-                      message.type === 'user' ? 'text-white' : 'text-spiritual-800'
-                    }`}>
-                      {message.content}
-                    </div>
-                  )}
+                  <div className={`leading-relaxed tracking-spiritual whitespace-pre-line ${
+                    message.type === 'user' ? 'text-white' : 'text-spiritual-800'
+                  }`}>
+                    {message.content}
+                  </div>
 
                   {/* Audio Replay Button for Assistant Messages */}
                   {message.type === 'assistant' && (
@@ -1582,7 +1042,7 @@ Alternative: You can continue using English voice for Kannada text.`);
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
                 <span className="text-red-800 font-medium tracking-spiritual">
-                  🎙️ Listening in {getLanguageDisplayName(selectedLanguage)}... Speak now
+                  🎙️ Listening... Speak your question now
                 </span>
               </div>
             </div>
@@ -1617,7 +1077,7 @@ Alternative: You can continue using English voice for Kannada text.`);
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-gradient-to-r from-spiritual-300 to-spiritual-400 hover:from-spiritual-400 hover:to-spiritual-500 text-spiritual-800 hover:text-spiritual-900 hover:scale-105 active:scale-95'
                 }`}
-                title={isListening ? `Listening in ${getLanguageDisplayName(selectedLanguage)}... Speak now` : `Tap and ask your question in ${getLanguageDisplayName(selectedLanguage)}`}
+                title={isListening ? "Listening... Speak now" : "Tap and ask your question aloud"}
               >
                 {/* Glow Effect */}
                 {!isAsking && !isListening && (

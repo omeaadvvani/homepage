@@ -12,7 +12,7 @@ import ResetPinScreen from './components/ResetPinScreen';
 import MainExperienceScreen from './components/MainExperienceScreen';
 import SettingsScreen from './components/SettingsScreen';
 import AskVoiceVedicExperience from './components/AskVoiceVedicExperience';
-// import SupabaseTest from './components/SupabaseTest';
+import SupabaseTest from './components/SupabaseTest';
 
 function App() {
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
@@ -44,7 +44,7 @@ function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         // Convert timestamp strings back to Date objects
-        return parsed.map((msg: {id: string; type: string; content: string; timestamp: string}) => ({
+        return parsed.map((msg: any) => ({
           ...msg,
           timestamp: new Date(msg.timestamp)
         }));
@@ -356,108 +356,17 @@ function App() {
     }, 100);
   };
 
-  // High-precision location name detection with CORS handling
+  // High-precision location name detection
   const getPreciseLocationName = async (latitude: number, longitude: number): Promise<string> => {
     try {
-      // Try Nominatim API with proper error handling and CORS workaround
+      // Use HTTPS Nominatim service for reverse geocoding (works on HTTPS)
       try {
-        // Use a CORS proxy for development to get detailed location
-        const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&accept-language=en`;
-        
-        // Try direct API call first
-        try {
-          const response = await fetch(nominatimUrl, {
-            headers: {
-              'Accept': 'application/json',
-              'User-Agent': 'VoiceVedic/1.0'
-            }
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            
-            if (data.address) {
-              const cityName = data.address.city || data.address.town || data.address.village || data.address.county;
-              const stateName = data.address.state || data.address.province;
-              const countryName = data.address.country;
-              
-              if (cityName && stateName && countryName) {
-                console.log('Location resolved via Nominatim:', cityName, stateName, countryName);
-                return `${cityName}, ${stateName}, ${countryName}`;
-              } else if (cityName && countryName) {
-                return `${cityName}, ${countryName}`;
-              } else if (stateName && countryName) {
-                return `${stateName}, ${countryName}`;
-              } else if (cityName) {
-                return cityName;
-              } else if (countryName) {
-                return countryName;
-              }
-            }
-          }
-        } catch {
-          console.log('Direct Nominatim call failed, trying CORS proxy...');
-        }
-        
-        // Fallback: Try using a CORS proxy for development
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-          try {
-            const corsProxyUrl = `https://cors-anywhere.herokuapp.com/${nominatimUrl}`;
-            const response = await fetch(corsProxyUrl, {
-              headers: {
-                'Accept': 'application/json',
-                'Origin': 'http://localhost:5176'
-              }
-            });
-            
-            if (response.ok) {
-              const data = await response.json();
-              
-              if (data.address) {
-                              const cityName = data.address.city || data.address.town || data.address.village || data.address.county;
-              const stateName = data.address.state || data.address.province;
-              const countryName = data.address.country;
-                
-                if (cityName && stateName && countryName) {
-                  console.log('Location resolved via CORS proxy:', cityName, stateName, countryName);
-                  return `${cityName}, ${stateName}, ${countryName}`;
-                } else if (cityName && countryName) {
-                  return `${cityName}, ${countryName}`;
-                } else if (stateName && countryName) {
-                  return `${stateName}, ${countryName}`;
-                } else if (cityName) {
-                  return cityName;
-                } else if (countryName) {
-                  return countryName;
-                }
-              }
-            }
-          } catch {
-            console.log('CORS proxy also failed, using coordinate-based detection');
-          }
-        }
-      } catch (nominatimError) {
-        console.warn('Nominatim geocoding failed, using fallback:', nominatimError);
-      }
-
-      // Production: Try Nominatim API with proper error handling
-      try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&accept-language=en`, {
-          headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'VoiceVedic/1.0'
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&accept-language=en`);
         const data = await response.json();
         
         if (data.address) {
-          const cityName = data.address.city || data.address.town || data.address.village;
-          const countryName = data.address.country;
+          let cityName = data.address.city || data.address.town || data.address.village;
+          let countryName = data.address.country;
           
           if (cityName && countryName) {
             console.log('Location resolved via Nominatim:', cityName, countryName);
@@ -469,7 +378,7 @@ function App() {
           }
         }
       } catch (nominatimError) {
-        console.warn('Nominatim geocoding failed, using fallback:', nominatimError);
+        console.warn('Nominatim geocoding failed:', nominatimError);
       }
       
       // Fallback to coordinate-based detection for major regions

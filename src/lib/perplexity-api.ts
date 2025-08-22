@@ -52,7 +52,7 @@ class PerplexityApiService {
     }
   }
 
-  async askQuestion(question: string): Promise<string> {
+  async askQuestion(question: string, context?: string): Promise<string> {
     if (!this.apiKey) {
       throw new Error('Perplexity API key not configured');
     }

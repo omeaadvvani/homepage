@@ -243,110 +243,19 @@ export const useLocation = (userId?: string) => {
     }));
   }, [watchId, userId]);
 
-  // Get location name from coordinates with improved fallback and CORS handling
+  // Get location name from coordinates with improved fallback
   const getLocationName = async (latitude: number, longitude: number): Promise<string> => {
     try {
       console.log('Getting location name for coordinates:', latitude, longitude);
       
-      // Try Nominatim API with proper error handling and CORS workaround
+      // Use HTTPS Nominatim service for reverse geocoding (works on HTTPS)
       try {
-        // Use a CORS proxy for development to get detailed location
-        const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&accept-language=en`;
-        
-        // Try direct API call first
-        try {
-          const response = await fetch(nominatimUrl, {
-            headers: {
-              'Accept': 'application/json',
-              'User-Agent': 'VoiceVedic/1.0'
-            }
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            
-            if (data.address) {
-              const cityName = data.address.city || data.address.town || data.address.village || data.address.county;
-              const stateName = data.address.state || data.address.province;
-              const countryName = data.address.country;
-              
-              if (cityName && stateName && countryName) {
-                console.log('Location resolved via Nominatim:', cityName, stateName, countryName);
-                return `${cityName}, ${stateName}, ${countryName}`;
-              } else if (cityName && countryName) {
-                return `${cityName}, ${countryName}`;
-              } else if (stateName && countryName) {
-                return `${stateName}, ${countryName}`;
-              } else if (cityName) {
-                return cityName;
-              } else if (countryName) {
-                return countryName;
-              }
-            }
-          }
-        } catch (directError) {
-          console.log('Direct Nominatim call failed, trying CORS proxy...');
-        }
-        
-        // Fallback: Try using a CORS proxy for development
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-          try {
-            const corsProxyUrl = `https://cors-anywhere.herokuapp.com/${nominatimUrl}`;
-            const response = await fetch(corsProxyUrl, {
-              headers: {
-                'Accept': 'application/json',
-                'Origin': 'http://localhost:5176'
-              }
-            });
-            
-            if (response.ok) {
-              const data = await response.json();
-              
-              if (data.address) {
-                const cityName = data.address.city || data.address.town || data.address.village || data.address.county;
-                const stateName = data.address.state || data.address.province;
-                const countryName = data.address.country;
-                
-                if (cityName && stateName && countryName) {
-                  console.log('Location resolved via CORS proxy:', cityName, stateName, countryName);
-                  return `${cityName}, ${stateName}, ${countryName}`;
-                } else if (cityName && countryName) {
-                  return `${cityName}, ${countryName}`;
-                } else if (stateName && countryName) {
-                  return `${stateName}, ${countryName}`;
-                } else if (cityName) {
-                  return cityName;
-                } else if (countryName) {
-                  return cityName;
-                }
-              }
-            }
-          } catch (proxyError) {
-            console.log('CORS proxy also failed, using coordinate-based detection');
-          }
-        }
-      } catch (nominatimError) {
-        console.warn('Nominatim geocoding failed, using fallback:', nominatimError);
-      }
-
-      // Production: Try Nominatim API with proper error handling
-      try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&accept-language=en`, {
-          headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'VoiceVedic/1.0'
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&accept-language=en`);
         const data = await response.json();
         
         if (data.address) {
-          const cityName = data.address.city || data.address.town || data.address.village;
-          const countryName = data.address.country;
+          let cityName = data.address.city || data.address.town || data.address.village;
+          let countryName = data.address.country;
           
           if (cityName && countryName) {
             console.log('Location resolved via Nominatim:', cityName, countryName);
@@ -358,7 +267,7 @@ export const useLocation = (userId?: string) => {
           }
         }
       } catch (nominatimError) {
-        console.warn('Nominatim geocoding failed, using fallback:', nominatimError);
+        console.warn('Nominatim geocoding failed:', nominatimError);
       }
       
       // Fallback to coordinate-based detection for major regions
@@ -382,6 +291,7 @@ export const useLocation = (userId?: string) => {
       }
     } catch (error) {
       console.warn('Location detection failed, using coordinates:', error);
+      // Return coordinates instead of hardcoded "India"
       return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
     }
   };
@@ -391,16 +301,9 @@ export const useLocation = (userId?: string) => {
     try {
       console.log('Attempting to save location to database:', locationData);
       
-      // First, deactivate any existing locations for this user
-      await supabase
-        .from('user_locations')
-        .update({ is_active: false })
-        .eq('user_id', locationData.user_id);
-      
-      // Then insert the new location
       const { error } = await supabase
         .from('user_locations')
-        .insert({
+        .upsert({
           user_id: locationData.user_id,
           latitude: locationData.latitude,
           longitude: locationData.longitude,
@@ -408,6 +311,8 @@ export const useLocation = (userId?: string) => {
           accuracy: locationData.accuracy,
           timestamp: locationData.timestamp,
           is_active: locationData.is_active
+        }, {
+          onConflict: 'user_id'
         });
 
       if (error) {

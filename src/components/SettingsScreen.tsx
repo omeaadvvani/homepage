@@ -21,7 +21,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onBack, 
   onLogout 
 }) => {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [showSacredText, setShowSacredText] = useState(false);
 
   const [logoutLoading, setLogoutLoading] = useState(false);
