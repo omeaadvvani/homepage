@@ -81,52 +81,58 @@ class OpenAITranslationService {
   // Get language-specific translation prompt
   private getTranslationPrompt(targetLanguage: string): string {
     const languageInstructions: Record<string, string> = {
-      'Telugu': `Translate to Telugu following these exact rules:
-- Always use Telugu script (తెలుగు)
-- Keep proper nouns like "Ekadashi", "Shravana" as they are
-- Date format: MM/DD/YY (08/27/25)
-- Time format: HH:MM AM/PM (06:15 AM, 07:45 PM)
-- Use natural Telugu terms for common words
-- Structure must match the example format exactly`,
+      'Telugu': `Translate to Telugu following these CRITICAL rules:
+- REMOVE ALL EMOJIS completely - no 📅, 🌅, 🌙, etc.
+- Use ONLY Telugu script (తెలుగు) for ALL labels and content
+- Format: "- తేదీ: 08/27/25" (dash space label colon space content)
+- Native labels: తేదీ (Date), సూర్యోదయం (Sunrise), సూర్యాస్తమయం (Sunset), మాసం (Month), వాసరం (Day), తిథి (Tithi), నక్షత్రం (Nakshatra), అమృత కాలం (Amrutha Kalam), వర్జ్యం (Varjyam), దుర్ముహూర్తం (Durmuhurtham), రాహు కాలం (Rahu Kalam), యమ గండం (Yama Gandam), బ్రహ్మ ముహూర్తం (Brahma Muhurtham)
+- Keep spiritual terms like "Ekadashi", "Shravana" as-is
+- Time format: HH:MM AM/PM
+- Clean bullet format with native language labels`,
       
-      'Hindi': `Translate to Hindi following these exact rules:
-- Always use Devanagari script (हिंदी)
-- Keep proper nouns like "Ekadashi", "Shravana" as they are
-- Date format: MM/DD/YY (08/27/25)
-- Time format: HH:MM AM/PM (06:15 AM, 07:45 PM)
-- Use natural Hindi terms for common words
-- Structure must match the example format exactly`,
+      'Hindi': `Translate to Hindi following these CRITICAL rules:
+- REMOVE ALL EMOJIS completely - no 📅, 🌅, 🌙, etc.
+- Use ONLY Devanagari script (हिंदी) for ALL labels and content
+- Format: "- तारीख: 08/27/25" (dash space label colon space content)
+- Native labels: तारीख (Date), सूर्योदय (Sunrise), सूर्यास्त (Sunset), मास (Month), वासर (Day), तिथि (Tithi), नक्षत्र (Nakshatra), अमृत काल (Amrutha Kalam), वर्ज्यम (Varjyam), दुर्मुहूर्त (Durmuhurtham), राहु काल (Rahu Kalam), यम गंडम (Yama Gandam), ब्रह्म मुहूर्त (Brahma Muhurtham)
+- Keep spiritual terms like "Ekadashi", "Shravana" as-is
+- Time format: HH:MM AM/PM
+- Clean bullet format with native language labels`,
       
-      'Tamil': `Translate to Tamil following these exact rules:
-- Always use Tamil script (தமிழ்)
-- Keep proper nouns like "Ekadashi", "Shravana" as they are
-- Date format: MM/DD/YY (08/27/25)
-- Time format: HH:MM AM/PM (06:15 AM, 07:45 PM)
-- Use natural Tamil terms for common words
-- Structure must match the example format exactly`,
+      'Tamil': `Translate to Tamil following these CRITICAL rules:
+- REMOVE ALL EMOJIS completely - no 📅, 🌅, 🌙, etc.
+- Use ONLY Tamil script (தமிழ்) for ALL labels and content
+- Format: "- தேதி: 08/27/25" (dash space label colon space content)
+- Native labels: தேதி (Date), சூரிய உதயம் (Sunrise), சூரிய அஸ்தமனம் (Sunset), மாதம் (Month), நாள் (Day), திதி (Tithi), நக்ஷத்திரம் (Nakshatra), அமிர்த காலம் (Amrutha Kalam), வர்ஜ்யம் (Varjyam), துர்முஹூர்த்தம் (Durmuhurtham), ராகு காலம் (Rahu Kalam), யம கண்டம் (Yama Gandam), பிரம்ம முஹூர்த்தம் (Brahma Muhurtham)
+- Keep spiritual terms like "Ekadashi", "Shravana" as-is
+- Time format: HH:MM AM/PM
+- Clean bullet format with native language labels`,
       
-      'Kannada': `Translate to Kannada following these exact rules:
-- Always use Kannada script (ಕನ್ನಡ)
-- Keep proper nouns like "Ekadashi", "Shravana" as they are
-- Date format: MM/DD/YY (08/27/25)
-- Time format: HH:MM AM/PM (06:15 AM, 07:45 PM)
-- Use natural Kannada terms for common words
-- Structure must match the example format exactly`,
+      'Kannada': `Translate to Kannada following these CRITICAL rules:
+- REMOVE ALL EMOJIS completely - no 📅, 🌅, 🌙, etc.
+- Use ONLY Kannada script (ಕನ್ನಡ) for ALL labels and content
+- Format: "- ದಿನಾಂಕ: 08/27/25" (dash space label colon space content)
+- Native labels: ದಿನಾಂಕ (Date), ಸೂರ್ಯೋದಯ (Sunrise), ಸೂರ್ಯಾಸ್ತ (Sunset), ಮಾಸ (Month), ವಾರ (Day), ತಿಥಿ (Tithi), ನಕ್ಷತ್ರ (Nakshatra), ಅಮೃತ ಕಾಲ (Amrutha Kalam), ವರ್ಜ್ಯಂ (Varjyam), ದುರ್ಮುಹೂರ್ತ (Durmuhurtham), ರಾಹು ಕಾಲ (Rahu Kalam), ಯಮ ಗಂಡ (Yama Gandam), ಬ್ರಹ್ಮ ಮುಹೂರ್ತ (Brahma Muhurtham)
+- Keep spiritual terms like "Ekadashi", "Shravana" as-is
+- Time format: HH:MM AM/PM
+- Clean bullet format with native language labels`,
       
-      'Malayalam': `Translate to Malayalam following these exact rules:
-- Always use Malayalam script (മലയാളം)
-- Keep proper nouns like "Ekadashi", "Shravana" as they are
-- Date format: MM/DD/YY (08/27/25)
-- Time format: HH:MM AM/PM (06:15 AM, 07:45 PM)
-- Use natural Malayalam terms for common words
-- Structure must match the example format exactly`,
+      'Malayalam': `Translate to Malayalam following these CRITICAL rules:
+- REMOVE ALL EMOJIS completely - no 📅, 🌅, 🌙, etc.
+- Use ONLY Malayalam script (മലയാളം) for ALL labels and content
+- Format: "- തീയതി: 08/27/25" (dash space label colon space content)
+- Native labels: തീയതി (Date), സൂര്യോദയം (Sunrise), സൂര്യാസ്തമയം (Sunset), മാസം (Month), ദിവസം (Day), തിഥി (Tithi), നക്ഷത്രം (Nakshatra), അമൃത കാലം (Amrutha Kalam), വര്‍ജ്യം (Varjyam), ദുര്‍മുഹൂര്‍ത്തം (Durmuhurtham), രാഹു കാലം (Rahu Kalam), യമ ഗണ്ഡം (Yama Gandam), ബ്രഹ്മ മുഹൂര്‍ത്തം (Brahma Muhurtham)
+- Keep spiritual terms like "Ekadashi", "Shravana" as-is
+- Time format: HH:MM AM/PM
+- Clean bullet format with native language labels`,
       
-      'English': `Format in English following these exact rules:
-- Keep all proper nouns as they are
-- Date format: MM/DD/YY (08/27/25)
-- Time format: HH:MM AM/PM (06:15 AM, 07:45 PM)
-- Use clear, natural English
-- Structure must match the example format exactly`
+      'English': `Format in English following these CRITICAL rules:
+- REMOVE ALL EMOJIS completely - no 📅, 🌅, 🌙, etc.
+- Format: "- Date: 08/27/25" (dash space label colon space content)
+- Use English labels: Date, Sunrise, Sunset, Month, Day, Tithi, Nakshatra, Amrutha Kalam, Varjyam, Durmuhurtham, Rahu Kalam, Yama Gandam, Brahma Muhurtham
+- Keep spiritual terms like "Ekadashi", "Shravana" as-is
+- Time format: HH:MM AM/PM
+- Clean bullet format with English labels`
     };
 
     return languageInstructions[targetLanguage] || languageInstructions['English'];
@@ -138,26 +144,39 @@ class OpenAITranslationService {
       throw new Error('OpenAI API key not configured');
     }
 
-    const systemPrompt = `You are a expert translator for Vedic and Hindu spiritual content. Your task is to translate Panchang (Hindu calendar) details from English to the target language while preserving the exact structure and format.
+    const systemPrompt = `You are an expert translator for Vedic and Hindu spiritual content. Your task is to translate Panchang (Hindu calendar) details from English to the target language using ONLY native script labels and NO EMOJIS.
 
 ${this.getTranslationPrompt(request.targetLanguage)}
 
-CRITICAL FORMAT REQUIREMENTS:
-📅 Date: MM/DD/YY
-🌅 Sunrise: HH:MM AM/PM | 🌇 Sunset: HH:MM AM/PM
-📖 Maasa: [translated month name]
-📆 Vasara (Day): [translated day]
-🌙 Tithi: [translated tithi details]
-Start: MM/DD/YY HH:MM AM/PM | End: MM/DD/YY HH:MM AM/PM
-✨ Nakshatra: [translated nakshatra] till HH:MM AM/PM
-💫 Amrutha Kalam: HH:MM AM/PM – HH:MM AM/PM
-🚫 Varjyam: HH:MM AM/PM – HH:MM AM/PM
-⚠️ Durmuhurtham: HH:MM AM/PM – HH:MM AM/PM
-🔥 Rahu Kalam: HH:MM AM/PM – HH:MM AM/PM
-⛔ Yama Gandam: HH:MM AM/PM – HH:MM AM/PM
-🌌 Brahma Muhurtham: HH:MM AM/PM – HH:MM AM/PM
+EXAMPLE CLEAN FORMAT (for Hindi):
+🪔 Jai Shree Krishna.
 
-Keep emojis exactly as shown. Translate only the content, not the structure or emojis.`;
+आज मुंबई में 27 अगस्त 2025 का पंचांग इस प्रकार है:
+
+- तिथि: चतुर्थी, दोपहर 15:44 तक, फिर पंचमी तिथि प्रारम्भ
+- नक्षत्र: हस्त सुबह 06:04 तक, फिर चित्रा नक्षत्र
+- योग: शुभ योग दोपहर 12:27 तक
+- करण: प्रथम करण - वणिज दोपहर 15:44 तक, द्वितीय करण - बावा
+- वार: बुधवार
+- चंद्र राशि: कन्या रात 19:21 तक, फिर तुला
+- सूर्य राशि: सिंह
+- सूर्योदय: सुबह 06:00 बजे
+- सूर्यास्त: सुबह 18:44 बजे
+- राहुकाल: दोपहर 12:22 से 13:59 तक
+- यमगांड: सुबह 07:36 से 09:11 तक
+- अभिजीत मुहूर्त: सुबह 12:15 से 13:05 तक
+
+चौघड़िया मुहूर्त (मुंबई के लिए):
+- लाभ: 06:22 - 07:56
+- अमृत: 07:56 - 09:30
+
+CRITICAL REQUIREMENTS:
+- NO EMOJIS in the main content (except greeting 🪔)
+- Use ONLY native language labels for ALL terms
+- Use "- " (dash space) for bullet points
+- Keep spiritual proper nouns as-is
+- Natural, flowing native language text
+- Perfect native script rendering`;
 
     const messages: OpenAIMessage[] = [
       {
@@ -195,7 +214,12 @@ Keep emojis exactly as shown. Translate only the content, not the structure or e
       const data: OpenAIResponse = await response.json();
       
       if (data.choices && data.choices.length > 0) {
-        return data.choices[0].message.content;
+        let translatedContent = data.choices[0].message.content;
+        
+        // Post-processing: Ensure absolutely no emojis except the greeting
+        translatedContent = this.postProcessTranslation(translatedContent);
+        
+        return translatedContent;
       } else {
         throw new Error('No translation received from OpenAI');
       }
@@ -284,6 +308,36 @@ Keep emojis exactly as shown. Translate only the content, not the structure or e
     if (url.startsWith('blob:')) {
       URL.revokeObjectURL(url);
     }
+  }
+
+  // Post-process translation to ensure world-class cleanliness
+  private postProcessTranslation(content: string): string {
+    // Split into lines for processing
+    let lines = content.split('\n');
+    
+    // Process each line
+    lines = lines.map(line => {
+      // Keep the greeting line as-is (🪔 Jai Shree Krishna)
+      if (line.includes('🪔') && line.includes('Jai Shree Krishna')) {
+        return line;
+      }
+      
+      // Remove ALL other emojis from content lines
+      line = line.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '');
+      
+      // Ensure proper dash-space formatting for bullet points
+      line = line.replace(/^[\s]*[•·*]\s*/, '- ');
+      
+      // Clean up extra spaces
+      line = line.replace(/\s+/g, ' ').trim();
+      
+      return line;
+    });
+    
+    // Remove empty lines but preserve structure
+    lines = lines.filter(line => line.trim() !== '');
+    
+    return lines.join('\n');
   }
 
   // Helper to detect if text is already in target language (basic check)

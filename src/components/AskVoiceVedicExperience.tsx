@@ -539,11 +539,11 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
         languageVoices.slice(0, 2).forEach(voice => {
           curatedVoices.push({
             label: getAccentLabel(voice, language),
-            value: voice.name,
-            lang: voice.lang,
+        value: voice.name,
+        lang: voice.lang,
             language
-          });
-        });
+      });
+    });
       }
     }
     
@@ -738,11 +738,11 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
           .replace(/(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)/g, '$1 $2')
           // Clean up special characters that affect timing readability
           .replace(/[•·]/g, ' ')
-          .replace(/[–—]/g, ' to ')
+      .replace(/[–—]/g, ' to ')
           // Remove problematic symbols but PRESERVE Unicode letters (for all languages)
           .replace(/[^\p{L}\p{N}\s\-\.,:;()]/gu, ' ')
           // Fix spacing issues
-          .replace(/\s+/g, ' ')
+      .replace(/\s+/g, ' ')
           .trim();
         break;
         
@@ -756,8 +756,8 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
           .replace(/[–—]/g, ' to ')
           // Remove only problematic symbols but PRESERVE Unicode letters (for all languages)
           .replace(/[^\p{L}\p{N}\s\-\.,:;()]/gu, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
+      .replace(/\s+/g, ' ')
+      .trim();
         break;
         
       default:
@@ -943,7 +943,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     // Speak in natural chunks to avoid robotic cadence on long paragraphs
     const chunks = splitIntoNaturalChunks(cleanedText);
     if (chunks.length <= 1) {
-      window.speechSynthesis.speak(utterance);
+    window.speechSynthesis.speak(utterance);
     } else {
       let index = 0;
       const speakNext = () => {
@@ -1568,6 +1568,30 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                         
                         {/* Format the content with better structure - prefer translated content */}
                         {(message.translatedContent || message.content).split('\n').map((line: string, index: number) => {
+                          // Handle OpenAI clean format (dash-based bullets)
+                          if (line.trim().startsWith('- ') && line.includes(':')) {
+                            const content = line.replace(/^-\s*/, '').trim();
+                            const firstColon = content.indexOf(':');
+                            const key = content.slice(0, firstColon).trim();
+                            const value = content.slice(firstColon + 1).trim();
+                            return (
+                              <div key={index} className="flex flex-col sm:flex-row sm:items-start gap-2 py-1.5 pl-2 border-l-2 border-spiritual-300/30">
+                                <span className="font-semibold text-spiritual-700 min-w-[120px] flex-shrink-0">{key}:</span>
+                                <span className="text-spiritual-800 flex-1 break-words leading-relaxed">{value}</span>
+                              </div>
+                            );
+                          }
+                          
+                          // Handle section headers (like पंचांग descriptions)
+                          if (line.trim() && !line.includes(':') && !line.startsWith('-') && !line.startsWith('🪔') && line.length > 15) {
+                            const isMainHeader = line.includes('पंचांग') || line.includes('का') || line.includes('में');
+                            return (
+                              <div key={index} className={`text-spiritual-800 py-2 leading-relaxed ${isMainHeader ? 'font-medium' : ''}`}>
+                                {line}
+                              </div>
+                            );
+                          }
+                          
                           // Check if this is a timing detail line
                           if (line.includes(':')) {
                             // Split only on the FIRST colon so HH:MM (e.g., 06:14) stays intact
@@ -1652,33 +1676,33 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                         )}
                         
                         {/* Fallback Browser TTS Button */}
-                        <button
-                          onClick={() => {
-                            if (playingMsgId === message.id) {
-                              // If currently playing, stop
-                              window.speechSynthesis.cancel();
-                              setPlayingMsgId(null);
-                            } else {
-                              // If not playing, start playing
+                      <button
+                        onClick={() => {
+                          if (playingMsgId === message.id) {
+                            // If currently playing, stop
+                            window.speechSynthesis.cancel();
+                            setPlayingMsgId(null);
+                          } else {
+                            // If not playing, start playing
                               playMessage(message.id, message.translatedContent || message.content);
-                            }
-                          }}
-                          className={`group flex items-center gap-2 font-medium transition-all duration-300 tracking-spiritual ${
-                            playingMsgId === message.id 
-                              ? 'text-red-600 hover:text-red-700' 
-                              : 'text-spiritual-600 hover:text-spiritual-700'
-                          }`}
+                          }
+                        }}
+                        className={`group flex items-center gap-2 font-medium transition-all duration-300 tracking-spiritual ${
+                          playingMsgId === message.id 
+                            ? 'text-red-600 hover:text-red-700' 
+                            : 'text-spiritual-600 hover:text-spiritual-700'
+                        }`}
                           title={playingMsgId === message.id ? 'Stop browser TTS' : 'Play with browser TTS'}
-                        >
-                          {playingMsgId === message.id ? (
-                            <VolumeX className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
-                          ) : (
-                            <Volume2 className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
-                          )}
-                          <span className="text-sm">
+                      >
+                        {playingMsgId === message.id ? (
+                          <VolumeX className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
+                        ) : (
+                          <Volume2 className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
+                        )}
+                        <span className="text-sm">
                             {playingMsgId === message.id ? 'Stop' : 'Browser Voice'}
-                          </span>
-                        </button>
+                        </span>
+                      </button>
                       </div>
                     </div>
                   )}
