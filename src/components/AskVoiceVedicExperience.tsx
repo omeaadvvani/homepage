@@ -839,13 +839,18 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     // CRITICAL FIX: Don't truncate content - show everything that TTS reads
     // Only remove problematic lines, but keep all meaningful content
     lines = lines.filter(line => {
-      // Keep all lines that contain actual information
+      // Keep all lines that contain actual information including timing details
       if (line.includes(':') || line.includes('AM') || line.includes('PM') || 
           line.includes('Tithi') || line.includes('Nakshatra') || 
           line.includes('Rahu') || line.includes('Yama') || 
           line.includes('Sunrise') || line.includes('Sunset') ||
           line.includes('Date') || line.includes('Location') ||
-          line.includes('Vaara') || line.includes('Maasa')) {
+          line.includes('Vaara') || line.includes('Maasa') ||
+          line.includes('Yoga') || line.includes('Karanam') ||
+          line.includes('Gulika') || line.includes('Varjyam') ||
+          line.includes('Yamagandam') || line.includes('Amritakalam') ||
+          line.includes('Abhijit') || line.includes('Muhurat') ||
+          line.includes('Month') || line.includes('Paksha')) {
         return true;
       }
       
@@ -887,7 +892,10 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       
       // Check if this line contains timing information (has colons)
       if (line.includes(':')) {
-        const [key, value] = line.split(':').map(part => part.trim());
+        // Split only on the FIRST colon to preserve HH:MM and time ranges
+        const firstColon = line.indexOf(':');
+        const key = line.slice(0, firstColon).trim();
+        const value = line.slice(firstColon + 1).trim();
         if (key && value) {
           // Enhanced timing formatting with better TTS compatibility
           if (key.toLowerCase().includes('date') || key.toLowerCase().includes('location')) {
@@ -897,10 +905,13 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
             formattedLines.push(`• ${key}: ${value}`);
           } else if (key.toLowerCase().includes('vaara') || key.toLowerCase().includes('maasa')) {
             formattedLines.push(`• ${key}: ${value}`);
-          } else if (key.toLowerCase().includes('tithi') || key.toLowerCase().includes('nakshatra')) {
+          } else if (key.toLowerCase().includes('tithi') || key.toLowerCase().includes('nakshatra') ||
+                     key.toLowerCase().includes('yoga') || key.toLowerCase().includes('karanam')) {
             formattedLines.push(`• ${key}: ${value}`);
           } else if (key.toLowerCase().includes('rahu') || key.toLowerCase().includes('yama') || 
-                     key.toLowerCase().includes('abhijit') || key.toLowerCase().includes('brahma')) {
+                     key.toLowerCase().includes('abhijit') || key.toLowerCase().includes('brahma') ||
+                     key.toLowerCase().includes('gulika') || key.toLowerCase().includes('varjyam') ||
+                     key.toLowerCase().includes('yamagandam') || key.toLowerCase().includes('amritakalam')) {
             // Keep exact HH:MM range in UI; don't transform
             formattedLines.push(`• ${key}: ${value}`);
           } else {
