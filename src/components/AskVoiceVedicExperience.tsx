@@ -516,11 +516,28 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       .replace(/🪔/g, 'Jai Shree Krishna')
       // Expand separators like · | / to commas/spaces
       .replace(/[\u00B7|\/]/g, ', ')
-      // Keep HH:MM AM/PM legible for TTS
-      .replace(/(\d{1,2}):(\d{2})\s+(AM|PM)/g, '$1 $2 $3')
-      .replace(/(\d{1,2}):(\d{2})\s+(AM|PM)\s+(to|–|—|-)\s+(\d{1,2}):(\d{2})\s+(AM|PM)/g, '$1 $2 $3 to $5 $6 $7')
-      // Collapse repeated AM PM tokens
-      .replace(/(AM|PM)\s+(AM|PM)/g, '$1')
+      // Make time formats sound natural for TTS
+      .replace(/(\d{1,2}):(\d{2})\s+AM/gi, (match, hour, minute) => {
+        const h = parseInt(hour);
+        const m = parseInt(minute);
+        if (m === 0) {
+          return `${h} in the morning`;
+        } else {
+          return `${h} ${m} in the morning`;
+        }
+      })
+      .replace(/(\d{1,2}):(\d{2})\s+PM/gi, (match, hour, minute) => {
+        const h = parseInt(hour);
+        const m = parseInt(minute);
+        if (m === 0) {
+          return `${h} in the evening`;
+        } else {
+          return `${h} ${m} in the evening`;
+        }
+      })
+      // Handle time ranges with natural speech
+      .replace(/(\d+)\s+in the (morning|evening)\s+(to|–|—|-)\s+(\d+)\s+(\d+)\s+in the (morning|evening)/g, '$1 in the $2 to $4 $5 in the $6')
+      .replace(/(\d+)\s+(\d+)\s+in the (morning|evening)\s+(to|–|—|-)\s+(\d+)\s+in the (morning|evening)/g, '$1 $2 in the $3 to $5 in the $6')
       // Strip any leftover control or symbol noise but KEEP unicode letters/digits and punctuation
       .replace(/[^\p{L}\p{N}\s\.,:;()]/gu, ' ')
       // Normalize whitespace
@@ -534,11 +551,30 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     
     switch (contentType) {
       case 'timing':
-        // Special handling for timing-related content
+        // Special handling for timing-related content with natural time speech
         processedText = processedText
-          // Preserve time formats exactly as they should be spoken
-          .replace(/(\d{1,2}):(\d{2})\s+(AM|PM)/g, '$1 $2 $3')
-          .replace(/(\d{1,2}):(\d{2})\s+(AM|PM)\s+to\s+(\d{1,2}):(\d{2})\s+(AM|PM)/g, '$1 $2 $3 to $4 $5 $6')
+          // Convert time formats to natural speech
+          .replace(/(\d{1,2}):(\d{2})\s+AM/gi, (match, hour, minute) => {
+            const h = parseInt(hour);
+            const m = parseInt(minute);
+            if (m === 0) {
+              return `${h} in the morning`;
+            } else {
+              return `${h} ${m} in the morning`;
+            }
+          })
+          .replace(/(\d{1,2}):(\d{2})\s+PM/gi, (match, hour, minute) => {
+            const h = parseInt(hour);
+            const m = parseInt(minute);
+            if (m === 0) {
+              return `${h} in the evening`;
+            } else {
+              return `${h} ${m} in the evening`;
+            }
+          })
+          // Handle time ranges with natural speech
+          .replace(/(\d+)\s+in the (morning|evening)\s+(to|–|—|-)\s+(\d+)\s+(\d+)\s+in the (morning|evening)/g, '$1 in the $2 to $4 $5 in the $6')
+          .replace(/(\d+)\s+(\d+)\s+in the (morning|evening)\s+(to|–|—|-)\s+(\d+)\s+in the (morning|evening)/g, '$1 $2 in the $3 to $5 in the $6')
           // Handle date formats
           .replace(/(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)/g, '$1 $2')
           // Clean up special characters that affect timing readability
