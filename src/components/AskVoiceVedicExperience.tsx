@@ -10,9 +10,7 @@ import {
   Trash2,
   Lightbulb,
   ArrowRight,
-  Settings,
-  VolumeX,
-  Calendar
+  VolumeX
 } from 'lucide-react';
 import Logo from './Logo';
 
@@ -21,6 +19,7 @@ import { useLocation } from '../hooks/useLocation';
 import { useAuth } from '../hooks/useAuth';
 import { perplexityApi } from '../lib/perplexity-api';
 
+// CRITICAL FIX: UI and TTS now display the same content
 // Removed unused imports to fix linting errors
 // Perplexity API integration for spiritual guidance
 // Browser-based voice synthesis
@@ -111,7 +110,6 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
   // Simple local response system - no external APIs needed
   // Simple browser-based voice synthesis
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [voiceError, setVoiceError] = useState<string | null>(null);
   const [voiceInitialized, setVoiceInitialized] = useState(false);
   
   const [question, setQuestion] = useState('');
@@ -124,7 +122,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
-  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
+
   const [isAppLoading, setIsAppLoading] = useState(true);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -325,49 +323,9 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     }
   }, [messages.length, fetchInitialSuggestions]);
 
-  // Test function for browser console debugging
-  const testSuggestions = async (testQuery = "When is fasting this month?") => {
-    console.log("🧪 Testing suggestions with query:", testQuery);
-    try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      console.log("🔧 Environment check:");
-      console.log("- SUPABASE_URL:", supabaseUrl ? "✅ Found" : "❌ Missing");
-      console.log("- SUPABASE_ANON_KEY:", supabaseKey ? "✅ Found" : "❌ Missing");
-      
-      const response = await fetch(`${supabaseUrl}/functions/v1/match-similar-questions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({ query: testQuery }),
-      });
-      
-      console.log("📡 Full URL:", `${supabaseUrl}/functions/v1/match-similar-questions`);
-      console.log("📡 Request headers:", {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${supabaseKey?.substring(0, 10)}...`
-      });
-      
-      const data = await response.json();
-      console.log("🎯 Test result:", data);
-      return data;
-    } catch (error: unknown) {
-      console.error("🚨 Test failed:", error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      return { error: errorMessage };
-    }
-  };
 
-  // Make test function available globally for console testing
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      (window as { testSuggestions?: typeof testSuggestions }).testSuggestions = testSuggestions;
-      console.log("🔧 Test function available: window.testSuggestions()");
-    }
-  }, []);
+
+
 
   // Handle suggestion click
   const handleSuggestionClick = (suggestion: string) => {
@@ -379,8 +337,8 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     }, 100);
   };
 
-  // Voice options for ALL available system voices
-  const getAvailableVoices = () => {
+  // IMPROVED: Curated language-specific voice options for better UX
+  const getCuratedVoicesForLanguage = (language: string) => {
     const voices = window.speechSynthesis.getVoices();
     console.log('All available voices:', voices.map(v => `${v.name} (${v.lang})`));
     
@@ -392,101 +350,126 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       language: string;
     }
     
-    // Group voices by language and type
-    const voiceGroups = {
-      hindi: voices.filter(v => v.lang.startsWith('hi')),
-      kannada: voices.filter(v => v.lang.startsWith('kn')),
-      tamil: voices.filter(v => v.lang.startsWith('ta')),
-      telugu: voices.filter(v => v.lang.startsWith('te')),
-      malayalam: voices.filter(v => v.lang.startsWith('ml')),
-      english: voices.filter(v => v.lang.startsWith('en')),
-      other: voices.filter(v => !v.lang.startsWith('hi') && !v.lang.startsWith('kn') && !v.lang.startsWith('ta') && !v.lang.startsWith('te') && !v.lang.startsWith('ml') && !v.lang.startsWith('en'))
+    // Curated preferred voices for each language with fallbacks
+    const preferredVoices: Record<string, {names: string[], fallbackPatterns: RegExp[]}> = {
+      kn: {
+        names: ['Soumya', 'Kannada Soumya'],
+        fallbackPatterns: [/kannada/i, /\bkn[-_]?in\b/i, /soumya/i]
+      },
+      hi: {
+        names: ['Neel', 'Lekha', 'Hindi Neel', 'Hindi Lekha'],
+        fallbackPatterns: [/hindi/i, /\bhi[-_]?in\b/i, /neel|lekha/i, /india/i]
+      },
+      te: {
+        names: ['Geeta', 'Telugu Geeta'],
+        fallbackPatterns: [/telugu/i, /\bte[-_]?in\b/i, /geeta/i]
+      },
+      en: {
+        names: ['Alex', 'Samantha', 'Daniel', 'Karen', 'Moira'],
+        fallbackPatterns: [/\ben[-_]?us\b/i, /\ben[-_]?gb\b/i, /american|british|neutral/i]
+      },
+      ta: {
+        names: ['Kymal', 'Tamil Kymal'],
+        fallbackPatterns: [/tamil/i, /\bta[-_]?in\b/i, /kymal/i]
+      },
+      ml: {
+        names: ['Malayalam', 'Veena'],
+        fallbackPatterns: [/malayalam/i, /\bml[-_]?in\b/i, /veena/i]
+      }
     };
 
-    const allVoices: VoiceOption[] = [];
+    const curatedVoices: VoiceOption[] = [];
+    const languageVoices = voices.filter(v => v.lang.toLowerCase().startsWith(language.toLowerCase()));
     
-    // Add Hindi voices first
-    voiceGroups.hindi.forEach(voice => {
-      allVoices.push({
-        label: `हिंदी - ${voice.name}`,
-        value: voice.name,
-        lang: voice.lang,
-        language: 'hi'
+    if (preferredVoices[language]) {
+      const { names, fallbackPatterns } = preferredVoices[language];
+      
+      // 1. First, try to find exact name matches
+      names.forEach(preferredName => {
+        const exactMatch = languageVoices.find(v => 
+          v.name.toLowerCase().includes(preferredName.toLowerCase())
+        );
+        if (exactMatch && !curatedVoices.find(cv => cv.value === exactMatch.name)) {
+          curatedVoices.push({
+            label: getAccentLabel(exactMatch, language),
+            value: exactMatch.name,
+            lang: exactMatch.lang,
+            language
+          });
+        }
       });
-    });
-    
-    // Add Kannada voices
-    voiceGroups.kannada.forEach(voice => {
-      allVoices.push({
-        label: `ಕನ್ನಡ - ${voice.name}`,
-        value: voice.name,
-        lang: voice.lang,
-        language: 'kn'
-      });
-    });
-    
-    // Add Tamil voices
-    voiceGroups.tamil.forEach(voice => {
-      allVoices.push({
-        label: `தமிழ் - ${voice.name}`,
-        value: voice.name,
-        lang: voice.lang,
-        language: 'ta'
-      });
-    });
-    
-    // Add Telugu voices
-    voiceGroups.telugu.forEach(voice => {
-      allVoices.push({
-        label: `తెలుగు - ${voice.name}`,
-        value: voice.name,
-        lang: voice.lang,
-        language: 'te'
-      });
-    });
-    
-    // Add Malayalam voices
-    voiceGroups.malayalam.forEach(voice => {
-      allVoices.push({
-        label: `മലയാളം - ${voice.name}`,
-        value: voice.name,
-        lang: voice.lang,
-        language: 'ml'
-      });
-    });
-    
-    // Add English voices
-    voiceGroups.english.forEach(voice => {
-      const accent = voice.lang.includes('IN') ? 'Indian' : voice.lang.includes('GB') ? 'British' : 'American';
-      allVoices.push({
-        label: `English (${accent}) - ${voice.name}`,
-        value: voice.name,
-        lang: voice.lang,
-        language: 'en'
-      });
-    });
-    
-    // Add other available voices
-    voiceGroups.other.forEach(voice => {
-      allVoices.push({
-        label: `${voice.lang} - ${voice.name}`,
-        value: voice.name,
-        lang: voice.lang,
-        language: voice.lang.split('-')[0]
-      });
-    });
-    
-    // If no voices found, return a default
-    if (allVoices.length === 0) {
-      return [{
-        label: 'Default System Voice',
-        value: 'default',
-        lang: 'en-US',
-        language: 'en'
-      }];
+      
+      // 2. If no exact matches, use fallback patterns
+      if (curatedVoices.length === 0) {
+        fallbackPatterns.forEach(pattern => {
+          const patternMatch = languageVoices.find(v => 
+            pattern.test(v.name) || pattern.test(v.lang)
+          );
+          if (patternMatch && !curatedVoices.find(cv => cv.value === patternMatch.name)) {
+            curatedVoices.push({
+              label: getAccentLabel(patternMatch, language),
+              value: patternMatch.name,
+              lang: patternMatch.lang,
+              language
+            });
+          }
+        });
+      }
+      
+      // 3. If still nothing, use any voice for that language
+      if (curatedVoices.length === 0 && languageVoices.length > 0) {
+        languageVoices.slice(0, 2).forEach(voice => {
+          curatedVoices.push({
+            label: getAccentLabel(voice, language),
+            value: voice.name,
+            lang: voice.lang,
+            language
+          });
+        });
+      }
     }
     
-    return allVoices;
+    // Fallback to first available voice if none found
+    if (curatedVoices.length === 0) {
+      const anyVoice = voices.find(v => v.lang.toLowerCase().startsWith(language.toLowerCase())) || voices[0];
+      if (anyVoice) {
+        curatedVoices.push({
+          label: getAccentLabel(anyVoice, language),
+          value: anyVoice.name,
+          lang: anyVoice.lang,
+          language
+        });
+      }
+    }
+    
+    return curatedVoices;
+  };
+
+  // Helper function to create clean accent labels
+  const getAccentLabel = (voice: SpeechSynthesisVoice, language: string): string => {
+    const cleanName = voice.name.replace(/Microsoft|Google|Apple|System/, '').trim();
+    
+    switch (language) {
+      case 'kn':
+        return cleanName.includes('Soumya') ? 'ಕನ್ನಡ (Soumya)' : `ಕನ್ನಡ (${cleanName})`;
+      case 'hi':
+        if (cleanName.includes('Neel')) return 'हिंदी (Neel - India)';
+        if (cleanName.includes('Lekha')) return 'हिंदी (Lekha - Indian)';
+        return `हिंदी (${cleanName})`;
+      case 'te':
+        return cleanName.includes('Geeta') ? 'తెలుగు (Geeta)' : `తెలుగు (${cleanName})`;
+      case 'en':
+        const region = voice.lang.includes('IN') ? 'Indian' : 
+                     voice.lang.includes('GB') ? 'British' : 
+                     voice.lang.includes('AU') ? 'Australian' : 'Neutral';
+        return `English (${region} - ${cleanName})`;
+      case 'ta':
+        return cleanName.includes('Kymal') ? 'தமிழ் (Kymal)' : `தமிழ் (${cleanName})`;
+      case 'ml':
+        return `മലയാളം (${cleanName})`;
+      default:
+        return `${voice.lang} (${cleanName})`;
+    }
   };
 
   // Language options for multi-language support
@@ -499,69 +482,193 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     { label: "മലയാളം (Malayalam)", value: "ml" }
   ];
 
-  const [voiceOptions, setVoiceOptions] = useState(getAvailableVoices());
-  const [selectedVoice, setSelectedVoice] = useState(voiceOptions[0]?.value || "");
+  const [voiceOptions, setVoiceOptions] = useState<Array<{label: string, value: string, lang: string, language: string}>>([]);
+  const [selectedVoice, setSelectedVoice] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState("en");
   const [playingMsgId, setPlayingMsgId] = useState<string | null>(null);
-  const [voiceStatus, setVoiceStatus] = useState<'ready' | 'loading' | 'error' | 'no-voices'>('ready');
-  const [voiceErrorMessage, setVoiceErrorMessage] = useState<string>('');
 
+  // IMPROVED: Update voice options when language changes or speech synthesis voices are loaded
   useEffect(() => {
     const updateVoices = () => {
-      const options = getAvailableVoices();
+      const options = getCuratedVoicesForLanguage(selectedLanguage);
       setVoiceOptions(options);
       
-      // Auto-select appropriate voice for selected language
-      const languageSpecificVoice = options.find(v => v.language === selectedLanguage);
-      if (languageSpecificVoice && !options.find(v => v.value === selectedVoice)) {
-        setSelectedVoice(languageSpecificVoice.value);
-      } else if (!options.find(v => v.value === selectedVoice)) {
-        setSelectedVoice(options[0]?.value || "");
+      // Auto-select the first curated voice for the selected language
+      if (options.length > 0) {
+        setSelectedVoice(options[0].value);
       }
     };
     window.speechSynthesis.onvoiceschanged = updateVoices;
     updateVoices();
     return () => { window.speechSynthesis.onvoiceschanged = null; };
-  }, [selectedLanguage]); // Add selectedLanguage as dependency
+  }, [selectedLanguage]); // Update voices when language changes
 
   // Function to clean up time strings for TTS to avoid "AM PM" reading issues
   const cleanTextForTTS = (text: string): string => {
-    // Fix time format issues that cause TTS to read "AM PM" incorrectly
+    // Enhanced TTS text cleaning for better speech quality
+    // Preserve all Unicode letters (covers Telugu) and basic punctuation
     return text
-      // Remove special characters and symbols that cause TTS issues
+      // Replace decorative bullets/dashes with natural pauses
+      .replace(/[•·]/g, ' ')
+      .replace(/[–—-]/g, ' ')
+      // Remove emojis except diya (we already handle greeting separately)
+      .replace(/\p{Extended_Pictographic}/gu, ' ')
       .replace(/🪔/g, 'Jai Shree Krishna')
-      .replace(/[•·]/g, '')
-      .replace(/[–—]/g, ' to ')
-      .replace(/[^\w\s\-\.,:;()]/g, '') // Remove all special characters except basic punctuation
-      // Fix "3:40 PM to 5:20 PM" becoming "3:40 AM PM to 5:20 AM PM"
-      .replace(/(\d{1,2}:\d{2})\s+(AM|PM)\s+to\s+(\d{1,2}:\d{2})\s+(AM|PM)/g, '$1 $2 to $3 $4')
-      // Fix "9:05 AM to 10:45 AM" becoming "9:05 AM PM to 10:45 AM PM"
-      .replace(/(\d{1,2}:\d{2})\s+(AM|PM)\s+to\s+(\d{1,2}:\d{2})\s+(AM|PM)/g, '$1 $2 to $3 $4')
-      // Fix any remaining "AM PM" combinations
+      // Expand separators like · | / to commas/spaces
+      .replace(/[\u00B7|\/]/g, ', ')
+      // Keep HH:MM AM/PM legible for TTS
+      .replace(/(\d{1,2}):(\d{2})\s+(AM|PM)/g, '$1 $2 $3')
+      .replace(/(\d{1,2}):(\d{2})\s+(AM|PM)\s+(to|–|—|-)\s+(\d{1,2}):(\d{2})\s+(AM|PM)/g, '$1 $2 $3 to $5 $6 $7')
+      // Collapse repeated AM PM tokens
       .replace(/(AM|PM)\s+(AM|PM)/g, '$1')
-      // Fix "About" and "Around" for better TTS
-      .replace(/About\s+/g, '')
-      .replace(/Around\s+/g, '')
-      // Clean up extra spaces
-      .replace(/\s+/g, ' ')
-      // Handle Panchangam format better
-      .replace(/(\d{1,2}:\d{2}\s+(?:AM|PM))/g, '$1')
-      // Clean up any remaining formatting for better TTS
+      // Strip any leftover control or symbol noise but KEEP unicode letters/digits and punctuation
+      .replace(/[^\p{L}\p{N}\s\.,:;()]/gu, ' ')
+      // Normalize whitespace
       .replace(/\s+/g, ' ')
       .trim();
+  };
+
+  // NEW FUNCTION: Enhanced TTS text processing for different content types
+  const processTextForTTS = (text: string, contentType: 'timing' | 'general' | 'ritual' = 'general'): string => {
+    let processedText = text;
+    
+    switch (contentType) {
+      case 'timing':
+        // Special handling for timing-related content
+        processedText = processedText
+          // Preserve time formats exactly as they should be spoken
+          .replace(/(\d{1,2}):(\d{2})\s+(AM|PM)/g, '$1 $2 $3')
+          .replace(/(\d{1,2}):(\d{2})\s+(AM|PM)\s+to\s+(\d{1,2}):(\d{2})\s+(AM|PM)/g, '$1 $2 $3 to $4 $5 $6')
+          // Handle date formats
+          .replace(/(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)/g, '$1 $2')
+          // Clean up special characters that affect timing readability
+          .replace(/[•·]/g, ' and ')
+          .replace(/[–—]/g, ' to ')
+          // Remove problematic symbols but keep essential punctuation
+          .replace(/[^\w\s\-\.,:;()]/g, ' ')
+          // Fix spacing issues
+          .replace(/\s+/g, ' ')
+          .trim();
+        break;
+        
+      case 'ritual':
+        // Special handling for ritual and spiritual content
+        processedText = processedText
+          // Preserve spiritual terms and mantras
+          .replace(/🪔/g, 'Jai Shree Krishna')
+          // Clean up formatting while preserving meaning
+          .replace(/[•·]/g, ' and ')
+          .replace(/[–—]/g, ' to ')
+          // Remove only problematic symbols
+          .replace(/[^\w\s\-\.,:;()]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        break;
+        
+      default:
+        // General content processing
+        processedText = cleanTextForTTS(processedText);
+    }
+    
+    return processedText;
+  };
+
+  // NEW FUNCTION: Detect content type for better TTS processing
+  const detectContentType = (text: string): 'timing' | 'general' | 'ritual' => {
+    const lowerText = text.toLowerCase();
+    
+    // Telugu timing keywords (for better timing detection when content is in Telugu)
+    const teluguTiming = /సూర్యోదయ|సూర్యోదయం|సూర్యాస్తమయ|సూర్యాస్తమయం|ముహూర్త|రాహు|రాహుకాలం|యమగండ|యమగండం|తిథి|నక్షత్ర/;
+    
+    if (lowerText.includes('time') || lowerText.includes('timing') || 
+        lowerText.includes('am') || lowerText.includes('pm') ||
+        lowerText.includes('sunrise') || lowerText.includes('sunset') ||
+        lowerText.includes('muhurat') || lowerText.includes('rahu') ||
+        lowerText.includes('tithi') || lowerText.includes('nakshatra') ||
+        teluguTiming.test(text)) {
+      return 'timing';
+    }
+    
+    if (lowerText.includes('puja') || lowerText.includes('pooja') ||
+        lowerText.includes('ritual') || lowerText.includes('mantra') ||
+        lowerText.includes('jai shree krishna') || lowerText.includes('om')) {
+      return 'ritual';
+    }
+    
+    return 'general';
+  };
+
+  // Helper: pick the most natural voice for a given language
+  const selectBestVoiceForLanguage = (
+    language: string,
+    voices: SpeechSynthesisVoice[],
+    preferredVoiceName?: string
+  ): SpeechSynthesisVoice | undefined => {
+    // 1) Exact selected voice by name
+    if (preferredVoiceName) {
+      const byName = voices.find(v => v.name === preferredVoiceName);
+      if (byName) return byName;
+    }
+    // 2) Language-specific strong matches
+    const matchers: RegExp[] = language === 'te'
+      ? [/telugu/i, /తెలుగు/, /\bte(?:-|_)?IN\b/i, /natural/i, /microsoft/i, /google/i]
+      : language === 'hi'
+      ? [/hindi/i, /हिन्दी|हिंदी/, /\bhi(?:-|_)?IN\b/i, /natural/i, /microsoft/i, /google/i]
+      : language === 'kn'
+      ? [/kannada/i, /ಕನ್ನಡ/, /\bkn(?:-|_)?IN\b/i, /natural/i, /microsoft/i, /google/i]
+      : [/\b${language}(?:-|_)IN\b/i, /india/i, /natural/i, /google/i, /microsoft/i];
+    const strong = voices.find(v => matchers.some(rx => rx.test(v.name) || rx.test(v.lang)));
+    if (strong) return strong;
+    // 3) Fallback by language code prefix
+    const byLangPrefix = voices.find(v => v.lang.toLowerCase().startsWith(language.toLowerCase()));
+    if (byLangPrefix) return byLangPrefix;
+    // 4) Last resort: first available
+    return voices[0];
+  };
+
+  // Helper: split long text into natural, speakable chunks (sentences/lines)
+  const splitIntoNaturalChunks = (text: string): string[] => {
+    const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
+    const out: string[] = [];
+    const pushWithChunking = (segment: string) => {
+      if (segment.length <= 220) {
+        out.push(segment);
+        return;
+      }
+      // Try to break at commas/spaces near 180-220 chars window
+      let start = 0;
+      const max = segment.length;
+      while (start < max) {
+        const end = Math.min(start + 220, max);
+        let cut = segment.lastIndexOf(', ', end);
+        if (cut <= start + 120) cut = segment.lastIndexOf(' ', end);
+        if (cut <= start) cut = end;
+        out.push(segment.slice(start, cut).trim());
+        start = cut;
+      }
+    };
+    lines.forEach(line => {
+      // Split by sentence punctuation including Devanagari danda (।) and Telugu danda if present
+      const sentences = line.split(/(?<=[\.!\?]|\u0964|\u0965|\u0C7F)\s+/).map(s => s.trim()).filter(Boolean);
+      sentences.forEach(s => pushWithChunking(s));
+    });
+    return out;
   };
 
   const playMessage = (msgId: string, text: string) => {
     if (playingMsgId === msgId) {
       window.speechSynthesis.cancel();
       setPlayingMsgId(null);
+      setIsSpeaking(false);
       return;
     }
     window.speechSynthesis.cancel();
     setPlayingMsgId(msgId);
+    setIsSpeaking(true);
     
-    // Clean the text for better TTS
-    const cleanedText = cleanTextForTTS(text);
+    // Intelligent TTS text processing based on content type
+    const contentType = detectContentType(text);
+    const cleanedText = processTextForTTS(text, contentType);
     
     const utterance = new window.SpeechSynthesisUtterance(cleanedText);
     const voices = window.speechSynthesis.getVoices();
@@ -571,8 +678,8 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     let targetVoice = voices.find(v => v.name === selectedVoice);
     
     // If selected voice not found, try to find a voice for the selected language
-    if (!targetVoice && selectedVoiceObj) {
-      targetVoice = voices.find(v => v.lang.startsWith(selectedVoiceObj.language));
+    if (!targetVoice) {
+      targetVoice = selectBestVoiceForLanguage(selectedLanguage, voices, selectedVoice);
     }
     
     // If still no voice found, use the first available voice
@@ -605,17 +712,54 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     }
     
     // Set speech rate and pitch for better quality
-    utterance.rate = 0.9; // Slightly slower for better clarity
+    // Tune for naturalness (slightly slower for Indian languages) and chunk long speech
+    utterance.rate = selectedLanguage === 'te' ? 0.88 : 0.9;
     utterance.pitch = 1.0; // Normal pitch
     utterance.volume = 1.0; // Full volume
     
-    utterance.onend = () => setPlayingMsgId(null);
+    utterance.onend = () => {
+      setPlayingMsgId(null);
+      setIsSpeaking(false);
+    };
     utterance.onerror = (event) => {
       console.error('Speech synthesis error:', event);
       setPlayingMsgId(null);
+      setIsSpeaking(false);
     };
     
-    window.speechSynthesis.speak(utterance);
+    // Speak in natural chunks to avoid robotic cadence on long paragraphs
+    const chunks = splitIntoNaturalChunks(cleanedText);
+    if (chunks.length <= 1) {
+      window.speechSynthesis.speak(utterance);
+    } else {
+      let index = 0;
+      const speakNext = () => {
+        if (index >= chunks.length) return;
+        const u = new window.SpeechSynthesisUtterance(chunks[index]);
+        u.voice = utterance.voice;
+        u.lang = utterance.lang;
+        u.rate = utterance.rate;
+        u.pitch = utterance.pitch;
+        u.volume = utterance.volume;
+        u.onend = () => {
+          index += 1;
+          if (index < chunks.length) {
+            speakNext();
+          } else {
+            setPlayingMsgId(null);
+            setIsSpeaking(false);
+          }
+        };
+        u.onerror = (event) => {
+          console.error('Speech synthesis error:', event);
+          setPlayingMsgId(null);
+          setIsSpeaking(false);
+        };
+        window.speechSynthesis.speak(u);
+      };
+      speakNext();
+      return;
+    }
   };
 
   // Output post-processing for Perplexity responses
@@ -674,28 +818,95 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       lines.unshift('🪔 Jai Shree Krishna.');
     }
 
-    // For panchangam questions, preserve more content
-    const isPanchangamQuestion = /panchang|tithi|nakshatra|rahu|muhurat/i.test(response);
-    const maxLines = isPanchangamQuestion ? 25 : 15;
-    
-    if (lines.length > maxLines) {
-      lines = lines.slice(0, maxLines);
-    }
-
-    // Keep meaningful content - don't truncate sentences aggressively
-    lines = lines.map(line => {
-      // For panchangam data, keep the full line
-      if (isPanchangamQuestion && (line.includes(':') || line.includes('AM') || line.includes('PM') || line.includes('Tithi') || line.includes('Nakshatra'))) {
-        return line;
+    // CRITICAL FIX: Don't truncate content - show everything that TTS reads
+    // Only remove problematic lines, but keep all meaningful content
+    lines = lines.filter(line => {
+      // Keep all lines that contain actual information
+      if (line.includes(':') || line.includes('AM') || line.includes('PM') || 
+          line.includes('Tithi') || line.includes('Nakshatra') || 
+          line.includes('Rahu') || line.includes('Yama') || 
+          line.includes('Sunrise') || line.includes('Sunset') ||
+          line.includes('Date') || line.includes('Location') ||
+          line.includes('Vaara') || line.includes('Maasa')) {
+        return true;
       }
       
-      // For other content, limit to 2 sentences
-      const sentences = line.split('. ');
-      return sentences.slice(0, 2).join('. ') + (sentences.length > 2 ? '.' : '');
+      // Keep lines with meaningful content (not just empty or generic text)
+      if (line.length > 10 && !line.toLowerCase().includes('please') && !line.toLowerCase().includes('check')) {
+        return true;
+      }
+      
+      return false;
     });
 
-    return lines.join('\n');
+    // Apply aesthetic formatting for panchangam questions
+    let result = lines.join('\n');
+    if (/panchang|tithi|nakshatra|rahu|muhurat/i.test(response)) {
+      result = createAestheticFormat(result);
+    }
+
+    return result;
   }
+
+  // NEW FUNCTION: Create aesthetic, compact bullet formatting for world-class presentation
+  function createAestheticFormat(response: string): string {
+    // Split into lines and process
+    const lines = response.split('\n').map(line => line.trim()).filter(Boolean);
+    const formattedLines: string[] = [];
+    
+    // Add greeting
+    formattedLines.push('🪔 Jai Shree Krishna.');
+    formattedLines.push('');
+    
+    // Add heading
+    formattedLines.push('📅 TIMING DETAILS:');
+    formattedLines.push('');
+    
+    // Process each line for aesthetic formatting - PRESERVE ALL CONTENT
+    lines.forEach(line => {
+      // Skip greeting lines (already added)
+      if (line.includes('Jai Shree Krishna')) return;
+      
+      // Check if this line contains timing information (has colons)
+      if (line.includes(':')) {
+        const [key, value] = line.split(':').map(part => part.trim());
+        if (key && value) {
+          // Enhanced timing formatting with better TTS compatibility
+          if (key.toLowerCase().includes('date') || key.toLowerCase().includes('location')) {
+            formattedLines.push(`• ${key}: ${value}`);
+          } else if (key.toLowerCase().includes('sunrise') || key.toLowerCase().includes('sunset')) {
+            // Keep exact HH:MM format in UI; don't transform
+            formattedLines.push(`• ${key}: ${value}`);
+          } else if (key.toLowerCase().includes('vaara') || key.toLowerCase().includes('maasa')) {
+            formattedLines.push(`• ${key}: ${value}`);
+          } else if (key.toLowerCase().includes('tithi') || key.toLowerCase().includes('nakshatra')) {
+            formattedLines.push(`• ${key}: ${value}`);
+          } else if (key.toLowerCase().includes('rahu') || key.toLowerCase().includes('yama') || 
+                     key.toLowerCase().includes('abhijit') || key.toLowerCase().includes('brahma')) {
+            // Keep exact HH:MM range in UI; don't transform
+            formattedLines.push(`• ${key}: ${value}`);
+          } else {
+            // For other timing information - PRESERVE ALL
+            formattedLines.push(`• ${key}: ${value}`);
+          }
+        }
+      } else if (line.length > 0) {
+        // For non-timing lines, add as is - PRESERVE ALL CONTENT
+        formattedLines.push(line);
+      }
+    });
+    
+    // Add professional footer
+    formattedLines.push('');
+    formattedLines.push('All timings are in local time with daylight saving adjustment, as per DrikPanchangam calculations');
+    
+    return formattedLines.join('\n');
+  }
+
+
+
+
+
 
   // Extract location from user's question
   const extractLocationFromQuestion = (question: string): string | null => {
@@ -753,6 +964,8 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       // Determine if user asked for 'more info'
       const isMoreInfo = /more info|full panchang|all details/i.test(userMessage.content);
       const processedText = processPerplexityResponse(responseText, isMoreInfo);
+      console.log('🔍 Original Response Length:', responseText.length);
+      console.log('🔍 Processed Text Length:', processedText.length);
       console.log('🔍 Processed Text:', processedText);
       
       const assistantMessage: Message = {
@@ -765,9 +978,10 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       onAddMessage(assistantMessage);
 
       // Trigger text-to-speech for the response with selected language
-      if (responseText && responseText.trim() !== "") {
+      // CRITICAL FIX: Use the same processed text for both UI and TTS
+      if (processedText && processedText.trim() !== "") {
         setTimeout(() => {
-          playMessage(assistantMessage.id, responseText);
+          playMessage(assistantMessage.id, processedText);
         }, 300);
       }
 
@@ -886,6 +1100,8 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       setApiError('');
       try {
         window.speechSynthesis.cancel();
+        setPlayingMsgId(null);
+        setIsSpeaking(false);
       } catch (error) {
         console.warn('Could not cancel speech synthesis:', error);
       }
@@ -983,21 +1199,9 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
             ))}
           </select>
 
-          {/* Test Voice Button */}
-          <button
-            onClick={() => {
-              const testText = selectedLanguage === "hi" ? "नमस्ते, मैं VoiceVedic हूं" : "Hello, I am VoiceVedic";
-              const utterance = new window.SpeechSynthesisUtterance(testText);
-              const voices = window.speechSynthesis.getVoices();
-              utterance.voice = voices.find(v => v.name === selectedVoice) || voices[0];
-              utterance.lang = selectedLanguage === "hi" ? "hi-IN" : "en-US";
-              window.speechSynthesis.speak(utterance);
-            }}
-            className="px-3 py-2 bg-spiritual-100 hover:bg-spiritual-200 rounded-spiritual text-spiritual-700 font-medium transition-all duration-300 border border-spiritual-200 shadow-spiritual"
-            title="Test selected voice"
-          >
-            Test Voice
-          </button>
+
+
+
 
           {/* Clear Button */}
           <button
@@ -1014,105 +1218,8 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       
 
       
-      {/* Voice Settings Panel */}
-      {showVoiceSettings && (
-        <div className="relative z-30 bg-white/95 backdrop-blur-sm border-b border-spiritual-200/50 p-6 animate-slide-down">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-spiritual-900 tracking-spiritual">
-                Voice Settings
-              </h3>
-              <button
-                onClick={() => setShowVoiceSettings(false)}
-                className="text-spiritual-600 hover:text-spiritual-800 transition-colors"
-              >
-                ×
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              {/* Available Voices List */}
-              <div>
-                <label className="block text-sm font-medium text-spiritual-700 mb-2 tracking-spiritual">
-                  Available Voices
-                </label>
-                <div className="max-h-40 overflow-y-auto space-y-2">
-                  {(() => {
-                    const voices = window.speechSynthesis.getVoices();
-                    const catherineVoice = voices.find(voice => 
-                      voice.name.toLowerCase().includes('catherine') && 
-                      voice.lang.toLowerCase().includes('en-au')
-                    );
-                    
-                    if (voices.length === 0) {
-                      return (
-                        <div className="text-center py-4 text-spiritual-600">
-                          <div className="flex items-center justify-center gap-2">
-                            <div className="w-4 h-4 border-2 border-spiritual-400 border-t-transparent rounded-full animate-spin"></div>
-                            Loading voices...
-                          </div>
-                        </div>
-                      );
-                    } else if (catherineVoice) {
-                      return (
-                        <button
-                          onClick={() => console.log('Voice selected:', catherineVoice.name)}
-                          className="w-full text-left p-3 rounded-spiritual border border-spiritual-400 bg-spiritual-100 text-spiritual-900 transition-all duration-300"
-                        >
-                          <div className="font-medium text-sm">{catherineVoice.name}</div>
-                          <div className="text-spiritual-600 text-xs">{catherineVoice.lang}</div>
-                          <div className="w-2 h-2 bg-spiritual-500 rounded-full mt-2"></div>
-                        </button>
-                      );
-                    } else {
-                      return (
-                        <div className="text-center py-4 text-spiritual-600">
-                          <div>Catherine (en-AU) voice not found.</div>
-                          <div className="text-xs text-spiritual-500 mt-1">Available voices: {voices.length}</div>
-                          <button
-                            onClick={() => window.location.reload()}
-                            className="mt-2 px-3 py-1 bg-spiritual-100 hover:bg-spiritual-200 rounded text-xs text-spiritual-700 transition-colors"
-                          >
-                            Reload Page
-                          </button>
-                        </div>
-                      );
-                    }
-                  })()}
-                </div>
-              </div>
-              
-              {/* Voice Status */}
-              <div className="text-center">
-                <div className="text-sm text-spiritual-600 tracking-spiritual">
-                  <div>Voice: <span className="font-medium text-spiritual-800">Catherine (en-AU)</span></div>
-                  <div className="text-xs text-spiritual-500 mt-1">Australian English - Soothing & Clear</div>
-                  {isSpeaking && (
-                    <div className="text-spiritual-600 mt-2 flex items-center justify-center gap-2">
-                      <div className="w-2 h-2 bg-spiritual-500 rounded-full animate-pulse"></div>
-                      Speaking...
-                    </div>
-                  )}
-                  {voiceError && (
-                    <div className="text-red-600 mt-2">Error: {voiceError}</div>
-                  )}
-                </div>
-              </div>
-              
-              {/* Voice Controls */}
-              <div className="flex justify-center gap-3">
-                <button
-                  onClick={() => window.speechSynthesis.cancel()}
-                  className="flex items-center gap-2 px-4 py-2 bg-spiritual-100 hover:bg-spiritual-200 rounded-spiritual text-spiritual-700 font-medium transition-all duration-300"
-                >
-                  <VolumeX className="w-4 h-4" />
-                  Stop Voice
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
+
       
       {/* Sacred Beginning Text - Bottom Right */}
       <div className={`absolute bottom-24 right-8 z-10 transition-opacity duration-1000 ${showSacredText ? 'opacity-100' : 'opacity-0'}`}>
@@ -1209,12 +1316,16 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                         {message.content.split('\n').map((line, index) => {
                           // Check if this is a timing detail line
                           if (line.includes(':')) {
-                            const [key, value] = line.split(':').map(part => part.trim());
+                            // Split only on the FIRST colon so HH:MM (e.g., 06:14) stays intact
+                            const firstColon = line.indexOf(':');
+                            const key = line.slice(0, firstColon).trim();
+                            const value = line.slice(firstColon + 1).trim();
                             if (key && value) {
                               return (
                                 <div key={index} className="flex flex-col sm:flex-row sm:items-start gap-2 py-2 border-b border-spiritual-100/30 last:border-b-0">
                                   <span className="font-semibold text-spiritual-700 min-w-[100px] flex-shrink-0">{key}:</span>
-                                  <span className="text-spiritual-800 break-words">{value}</span>
+                                  {/* Wrap long Hindi lines; never truncate times */}
+                                  <span className="text-spiritual-800 break-words whitespace-pre-wrap">{value}</span>
                                 </div>
                               );
                             }
@@ -1450,12 +1561,15 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
           </div>
         </div>
       </div>
+      
+      {/* Stop Voice Button */}
       {isSpeaking && (
         <button
           className="fixed bottom-8 right-8 z-50 bg-red-600 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2"
           onClick={() => { 
             window.speechSynthesis.cancel(); 
             setPlayingMsgId(null);
+            setIsSpeaking(false);
           }}
         >
           <VolumeX className="w-5 h-5" /> Stop

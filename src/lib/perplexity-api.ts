@@ -148,15 +148,22 @@ For Panchangam requests, provide the answer directly in this exact format:
 
 Date: [Date/Month/Year, local time]
 Location: [City, Country]
-Sunrise: [HH:MM AM/PM]
-Sunset: [HH:MM AM/PM]
+Sunrise: [HH:MM AM/PM - MUST include AM/PM]
+Sunset: [HH:MM AM/PM - MUST include AM/PM]
 Vaara: [Day of the Week]
 Maasa: [month, per DrikPanchangam at location]
 Tithi: [Name, Start Time to End Time, local timezone]
 Nakshatra: [Name, Start Time to End Time, local timezone]
-Rahu Kalam: [Start Time to End Time, local timezone]
-Yama Gandam: [Start Time to End Time, local timezone]
-Brahma Muhurtham: [Start Time to End Time, local timezone]
+Rahu Kalam: [HH:MM AM/PM to HH:MM AM/PM - MUST include AM/PM]
+Yama Gandam: [HH:MM AM/PM to HH:MM AM/PM - MUST include AM/PM]
+Abhijit Muhurat: [HH:MM AM/PM to HH:MM AM/PM - MUST include AM/PM]
+
+CRITICAL TIMING FORMAT REQUIREMENTS:
+- ALL timing values MUST be in HH:MM AM/PM format
+- NEVER provide just numbers like "6", "7", "12"
+- ALWAYS format as "6:00 AM", "7:00 PM", "12:00 PM"
+- For ranges, use "6:00 AM to 7:00 PM" format
+- This is a world-class product requirement - timing accuracy is critical
 
 IMPORTANT: 
 - Use ONLY actual DrikPanchangam calculations
