@@ -580,12 +580,18 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     // Telugu timing keywords (for better timing detection when content is in Telugu)
     const teluguTiming = /సూర్యోదయ|సూర్యోదయం|సూర్యాస్తమయ|సూర్యాస్తమయం|ముహూర్త|రాహు|రాహుకాలం|యమగండ|యమగండం|తిథి|నక్షత్ర/;
     
+    // Tamil timing keywords (for better timing detection when content is in Tamil)
+    const tamilTiming = /சூரிய உதயம்|சூரிய அஸ்தமனம்|முஹூர்தம்|ராகு காலம்|யமகண்டம்|திதி|நக்ஷத்திரம்|காலை|மாலை|நேரம்/;
+    
+    // Malayalam timing keywords (for better timing detection when content is in Malayalam)
+    const malayalamTiming = /സൂര്യോദയം|സൂര്യാസ്തമയം|മുഹൂർത്തം|രാഹുകാലം|യമഗണ്ഡം|തിഥി|നക്ഷത്രം|കാലാവസ്ഥ|സമയം/;
+    
     if (lowerText.includes('time') || lowerText.includes('timing') || 
         lowerText.includes('am') || lowerText.includes('pm') ||
         lowerText.includes('sunrise') || lowerText.includes('sunset') ||
         lowerText.includes('muhurat') || lowerText.includes('rahu') ||
         lowerText.includes('tithi') || lowerText.includes('nakshatra') ||
-        teluguTiming.test(text)) {
+        teluguTiming.test(text) || tamilTiming.test(text) || malayalamTiming.test(text)) {
       return 'timing';
     }
     
@@ -712,8 +718,20 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     }
     
     // Set speech rate and pitch for better quality
-    // Tune for naturalness (slightly slower for Indian languages) and chunk long speech
-    utterance.rate = selectedLanguage === 'te' ? 0.88 : 0.9;
+    // Tune for naturalness (optimized rates for different language phonetics)
+    switch (selectedLanguage) {
+      case 'te':
+        utterance.rate = 0.88; // Telugu - slightly slower for natural flow
+        break;
+      case 'ta':
+        utterance.rate = 0.85; // Tamil - slower rate for clear consonant clusters
+        break;
+      case 'ml':
+        utterance.rate = 0.87; // Malayalam - optimized for complex phonetics
+        break;
+      default:
+        utterance.rate = 0.9; // Other languages (Hindi, Kannada, English)
+    }
     utterance.pitch = 1.0; // Normal pitch
     utterance.volume = 1.0; // Full volume
     
