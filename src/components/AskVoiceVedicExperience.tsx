@@ -18,6 +18,7 @@ import { useVoiceVedicAPI } from '../lib/voicevedic-api';
 import { useLocation } from '../hooks/useLocation';
 import { useAuth } from '../hooks/useAuth';
 import { perplexityApi } from '../lib/perplexity-api';
+import { openAITranslationService, TranslationResponse } from '../lib/openai-translation';
 
 // CRITICAL FIX: UI and TTS now display the same content
 // Removed unused imports to fix linting errors
@@ -82,6 +83,9 @@ interface Message {
   type: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  translatedContent?: string;
+  audioUrl?: string;
+  targetLanguage?: string;
 }
 
 interface AskVoiceVedicExperienceProps {
@@ -91,8 +95,19 @@ interface AskVoiceVedicExperienceProps {
     type: 'user' | 'assistant';
     content: string;
     timestamp: Date;
+    translatedContent?: string;
+    audioUrl?: string;
+    targetLanguage?: string;
   }>;
-  onAddMessage: (message: { id: string; type: 'user' | 'assistant'; content: string; timestamp: Date }) => void;
+  onAddMessage: (message: { 
+    id: string; 
+    type: 'user' | 'assistant'; 
+    content: string; 
+    timestamp: Date;
+    translatedContent?: string;
+    audioUrl?: string;
+    targetLanguage?: string;
+  }) => void;
   onClearConversation: () => void;
 }
 
@@ -125,6 +140,11 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
 
   const [isAppLoading, setIsAppLoading] = useState(true);
   
+  // OpenAI Translation and Audio states
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [openAIAudioRef, setOpenAIAudioRef] = useState<HTMLAudioElement | null>(null);
+  const [playingOpenAIAudio, setPlayingOpenAIAudio] = useState<string | null>(null);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -142,6 +162,21 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     }, 800);
     return () => clearTimeout(timer);
   }, []);
+
+  // Cleanup OpenAI audio URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      messages.forEach(message => {
+        if (message.audioUrl) {
+          // Use static method to cleanup audio URLs
+          URL.revokeObjectURL(message.audioUrl);
+        }
+      });
+      if (openAIAudioRef) {
+        openAIAudioRef.pause();
+      }
+    };
+  }, [messages, openAIAudioRef]);
 
   // Check mic support on mount
   useEffect(() => {
@@ -335,6 +370,89 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     setTimeout(() => {
       handleAskQuestion();
     }, 100);
+  };
+
+  // OpenAI Translation and Audio Integration
+  const translateWithOpenAI = async (text: string, targetLanguage: string): Promise<TranslationResponse | null> => {
+    if (!import.meta.env.VITE_OPENAI_API_KEY) {
+      console.warn('OpenAI API key not configured for translation');
+      return null;
+    }
+
+    try {
+      setIsTranslating(true);
+      
+      const languageMap: Record<string, string> = {
+        'en': 'English',
+        'hi': 'Hindi',
+        'te': 'Telugu',
+        'ta': 'Tamil',
+        'kn': 'Kannada',
+        'ml': 'Malayalam'
+      };
+
+      const translationLanguage = languageMap[targetLanguage] || 'English';
+      
+      const response = await openAITranslationService.smartTranslate({
+        text,
+        targetLanguage: translationLanguage,
+        sourceLanguage: 'English'
+      });
+
+      return response;
+    } catch (error) {
+      console.error('OpenAI translation failed:', error);
+      return null;
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  // Play OpenAI generated audio
+  const playOpenAIAudio = (audioUrl: string, messageId: string) => {
+    // Stop any current audio
+    if (openAIAudioRef) {
+      openAIAudioRef.pause();
+      openAIAudioRef.currentTime = 0;
+    }
+
+    // Stop browser TTS if it's playing
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      setPlayingMsgId(null);
+    }
+
+    const audio = new Audio(audioUrl);
+    setOpenAIAudioRef(audio);
+    setPlayingOpenAIAudio(messageId);
+
+    audio.onended = () => {
+      setPlayingOpenAIAudio(null);
+      setOpenAIAudioRef(null);
+    };
+
+    audio.onerror = () => {
+      console.error('OpenAI audio playback failed');
+      setPlayingOpenAIAudio(null);
+      setOpenAIAudioRef(null);
+    };
+
+    audio.play().catch(error => {
+      console.error('Failed to play OpenAI audio:', error);
+      setPlayingOpenAIAudio(null);
+      setOpenAIAudioRef(null);
+    });
+  };
+
+  // Stop OpenAI audio
+  const stopOpenAIAudio = () => {
+    if (openAIAudioRef) {
+      openAIAudioRef.pause();
+      openAIAudioRef.currentTime = 0;
+      setOpenAIAudioRef(null);
+    }
+    setPlayingOpenAIAudio(null);
   };
 
   // IMPROVED: Curated language-specific voice options for better UX
@@ -1074,20 +1192,43 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       console.log('🔍 Processed Text Length:', processedText.length);
       console.log('🔍 Processed Text:', processedText);
       
-      const assistantMessage: Message = {
+      // Prepare the assistant message
+      let assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
         content: processedText,
         timestamp: new Date()
       };
 
+      // OpenAI Translation and Audio Generation
+      if (selectedLanguage !== 'en' && import.meta.env.VITE_OPENAI_API_KEY) {
+        try {
+          const translationResult = await translateWithOpenAI(processedText, selectedLanguage);
+          if (translationResult) {
+            assistantMessage = {
+              ...assistantMessage,
+              translatedContent: translationResult.translatedText,
+              audioUrl: translationResult.audioUrl,
+              targetLanguage: translationResult.targetLanguage
+            };
+          }
+        } catch (error) {
+          console.error('Translation failed, falling back to original content:', error);
+        }
+      }
+
       onAddMessage(assistantMessage);
 
-      // Trigger text-to-speech for the response with selected language
-      // CRITICAL FIX: Use the same processed text for both UI and TTS
-      if (processedText && processedText.trim() !== "") {
+      // Trigger audio playback - prefer OpenAI audio if available, fallback to browser TTS
+      if (assistantMessage.audioUrl) {
+        // Use OpenAI generated audio
         setTimeout(() => {
-          playMessage(assistantMessage.id, processedText);
+          playOpenAIAudio(assistantMessage.audioUrl!, assistantMessage.id);
+        }, 300);
+      } else if (processedText && processedText.trim() !== "") {
+        // Fallback to browser TTS
+        setTimeout(() => {
+          playMessage(assistantMessage.id, assistantMessage.translatedContent || processedText);
         }, 300);
       }
 
@@ -1418,8 +1559,15 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                   }`}>
                     {message.type === 'assistant' ? (
                       <div className="space-y-4">
-                        {/* Format the content with better structure */}
-                        {message.content.split('\n').map((line, index) => {
+                        {/* Show translation status */}
+                        {isTranslating && message.id === messages[messages.length - 1]?.id && (
+                          <div className="text-spiritual-600 text-xs italic mb-2">
+                            🌐 Translating with OpenAI...
+                          </div>
+                        )}
+                        
+                        {/* Format the content with better structure - prefer translated content */}
+                        {(message.translatedContent || message.content).split('\n').map((line: string, index: number) => {
                           // Check if this is a timing detail line
                           if (line.includes(':')) {
                             // Split only on the FIRST colon so HH:MM (e.g., 06:14) stays intact
@@ -1473,33 +1621,65 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                   {/* Audio Replay Button for Assistant Messages */}
                   {message.type === 'assistant' && (
                     <div className="mt-3 pt-3 border-t border-spiritual-200/30">
-                      <button
-                        onClick={() => {
-                          if (playingMsgId === message.id) {
-                            // If currently playing, stop
-                            window.speechSynthesis.cancel();
-                            setPlayingMsgId(null);
-                          } else {
-                            // If not playing, start playing
-                            playMessage(message.id, message.content);
-                          }
-                        }}
-                        className={`group flex items-center gap-2 font-medium transition-all duration-300 tracking-spiritual ${
-                          playingMsgId === message.id 
-                            ? 'text-red-600 hover:text-red-700' 
-                            : 'text-spiritual-600 hover:text-spiritual-700'
-                        }`}
-                        title={playingMsgId === message.id ? 'Stop audio' : 'Replay audio'}
-                      >
-                        {playingMsgId === message.id ? (
-                          <VolumeX className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
-                        ) : (
-                          <Volume2 className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
+                      <div className="flex items-center gap-3">
+                        {/* OpenAI Audio Button (Premium) */}
+                        {message.audioUrl && (
+                          <button
+                            onClick={() => {
+                              if (playingOpenAIAudio === message.id) {
+                                stopOpenAIAudio();
+                              } else {
+                                playOpenAIAudio(message.audioUrl!, message.id);
+                              }
+                            }}
+                            className={`group flex items-center gap-2 font-medium transition-all duration-300 tracking-spiritual ${
+                              playingOpenAIAudio === message.id 
+                                ? 'text-red-600 hover:text-red-700' 
+                                : 'text-emerald-600 hover:text-emerald-700'
+                            }`}
+                            title={playingOpenAIAudio === message.id ? 'Stop OpenAI audio' : 'Play OpenAI audio (Premium)'}
+                          >
+                            {playingOpenAIAudio === message.id ? (
+                              <VolumeX className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
+                            ) : (
+                              <Volume2 className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
+                            )}
+                            <span className="text-sm flex items-center gap-1">
+                              {playingOpenAIAudio === message.id ? 'Stop' : 'Premium'}
+                              <span className="bg-emerald-100 text-emerald-700 px-1 py-0.5 rounded text-[10px] font-bold">AI</span>
+                            </span>
+                          </button>
                         )}
-                        <span className="text-sm">
-                          {playingMsgId === message.id ? 'Stop' : 'Replay'}
-                        </span>
-                      </button>
+                        
+                        {/* Fallback Browser TTS Button */}
+                        <button
+                          onClick={() => {
+                            if (playingMsgId === message.id) {
+                              // If currently playing, stop
+                              window.speechSynthesis.cancel();
+                              setPlayingMsgId(null);
+                            } else {
+                              // If not playing, start playing
+                              playMessage(message.id, message.translatedContent || message.content);
+                            }
+                          }}
+                          className={`group flex items-center gap-2 font-medium transition-all duration-300 tracking-spiritual ${
+                            playingMsgId === message.id 
+                              ? 'text-red-600 hover:text-red-700' 
+                              : 'text-spiritual-600 hover:text-spiritual-700'
+                          }`}
+                          title={playingMsgId === message.id ? 'Stop browser TTS' : 'Play with browser TTS'}
+                        >
+                          {playingMsgId === message.id ? (
+                            <VolumeX className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
+                          ) : (
+                            <Volume2 className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
+                          )}
+                          <span className="text-sm">
+                            {playingMsgId === message.id ? 'Stop' : 'Browser Voice'}
+                          </span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
