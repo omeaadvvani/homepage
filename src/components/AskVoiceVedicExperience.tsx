@@ -516,7 +516,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       .replace(/🪔/g, 'Jai Shree Krishna')
       // Expand separators like · | / to commas/spaces
       .replace(/[\u00B7|\/]/g, ', ')
-      // Make time formats sound natural for TTS
+      // Make time formats sound natural for TTS - smart human logic
       .replace(/(\d{1,2}):(\d{2})\s+AM/gi, (match, hour, minute) => {
         const h = parseInt(hour);
         const m = parseInt(minute);
@@ -529,15 +529,25 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       .replace(/(\d{1,2}):(\d{2})\s+PM/gi, (match, hour, minute) => {
         const h = parseInt(hour);
         const m = parseInt(minute);
-        if (m === 0) {
-          return `${h} in the evening`;
+        if (h >= 6) {
+          // 6 PM onwards is evening
+          if (m === 0) {
+            return `${h} in the evening`;
+          } else {
+            return `${h} ${m} in the evening`;
+          }
         } else {
-          return `${h} ${m} in the evening`;
+          // 12 PM to 5:59 PM is afternoon
+          if (m === 0) {
+            return `${h} in the afternoon`;
+          } else {
+            return `${h} ${m} in the afternoon`;
+          }
         }
       })
       // Handle time ranges with natural speech
-      .replace(/(\d+)\s+in the (morning|evening)\s+(to|–|—|-)\s+(\d+)\s+(\d+)\s+in the (morning|evening)/g, '$1 in the $2 to $4 $5 in the $6')
-      .replace(/(\d+)\s+(\d+)\s+in the (morning|evening)\s+(to|–|—|-)\s+(\d+)\s+in the (morning|evening)/g, '$1 $2 in the $3 to $5 in the $6')
+      .replace(/(\d+)\s+in the (morning|afternoon|evening)\s+(to|–|—|-)\s+(\d+)\s+(\d+)\s+in the (morning|afternoon|evening)/g, '$1 in the $2 to $4 $5 in the $6')
+      .replace(/(\d+)\s+(\d+)\s+in the (morning|afternoon|evening)\s+(to|–|—|-)\s+(\d+)\s+in the (morning|afternoon|evening)/g, '$1 $2 in the $3 to $5 in the $6')
       // Strip any leftover control or symbol noise but KEEP unicode letters/digits and punctuation
       .replace(/[^\p{L}\p{N}\s\.,:;()]/gu, ' ')
       // Normalize whitespace
@@ -553,7 +563,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       case 'timing':
         // Special handling for timing-related content with natural time speech
         processedText = processedText
-          // Convert time formats to natural speech
+          // Convert time formats to natural speech - smart human logic
           .replace(/(\d{1,2}):(\d{2})\s+AM/gi, (match, hour, minute) => {
             const h = parseInt(hour);
             const m = parseInt(minute);
@@ -566,15 +576,25 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
           .replace(/(\d{1,2}):(\d{2})\s+PM/gi, (match, hour, minute) => {
             const h = parseInt(hour);
             const m = parseInt(minute);
-            if (m === 0) {
-              return `${h} in the evening`;
+            if (h >= 6) {
+              // 6 PM onwards is evening
+              if (m === 0) {
+                return `${h} in the evening`;
+              } else {
+                return `${h} ${m} in the evening`;
+              }
             } else {
-              return `${h} ${m} in the evening`;
+              // 12 PM to 5:59 PM is afternoon
+              if (m === 0) {
+                return `${h} in the afternoon`;
+              } else {
+                return `${h} ${m} in the afternoon`;
+              }
             }
           })
           // Handle time ranges with natural speech
-          .replace(/(\d+)\s+in the (morning|evening)\s+(to|–|—|-)\s+(\d+)\s+(\d+)\s+in the (morning|evening)/g, '$1 in the $2 to $4 $5 in the $6')
-          .replace(/(\d+)\s+(\d+)\s+in the (morning|evening)\s+(to|–|—|-)\s+(\d+)\s+in the (morning|evening)/g, '$1 $2 in the $3 to $5 in the $6')
+          .replace(/(\d+)\s+in the (morning|afternoon|evening)\s+(to|–|—|-)\s+(\d+)\s+(\d+)\s+in the (morning|afternoon|evening)/g, '$1 in the $2 to $4 $5 in the $6')
+          .replace(/(\d+)\s+(\d+)\s+in the (morning|afternoon|evening)\s+(to|–|—|-)\s+(\d+)\s+in the (morning|afternoon|evening)/g, '$1 $2 in the $3 to $5 in the $6')
           // Handle date formats
           .replace(/(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)/g, '$1 $2')
           // Clean up special characters that affect timing readability
