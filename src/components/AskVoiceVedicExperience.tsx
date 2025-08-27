@@ -506,8 +506,12 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
   // Function to clean up time strings for TTS to avoid "AM PM" reading issues
   const cleanTextForTTS = (text: string): string => {
     // Enhanced TTS text cleaning for better speech quality
-    // Preserve all Unicode letters (covers Telugu) and basic punctuation
-    return text
+    // Preserve all Unicode letters (covers all Indian languages) and basic punctuation
+    
+    // Check if text contains significant non-English content
+    const hasIndianLanguageContent = /[\u0900-\u097F\u0C00-\u0C7F\u0B80-\u0BFF\u0C80-\u0CFF\u0D00-\u0D7F]/.test(text);
+    
+    let processedText = text
       // Replace decorative bullets/dashes with natural pauses
       .replace(/[•·]/g, ' ')
       .replace(/[–—-]/g, ' ')
@@ -515,40 +519,47 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       .replace(/\p{Extended_Pictographic}/gu, ' ')
       .replace(/🪔/g, 'Jai Shree Krishna')
       // Expand separators like · | / to commas/spaces
-      .replace(/[\u00B7|\/]/g, ', ')
-      // Make time formats sound natural for TTS - smart human logic
-      .replace(/(\d{1,2}):(\d{2})\s+AM/gi, (match, hour, minute) => {
-        const h = parseInt(hour);
-        const m = parseInt(minute);
-        if (m === 0) {
-          return `${h} in the morning`;
-        } else {
-          return `${h} ${m} in the morning`;
-        }
-      })
-      .replace(/(\d{1,2}):(\d{2})\s+PM/gi, (match, hour, minute) => {
-        const h = parseInt(hour);
-        const m = parseInt(minute);
-        if (h >= 6) {
-          // 6 PM onwards is evening
+      .replace(/[\u00B7|\/]/g, ', ');
+    
+    // Only apply English time transformations if content is primarily English
+    if (!hasIndianLanguageContent) {
+      processedText = processedText
+        // Make time formats sound natural for TTS - smart human logic
+        .replace(/(\d{1,2}):(\d{2})\s+AM/gi, (match, hour, minute) => {
+          const h = parseInt(hour);
+          const m = parseInt(minute);
           if (m === 0) {
-            return `${h} in the evening`;
+            return `${h} in the morning`;
           } else {
-            return `${h} ${m} in the evening`;
+            return `${h} ${m} in the morning`;
           }
-        } else {
-          // 12 PM to 5:59 PM is afternoon
-          if (m === 0) {
-            return `${h} in the afternoon`;
+        })
+        .replace(/(\d{1,2}):(\d{2})\s+PM/gi, (match, hour, minute) => {
+          const h = parseInt(hour);
+          const m = parseInt(minute);
+          if (h >= 6) {
+            // 6 PM onwards is evening
+            if (m === 0) {
+              return `${h} in the evening`;
+            } else {
+              return `${h} ${m} in the evening`;
+            }
           } else {
-            return `${h} ${m} in the afternoon`;
+            // 12 PM to 5:59 PM is afternoon
+            if (m === 0) {
+              return `${h} in the afternoon`;
+            } else {
+              return `${h} ${m} in the afternoon`;
+            }
           }
-        }
-      })
-      // Handle time ranges with natural speech
-      .replace(/(\d+)\s+in the (morning|afternoon|evening)\s+(to|–|—|-)\s+(\d+)\s+(\d+)\s+in the (morning|afternoon|evening)/g, '$1 in the $2 to $4 $5 in the $6')
-      .replace(/(\d+)\s+(\d+)\s+in the (morning|afternoon|evening)\s+(to|–|—|-)\s+(\d+)\s+in the (morning|afternoon|evening)/g, '$1 $2 in the $3 to $5 in the $6')
-      // Strip any leftover control or symbol noise but KEEP unicode letters/digits and punctuation
+        })
+        // Handle time ranges with natural speech
+        .replace(/(\d+)\s+in the (morning|afternoon|evening)\s+(to|–|—|-)\s+(\d+)\s+(\d+)\s+in the (morning|afternoon|evening)/g, '$1 in the $2 to $4 $5 in the $6')
+        .replace(/(\d+)\s+(\d+)\s+in the (morning|afternoon|evening)\s+(to|–|—|-)\s+(\d+)\s+in the (morning|afternoon|evening)/g, '$1 $2 in the $3 to $5 in the $6');
+    }
+    
+    return processedText
+      // Strip any leftover control or symbol noise but PRESERVE Unicode letters/digits and punctuation
       .replace(/[^\p{L}\p{N}\s\.,:;()]/gu, ' ')
       // Normalize whitespace
       .replace(/\s+/g, ' ')
@@ -559,39 +570,49 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
   const processTextForTTS = (text: string, contentType: 'timing' | 'general' | 'ritual' = 'general'): string => {
     let processedText = text;
     
+    // Check if text contains significant non-English content
+    const hasIndianLanguageContent = /[\u0900-\u097F\u0C00-\u0C7F\u0B80-\u0BFF\u0C80-\u0CFF\u0D00-\u0D7F]/.test(text);
+    
     switch (contentType) {
       case 'timing':
         // Special handling for timing-related content with natural time speech
+        processedText = processedText;
+        
+        // Only apply English time transformations if content is primarily English
+        if (!hasIndianLanguageContent) {
+          processedText = processedText
+            // Convert time formats to natural speech - smart human logic
+            .replace(/(\d{1,2}):(\d{2})\s+AM/gi, (match, hour, minute) => {
+              const h = parseInt(hour);
+              const m = parseInt(minute);
+              if (m === 0) {
+                return `${h} in the morning`;
+              } else {
+                return `${h} ${m} in the morning`;
+              }
+            })
+            .replace(/(\d{1,2}):(\d{2})\s+PM/gi, (match, hour, minute) => {
+              const h = parseInt(hour);
+              const m = parseInt(minute);
+              if (h >= 6) {
+                // 6 PM onwards is evening
+                if (m === 0) {
+                  return `${h} in the evening`;
+                } else {
+                  return `${h} ${m} in the evening`;
+                }
+              } else {
+                // 12 PM to 5:59 PM is afternoon
+                if (m === 0) {
+                  return `${h} in the afternoon`;
+                } else {
+                  return `${h} ${m} in the afternoon`;
+                }
+              }
+            });
+        }
+        
         processedText = processedText
-          // Convert time formats to natural speech - smart human logic
-          .replace(/(\d{1,2}):(\d{2})\s+AM/gi, (match, hour, minute) => {
-            const h = parseInt(hour);
-            const m = parseInt(minute);
-            if (m === 0) {
-              return `${h} in the morning`;
-            } else {
-              return `${h} ${m} in the morning`;
-            }
-          })
-          .replace(/(\d{1,2}):(\d{2})\s+PM/gi, (match, hour, minute) => {
-            const h = parseInt(hour);
-            const m = parseInt(minute);
-            if (h >= 6) {
-              // 6 PM onwards is evening
-              if (m === 0) {
-                return `${h} in the evening`;
-              } else {
-                return `${h} ${m} in the evening`;
-              }
-            } else {
-              // 12 PM to 5:59 PM is afternoon
-              if (m === 0) {
-                return `${h} in the afternoon`;
-              } else {
-                return `${h} ${m} in the afternoon`;
-              }
-            }
-          })
           // Handle time ranges with natural speech
           .replace(/(\d+)\s+in the (morning|afternoon|evening)\s+(to|–|—|-)\s+(\d+)\s+(\d+)\s+in the (morning|afternoon|evening)/g, '$1 in the $2 to $4 $5 in the $6')
           .replace(/(\d+)\s+(\d+)\s+in the (morning|afternoon|evening)\s+(to|–|—|-)\s+(\d+)\s+in the (morning|afternoon|evening)/g, '$1 $2 in the $3 to $5 in the $6')
@@ -600,8 +621,8 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
           // Clean up special characters that affect timing readability
           .replace(/[•·]/g, ' ')
           .replace(/[–—]/g, ' to ')
-          // Remove problematic symbols but keep essential punctuation
-          .replace(/[^\w\s\-\.,:;()]/g, ' ')
+          // Remove problematic symbols but PRESERVE Unicode letters (for all languages)
+          .replace(/[^\p{L}\p{N}\s\-\.,:;()]/gu, ' ')
           // Fix spacing issues
           .replace(/\s+/g, ' ')
           .trim();
@@ -615,8 +636,8 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
           // Clean up formatting while preserving meaning
           .replace(/[•·]/g, ' ')
           .replace(/[–—]/g, ' to ')
-          // Remove only problematic symbols
-          .replace(/[^\w\s\-\.,:;()]/g, ' ')
+          // Remove only problematic symbols but PRESERVE Unicode letters (for all languages)
+          .replace(/[^\p{L}\p{N}\s\-\.,:;()]/gu, ' ')
           .replace(/\s+/g, ' ')
           .trim();
         break;
