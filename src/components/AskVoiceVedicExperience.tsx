@@ -598,7 +598,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
           // Handle date formats
           .replace(/(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)/g, '$1 $2')
           // Clean up special characters that affect timing readability
-          .replace(/[•·]/g, ' and ')
+          .replace(/[•·]/g, ' ')
           .replace(/[–—]/g, ' to ')
           // Remove problematic symbols but keep essential punctuation
           .replace(/[^\w\s\-\.,:;()]/g, ' ')
@@ -613,7 +613,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
           // Preserve spiritual terms and mantras
           .replace(/🪔/g, 'Jai Shree Krishna')
           // Clean up formatting while preserving meaning
-          .replace(/[•·]/g, ' and ')
+          .replace(/[•·]/g, ' ')
           .replace(/[–—]/g, ' to ')
           // Remove only problematic symbols
           .replace(/[^\w\s\-\.,:;()]/g, ' ')
