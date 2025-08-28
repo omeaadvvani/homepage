@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   ArrowLeft, 
+  ArrowRight,
   Send, 
   Mic, 
   MicOff, 
@@ -9,7 +10,6 @@ import {
   MessageCircle,
   Trash2,
   Lightbulb,
-  ArrowRight,
   VolumeX
 } from 'lucide-react';
 import Logo from './Logo';
@@ -144,6 +144,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
   const [isTranslating, setIsTranslating] = useState(false);
   const [openAIAudioRef, setOpenAIAudioRef] = useState<HTMLAudioElement | null>(null);
   const [playingOpenAIAudio, setPlayingOpenAIAudio] = useState<string | null>(null);
+  const [isOpenAIAudioMuted, setIsOpenAIAudioMuted] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -398,7 +399,6 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
         targetLanguage: translationLanguage,
         sourceLanguage: 'English'
       });
-
       return response;
     } catch (error) {
       console.error('OpenAI translation failed:', error);
@@ -426,22 +426,26 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     const audio = new Audio(audioUrl);
     setOpenAIAudioRef(audio);
     setPlayingOpenAIAudio(messageId);
+    setIsOpenAIAudioMuted(false); // Reset mute state for new audio
 
     audio.onended = () => {
       setPlayingOpenAIAudio(null);
       setOpenAIAudioRef(null);
+      setIsOpenAIAudioMuted(false);
     };
 
     audio.onerror = () => {
       console.error('OpenAI audio playback failed');
       setPlayingOpenAIAudio(null);
       setOpenAIAudioRef(null);
+      setIsOpenAIAudioMuted(false);
     };
 
     audio.play().catch(error => {
       console.error('Failed to play OpenAI audio:', error);
       setPlayingOpenAIAudio(null);
       setOpenAIAudioRef(null);
+      setIsOpenAIAudioMuted(false);
     });
   };
 
@@ -453,6 +457,56 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       setOpenAIAudioRef(null);
     }
     setPlayingOpenAIAudio(null);
+  };
+
+  // NEW: Replay OpenAI audio from beginning
+  const replayOpenAIAudio = (audioUrl: string, messageId: string) => {
+    // Store current mute state to preserve it
+    const currentMuteState = isOpenAIAudioMuted;
+    
+    // Stop current audio if playing
+    if (openAIAudioRef) {
+      openAIAudioRef.pause();
+      openAIAudioRef.currentTime = 0;
+    }
+    
+    // Start fresh playback
+    playOpenAIAudio(audioUrl, messageId);
+    
+    // Restore the mute state after a brief delay to ensure audio is loaded
+    setTimeout(() => {
+      if (openAIAudioRef && currentMuteState) {
+        openAIAudioRef.muted = true;
+        setIsOpenAIAudioMuted(true);
+      }
+    }, 100);
+  };
+
+  // NEW: Toggle mute/unmute for OpenAI audio
+  const toggleOpenAIAudioMute = () => {
+    if (openAIAudioRef) {
+      const newMutedState = !isOpenAIAudioMuted;
+      openAIAudioRef.muted = newMutedState;
+      setIsOpenAIAudioMuted(newMutedState);
+    }
+  };
+
+  // Check if OpenAI is available for premium voices
+  const isOpenAIAvailable = () => {
+    return !!import.meta.env.VITE_OPENAI_API_KEY;
+  };
+
+  // Get OpenAI voice display names
+  const getOpenAIVoiceForLanguage = (language: string) => {
+    const openAIVoiceMap: Record<string, string> = {
+      'en': 'GPT-4o Premium (English)',
+      'hi': 'GPT-4o Premium (Hindi)', 
+      'te': 'GPT-4o Premium (Telugu)',
+      'ta': 'GPT-4o Premium (Tamil)',
+      'kn': 'GPT-4o Premium (Kannada)',
+      'ml': 'GPT-4o Premium (Malayalam)'
+    };
+    return openAIVoiceMap[language] || 'GPT-4o Premium (English)';
   };
 
   // IMPROVED: Curated language-specific voice options for better UX
@@ -608,13 +662,32 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
   // IMPROVED: Update voice options when language changes or speech synthesis voices are loaded
   useEffect(() => {
     const updateVoices = () => {
-      const options = getCuratedVoicesForLanguage(selectedLanguage);
-      setVoiceOptions(options);
-      
-      // Auto-select the first curated voice for the selected language
-      if (options.length > 0) {
-        setSelectedVoice(options[0].value);
+      let voiceOptionsToShow: Array<{label: string, value: string, lang: string, language: string}> = [];
+
+      // If OpenAI is available and not English, show OpenAI voice
+      if (isOpenAIAvailable() && selectedLanguage !== 'en') {
+        const openAIVoice = {
+          label: getOpenAIVoiceForLanguage(selectedLanguage),
+          value: 'openai-premium',
+          lang: selectedLanguage,
+          language: selectedLanguage
+        };
+        voiceOptionsToShow = [openAIVoice];
+        
+        // Set OpenAI as selected for non-English
+        setSelectedVoice('openai-premium');
+      } else {
+        // For English or when OpenAI unavailable, show system voices
+        const curatedVoices = getCuratedVoicesForLanguage(selectedLanguage);
+        voiceOptionsToShow = curatedVoices;
+        
+        // Auto-select the first curated voice for the selected language
+        if (curatedVoices.length > 0) {
+          setSelectedVoice(curatedVoices[0].value);
+        }
       }
+
+      setVoiceOptions(voiceOptionsToShow);
     };
     window.speechSynthesis.onvoiceschanged = updateVoices;
     updateVoices();
@@ -1199,7 +1272,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
         content: processedText,
         timestamp: new Date()
       };
-
+      
       // OpenAI Translation and Audio Generation
       if (selectedLanguage !== 'en' && import.meta.env.VITE_OPENAI_API_KEY) {
         try {
@@ -1213,24 +1286,20 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
             };
           }
         } catch (error) {
-          console.error('Translation failed, falling back to original content:', error);
+          console.error('OpenAI translation failed:', error);
         }
       }
 
       onAddMessage(assistantMessage);
 
-      // Trigger audio playback - prefer OpenAI audio if available, fallback to browser TTS
+      // MODIFIED: Only use OpenAI audio, no automatic browser TTS
       if (assistantMessage.audioUrl) {
-        // Use OpenAI generated audio
+        // Use OpenAI generated audio (Primary method)
         setTimeout(() => {
           playOpenAIAudio(assistantMessage.audioUrl!, assistantMessage.id);
         }, 300);
-      } else if (processedText && processedText.trim() !== "") {
-        // Fallback to browser TTS
-        setTimeout(() => {
-          playMessage(assistantMessage.id, assistantMessage.translatedContent || processedText);
-        }, 300);
       }
+      // Note: Browser TTS is now manual-only via button click
 
     } catch (error: unknown) {
       console.error('Ask VoiceVedic error:', error);
@@ -1434,17 +1503,34 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
           </select>
 
           {/* Voice Selection Dropdown */}
-          <select
-            className="px-3 py-2 rounded-spiritual border border-spiritual-200 text-sm text-spiritual-700 bg-white shadow-spiritual focus:border-spiritual-400 focus:outline-none focus:ring-2 focus:ring-spiritual-200/50 transition-all duration-300"
-            value={selectedVoice}
-            onChange={e => setSelectedVoice(e.target.value)}
-            style={{ minWidth: 200 }}
-            title="Choose Voice Accent"
-          >
-            {voiceOptions.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+          <div className="flex flex-col">
+            <select
+              className="px-3 py-2 rounded-spiritual border border-spiritual-200 text-sm text-spiritual-700 bg-white shadow-spiritual focus:border-spiritual-400 focus:outline-none focus:ring-2 focus:ring-spiritual-200/50 transition-all duration-300"
+              value={selectedVoice}
+              onChange={e => setSelectedVoice(e.target.value)}
+              style={{ minWidth: 200 }}
+              title="Choose Voice Accent"
+            >
+              {voiceOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            
+            {/* Voice type indicator */}
+            <div className="mt-1 text-xs text-spiritual-600 flex items-center gap-1">
+              {isOpenAIAvailable() && selectedLanguage !== 'en' ? (
+                <>
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                  <span>Premium AI Voice</span>
+                </>
+              ) : (
+                <>
+                  <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+                  <span>System Voice</span>
+                </>
+              )}
+            </div>
+          </div>
 
 
 
@@ -1645,64 +1731,101 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                   {/* Audio Replay Button for Assistant Messages */}
                   {message.type === 'assistant' && (
                     <div className="mt-3 pt-3 border-t border-spiritual-200/30">
-                      <div className="flex items-center gap-3">
-                        {/* OpenAI Audio Button (Premium) */}
+                                            <div className="flex items-center gap-2">
+                        {/* PRIMARY: OpenAI Audio Controls (When Available) */}
                         {message.audioUrl && (
+                          <div className="flex items-center gap-2 bg-emerald-50 rounded-lg p-2">
+                            {/* Play/Stop Button */}
+                            <button
+                              onClick={() => {
+                                if (playingOpenAIAudio === message.id) {
+                                  stopOpenAIAudio();
+                                } else {
+                                  playOpenAIAudio(message.audioUrl!, message.id);
+                                }
+                              }}
+                              className={`group flex items-center gap-1 px-2 py-1 rounded-md font-medium transition-all duration-300 tracking-spiritual ${
+                                playingOpenAIAudio === message.id 
+                                  ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                                  : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                              }`}
+                              title={playingOpenAIAudio === message.id ? 'Stop AI audio' : 'Play AI audio'}
+                            >
+                              {playingOpenAIAudio === message.id ? (
+                                <VolumeX className="w-4 h-4" />
+                              ) : (
+                                <Volume2 className="w-4 h-4" />
+                              )}
+                              <span className="text-xs">
+                                {playingOpenAIAudio === message.id ? 'Stop' : 'Play'}
+                              </span>
+                            </button>
+
+                            {/* Replay Button */}
+                            <button
+                              onClick={() => replayOpenAIAudio(message.audioUrl!, message.id)}
+                              className="group flex items-center gap-1 px-2 py-1 rounded-md bg-blue-100 text-blue-700 hover:bg-blue-200 font-medium transition-all duration-300"
+                              title="Replay from beginning"
+                            >
+                              <ArrowRight className="w-3 h-3 transform rotate-0" />
+                              <span className="text-xs">Replay</span>
+                            </button>
+
+                            {/* Mute Toggle Button */}
+                            <button
+                              onClick={toggleOpenAIAudioMute}
+                              className={`group flex items-center gap-1 px-2 py-1 rounded-md font-medium transition-all duration-300 ${
+                                isOpenAIAudioMuted 
+                                  ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                                  : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                              }`}
+                              title={isOpenAIAudioMuted ? 'Click to unmute audio' : 'Click to mute audio'}
+                            >
+                              {isOpenAIAudioMuted ? (
+                                <VolumeX className="w-3 h-3" />
+                              ) : (
+                                <Volume2 className="w-3 h-3" />
+                              )}
+                              <span className="text-xs font-semibold">
+                                {isOpenAIAudioMuted ? 'Unmute' : 'Mute'}
+                              </span>
+                            </button>
+
+                            {/* AI Badge */}
+                            <span className="bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[10px] font-bold">
+                              GPT-4o
+                            </span>
+                          </div>
+                        )}
+                        
+                        {/* SECONDARY: Browser TTS (Manual Fallback Only) */}
+                        {!message.audioUrl && (
                           <button
                             onClick={() => {
-                              if (playingOpenAIAudio === message.id) {
-                                stopOpenAIAudio();
+                              if (playingMsgId === message.id) {
+                                window.speechSynthesis.cancel();
+                                setPlayingMsgId(null);
                               } else {
-                                playOpenAIAudio(message.audioUrl!, message.id);
+                                playMessage(message.id, message.translatedContent || message.content);
                               }
                             }}
-                            className={`group flex items-center gap-2 font-medium transition-all duration-300 tracking-spiritual ${
-                              playingOpenAIAudio === message.id 
+                            className={`group flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-all duration-300 tracking-spiritual bg-gray-100 ${
+                              playingMsgId === message.id 
                                 ? 'text-red-600 hover:text-red-700' 
-                                : 'text-emerald-600 hover:text-emerald-700'
+                                : 'text-gray-600 hover:text-gray-700'
                             }`}
-                            title={playingOpenAIAudio === message.id ? 'Stop OpenAI audio' : 'Play OpenAI audio (Premium)'}
+                            title={playingMsgId === message.id ? 'Stop fallback audio' : 'Play with browser (fallback)'}
                           >
-                            {playingOpenAIAudio === message.id ? (
-                              <VolumeX className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
+                            {playingMsgId === message.id ? (
+                              <VolumeX className="w-4 h-4" />
                             ) : (
-                              <Volume2 className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
+                              <Volume2 className="w-4 h-4" />
                             )}
-                            <span className="text-sm flex items-center gap-1">
-                              {playingOpenAIAudio === message.id ? 'Stop' : 'Premium'}
-                              <span className="bg-emerald-100 text-emerald-700 px-1 py-0.5 rounded text-[10px] font-bold">AI</span>
+                            <span className="text-sm">
+                              {playingMsgId === message.id ? 'Stop' : 'Fallback Audio'}
                             </span>
                           </button>
                         )}
-                        
-                        {/* Fallback Browser TTS Button */}
-                      <button
-                        onClick={() => {
-                          if (playingMsgId === message.id) {
-                            // If currently playing, stop
-                            window.speechSynthesis.cancel();
-                            setPlayingMsgId(null);
-                          } else {
-                            // If not playing, start playing
-                              playMessage(message.id, message.translatedContent || message.content);
-                          }
-                        }}
-                        className={`group flex items-center gap-2 font-medium transition-all duration-300 tracking-spiritual ${
-                          playingMsgId === message.id 
-                            ? 'text-red-600 hover:text-red-700' 
-                            : 'text-spiritual-600 hover:text-spiritual-700'
-                        }`}
-                          title={playingMsgId === message.id ? 'Stop browser TTS' : 'Play with browser TTS'}
-                      >
-                        {playingMsgId === message.id ? (
-                          <VolumeX className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
-                        ) : (
-                          <Volume2 className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
-                        )}
-                        <span className="text-sm">
-                            {playingMsgId === message.id ? 'Stop' : 'Browser Voice'}
-                        </span>
-                      </button>
                       </div>
                     </div>
                   )}

@@ -69,7 +69,7 @@ class OpenAITranslationService {
     const voiceMap: Record<string, string> = {
       'English': 'alloy',
       'Hindi': 'nova',
-      'Telugu': 'shimmer', 
+      'Telugu': 'nova', 
       'Tamil': 'echo',
       'Kannada': 'fable',
       'Malayalam': 'onyx'
