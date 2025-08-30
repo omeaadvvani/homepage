@@ -1504,18 +1504,18 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
 
           {/* Voice Selection Dropdown */}
           <div className="flex flex-col">
-            <select
-              className="px-3 py-2 rounded-spiritual border border-spiritual-200 text-sm text-spiritual-700 bg-white shadow-spiritual focus:border-spiritual-400 focus:outline-none focus:ring-2 focus:ring-spiritual-200/50 transition-all duration-300"
-              value={selectedVoice}
-              onChange={e => setSelectedVoice(e.target.value)}
-              style={{ minWidth: 200 }}
-              title="Choose Voice Accent"
-            >
-              {voiceOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-            
+          <select
+            className="px-3 py-2 rounded-spiritual border border-spiritual-200 text-sm text-spiritual-700 bg-white shadow-spiritual focus:border-spiritual-400 focus:outline-none focus:ring-2 focus:ring-spiritual-200/50 transition-all duration-300"
+            value={selectedVoice}
+            onChange={e => setSelectedVoice(e.target.value)}
+            style={{ minWidth: 200 }}
+            title="Choose Voice Accent"
+          >
+            {voiceOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+
             {/* Voice type indicator - UNIFIED PREMIUM AI VOICES */}
             <div className="mt-1 text-xs text-spiritual-600 flex items-center gap-1">
               {isOpenAIAvailable() ? (
@@ -1566,7 +1566,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
 
       {/* Messages Container */}
       <div className="flex-1 overflow-y-auto px-6 py-4 relative z-10">
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="max-w-5xl mx-auto space-y-6">
           
           {/* Welcome Message */}
           {messages.length === 0 && (
@@ -1587,7 +1587,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
               key={message.id}
               className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}
             >
-              <div className={`max-w-2xl ${message.type === 'user' ? 'ml-12' : 'mr-12'}`}>
+              <div className={`max-w-3xl ${message.type === 'user' ? 'ml-12' : 'mr-12'}`}>
                 <div
                   className={`p-4 rounded-card shadow-spiritual ${
                     message.type === 'user'
@@ -1640,7 +1640,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                     )}
                   </div>
                   
-                  <div className={`leading-relaxed tracking-spiritual whitespace-pre-line ${
+                  <div className={`leading-relaxed tracking-spiritual whitespace-pre-line break-words overflow-wrap-anywhere ${
                     message.type === 'user' ? 'text-white' : 'text-spiritual-800'
                   }`}>
                     {message.type === 'assistant' ? (
@@ -1661,9 +1661,9 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                             const key = content.slice(0, firstColon).trim();
                             const value = content.slice(firstColon + 1).trim();
                             return (
-                              <div key={index} className="flex flex-col sm:flex-row sm:items-start gap-2 py-1.5 pl-2 border-l-2 border-spiritual-300/30">
+                              <div key={index} className="flex flex-col sm:flex-row sm:items-start gap-1 py-0.5 pl-2 border-l-2 border-spiritual-300/30">
                                 <span className="font-semibold text-spiritual-700 min-w-[120px] flex-shrink-0">{key}:</span>
-                                <span className="text-spiritual-800 flex-1 break-words leading-relaxed">{value}</span>
+                                <span className="text-spiritual-800 flex-1 break-words overflow-wrap-anywhere leading-relaxed">{value}</span>
                               </div>
                             );
                           }
@@ -1672,7 +1672,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                           if (line.trim() && !line.includes(':') && !line.startsWith('-') && !line.startsWith('🪔') && line.length > 15) {
                             const isMainHeader = line.includes('पंचांग') || line.includes('का') || line.includes('में');
                             return (
-                              <div key={index} className={`text-spiritual-800 py-2 leading-relaxed ${isMainHeader ? 'font-medium' : ''}`}>
+                              <div key={index} className={`text-spiritual-800 py-1 leading-relaxed break-words overflow-wrap-anywhere ${isMainHeader ? 'font-medium' : ''}`}>
                                 {line}
                               </div>
                             );
@@ -1686,10 +1686,10 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                             const value = line.slice(firstColon + 1).trim();
                             if (key && value) {
                               return (
-                                <div key={index} className="flex flex-col sm:flex-row sm:items-start gap-2 py-2 border-b border-spiritual-100/30 last:border-b-0">
+                                <div key={index} className="flex flex-col sm:flex-row sm:items-start gap-1 py-1 border-b border-spiritual-100/30 last:border-b-0">
                                   <span className="font-semibold text-spiritual-700 min-w-[100px] flex-shrink-0">{key}:</span>
                                   {/* Wrap long Hindi lines; never truncate times */}
-                                  <span className="text-spiritual-800 break-words whitespace-pre-wrap">{value}</span>
+                                  <span className="text-spiritual-800 break-words overflow-wrap-anywhere whitespace-pre-wrap">{value}</span>
                                 </div>
                               );
                             }
@@ -1705,16 +1705,16 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                           // Check if this is a bullet point or list item
                           if (line.trim().startsWith('•') || line.trim().startsWith('-') || line.trim().startsWith('*')) {
                             return (
-                              <div key={index} className="flex items-start gap-3 py-1">
+                              <div key={index} className="flex items-start gap-2 py-0.5">
                                 <span className="text-spiritual-600 mt-1">•</span>
-                                <span className="text-spiritual-800 flex-1">{line.replace(/^[•\-*]\s*/, '')}</span>
+                                <span className="text-spiritual-800 flex-1 break-words overflow-wrap-anywhere">{line.replace(/^[•\-*]\s*/, '')}</span>
                               </div>
                             );
                           }
                           // Regular content with proper spacing
                           if (line.trim()) {
                             return (
-                              <div key={index} className="text-spiritual-800 py-1 leading-relaxed">
+                              <div key={index} className="text-spiritual-800 py-0.5 leading-relaxed break-words overflow-wrap-anywhere">
                                 {line}
                               </div>
                             );
@@ -1800,31 +1800,31 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
                         
                         {/* SECONDARY: Browser TTS (Manual Fallback Only) */}
                         {!message.audioUrl && (
-                          <button
-                            onClick={() => {
-                              if (playingMsgId === message.id) {
-                                window.speechSynthesis.cancel();
-                                setPlayingMsgId(null);
-                              } else {
+                      <button
+                        onClick={() => {
+                          if (playingMsgId === message.id) {
+                            window.speechSynthesis.cancel();
+                            setPlayingMsgId(null);
+                          } else {
                                 playMessage(message.id, message.translatedContent || message.content);
-                              }
-                            }}
+                          }
+                        }}
                             className={`group flex items-center gap-2 px-3 py-1.5 rounded-md font-medium transition-all duration-300 tracking-spiritual bg-gray-100 ${
-                              playingMsgId === message.id 
-                                ? 'text-red-600 hover:text-red-700' 
+                          playingMsgId === message.id 
+                            ? 'text-red-600 hover:text-red-700' 
                                 : 'text-gray-600 hover:text-gray-700'
-                            }`}
+                        }`}
                             title={playingMsgId === message.id ? 'Stop fallback audio' : 'Play with browser (fallback)'}
-                          >
-                            {playingMsgId === message.id ? (
+                      >
+                        {playingMsgId === message.id ? (
                               <VolumeX className="w-4 h-4" />
-                            ) : (
+                        ) : (
                               <Volume2 className="w-4 h-4" />
-                            )}
-                            <span className="text-sm">
+                        )}
+                        <span className="text-sm">
                               {playingMsgId === message.id ? 'Stop' : 'Fallback Audio'}
-                            </span>
-                          </button>
+                        </span>
+                      </button>
                         )}
                       </div>
                     </div>
@@ -1868,7 +1868,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
 
       {/* Input Section - Fixed at Bottom */}
       <div className="relative z-20 bg-white/95 backdrop-blur-sm border-t border-spiritual-200/50 p-6">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           
           {/* Voice Input Status */}
           {isListening && (
