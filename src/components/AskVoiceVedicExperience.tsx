@@ -25,6 +25,175 @@ import { openAITranslationService, TranslationResponse } from '../lib/openai-tra
 // Perplexity API integration for spiritual guidance
 // Browser-based voice synthesis
 
+// SMART RESPONSE FILTERING SYSTEM - Can be easily removed if needed
+type QuestionType = 'FULL_PANCHANGAM' | 'TITHI_ONLY' | 'AMAVASYA_ONLY' | 'POORNIMA_ONLY' | 'DIWALI_ONLY' | 'NAKSHTRA_ONLY' | 'RAHU_KAAL_ONLY' | 'SUNRISE_ONLY' | 'SUNSET_ONLY';
+
+// Question classification patterns for different languages
+const questionPatterns = {
+  'en': {
+    'FULL_PANCHANGAM': ['panchangam', 'panchang', 'complete', 'full', 'all details', 'everything'],
+    'TITHI_ONLY': ['tithi', 'lunar day', 'what is today\'s tithi', 'current tithi'],
+    'AMAVASYA_ONLY': ['amavasya', 'new moon', 'when is next amavasya', 'amavasya date'],
+    'POORNIMA_ONLY': ['poornima', 'purnima', 'full moon', 'when is next poornima', 'poornima date'],
+    'DIWALI_ONLY': ['diwali', 'deepavali', 'when is diwali', 'diwali date'],
+    'NAKSHTRA_ONLY': ['nakshatra', 'star', 'constellation', 'what is today\'s nakshatra'],
+    'RAHU_KAAL_ONLY': ['rahu kaal', 'rahu kalam', 'rahu time', 'when is rahu kaal'],
+    'SUNRISE_ONLY': ['sunrise', 'sun rise', 'when is sunrise', 'sunrise time'],
+    'SUNSET_ONLY': ['sunset', 'sun set', 'when is sunset', 'sunset time']
+  },
+  'hi': {
+    'FULL_PANCHANGAM': ['पंचांग', 'पंचांगम', 'सभी विवरण', 'पूरी जानकारी'],
+    'TITHI_ONLY': ['तिथि', 'आज की तिथि', 'वर्तमान तिथि'],
+    'AMAVASYA_ONLY': ['अमावस्या', 'नई चांद', 'अगली अमावस्या', 'अमावस्या की तारीख'],
+    'POORNIMA_ONLY': ['पूर्णिमा', 'पूरा चांद', 'अगली पूर्णिमा', 'पूर्णिमा की तारीख'],
+    'DIWALI_ONLY': ['दिवाली', 'दीपावली', 'दिवाली की तारीख'],
+    'NAKSHTRA_ONLY': ['नक्षत्र', 'तारा', 'आज का नक्षत्र'],
+    'RAHU_KAAL_ONLY': ['राहु काल', 'राहु का समय', 'राहु काल कब है'],
+    'SUNRISE_ONLY': ['सूर्योदय', 'सूरज निकलने का समय'],
+    'SUNSET_ONLY': ['सूर्यास्त', 'सूरज डूबने का समय']
+  },
+  'te': {
+    'FULL_PANCHANGAM': ['పంచాంగం', 'పంచాంగ', 'అన్ని వివరాలు'],
+    'TITHI_ONLY': ['తిథి', 'ఈరోజు తిథి', 'ప్రస్తుత తిథి'],
+    'AMAVASYA_ONLY': ['అమావాస్య', 'కొత్త చంద్రుడు', 'తదుపరి అమావాస్య'],
+    'POORNIMA_ONLY': ['పూర్ణిమ', 'పూర్తి చంద్రుడు', 'తదుపరి పూర్ణిమ'],
+    'DIWALI_ONLY': ['దీపావళి', 'దీపావళి తేదీ'],
+    'NAKSHTRA_ONLY': ['నక్షత్రం', 'ఈరోజు నక్షత్రం'],
+    'RAHU_KAAL_ONLY': ['రాహు కాలం', 'రాహు సమయం'],
+    'SUNRISE_ONLY': ['సూర్యోదయం', 'సూర్యుడు ఉదయించే సమయం'],
+    'SUNSET_ONLY': ['సూర్యాస్తమయం', 'సూర్యుడు అస్తమించే సమయం']
+  }
+};
+
+// Function to detect question type based on user input
+const detectQuestionType = (question: string, language: string): QuestionType => {
+  const questionLower = question.toLowerCase();
+  const patterns = questionPatterns[language as keyof typeof questionPatterns] || questionPatterns['en'];
+  
+  // Check for specific question types
+  for (const [questionType, keywords] of Object.entries(patterns)) {
+    if (keywords.some(keyword => questionLower.includes(keyword.toLowerCase()))) {
+      return questionType as QuestionType;
+    }
+  }
+  
+  // Default to full panchangam if no specific pattern matches
+  return 'FULL_PANCHANGAM';
+};
+
+// Function to extract specific information from full response
+const extractSpecificInfo = (fullResponse: string, questionType: QuestionType): string => {
+  const lines = fullResponse.split('\n');
+  const extractedLines: string[] = [];
+  
+  // Always include the greeting
+  const greetingLine = lines.find(line => line.includes('🪔') || line.includes('Jai Shree Krishna'));
+  if (greetingLine) {
+    extractedLines.push(greetingLine);
+  }
+  
+  // Always include date and location information for context
+  lines.forEach(line => {
+    if (line.toLowerCase().includes('date') || line.toLowerCase().includes('तारीख') || line.toLowerCase().includes('తేదీ') ||
+        line.toLowerCase().includes('location') || line.toLowerCase().includes('स्थान') || line.toLowerCase().includes('స్థానం') ||
+        line.toLowerCase().includes('today') || line.toLowerCase().includes('आज') || line.toLowerCase().includes('ఈరోజు')) {
+      extractedLines.push(line);
+    }
+  });
+  
+  switch (questionType) {
+    case 'TITHI_ONLY':
+      extractedLines.push('\n📅 TITHI INFORMATION:');
+      lines.forEach(line => {
+        if (line.toLowerCase().includes('tithi') || line.toLowerCase().includes('तिथि') || line.toLowerCase().includes('తిథి')) {
+          extractedLines.push(line);
+        }
+      });
+      break;
+      
+    case 'AMAVASYA_ONLY':
+      extractedLines.push('\n🌙 AMAVASYA INFORMATION:');
+      lines.forEach(line => {
+        if (line.toLowerCase().includes('amavasya') || line.toLowerCase().includes('अमावस्या') || line.toLowerCase().includes('అమావాస్య')) {
+          extractedLines.push(line);
+        }
+      });
+      break;
+      
+    case 'POORNIMA_ONLY':
+      extractedLines.push('\n🌕 POORNIMA INFORMATION:');
+      lines.forEach(line => {
+        if (line.toLowerCase().includes('poornima') || line.toLowerCase().includes('purnima') || line.toLowerCase().includes('पूर्णिमा') || line.toLowerCase().includes('పూర్ణిమ')) {
+          extractedLines.push(line);
+        }
+      });
+      break;
+      
+    case 'DIWALI_ONLY':
+      extractedLines.push('\n🪔 DIWALI INFORMATION:');
+      lines.forEach(line => {
+        if (line.toLowerCase().includes('diwali') || line.toLowerCase().includes('दिवाली') || line.toLowerCase().includes('దీపావళి')) {
+          extractedLines.push(line);
+        }
+      });
+      break;
+      
+    case 'NAKSHTRA_ONLY':
+      extractedLines.push('\n⭐ NAKSHATRA INFORMATION:');
+      lines.forEach(line => {
+        if (line.toLowerCase().includes('nakshatra') || line.toLowerCase().includes('नक्षत्र') || line.toLowerCase().includes('నక్షత్రం')) {
+          extractedLines.push(line);
+        }
+      });
+      break;
+      
+    case 'RAHU_KAAL_ONLY':
+      extractedLines.push('\n⏰ RAHU KAAL INFORMATION:');
+      lines.forEach(line => {
+        if (line.toLowerCase().includes('rahu') || line.toLowerCase().includes('राहु') || line.toLowerCase().includes('రాహు')) {
+          extractedLines.push(line);
+        }
+      });
+      break;
+      
+    case 'SUNRISE_ONLY':
+      extractedLines.push('\n🌅 SUNRISE INFORMATION:');
+      lines.forEach(line => {
+        if (line.toLowerCase().includes('sunrise') || line.toLowerCase().includes('सूर्योदय') || line.toLowerCase().includes('సూర్యోదయం')) {
+          extractedLines.push(line);
+        }
+      });
+      // Also include time context for sunrise
+      lines.forEach(line => {
+        if (line.toLowerCase().includes('time') || line.toLowerCase().includes('समय') || line.toLowerCase().includes('సమయం')) {
+          extractedLines.push(line);
+        }
+      });
+      break;
+      
+    case 'SUNSET_ONLY':
+      extractedLines.push('\n🌇 SUNSET INFORMATION:');
+      lines.forEach(line => {
+        if (line.toLowerCase().includes('sunset') || line.toLowerCase().includes('सूर्यास्त') || line.toLowerCase().includes('సూర్యాస్తమయం')) {
+          extractedLines.push(line);
+        }
+      });
+      // Also include time context for sunset
+      lines.forEach(line => {
+        if (line.toLowerCase().includes('time') || line.toLowerCase().includes('समय') || line.toLowerCase().includes('సమయం')) {
+          extractedLines.push(line);
+        }
+      });
+      break;
+      
+    default:
+      // Return full response for FULL_PANCHANGAM
+      return fullResponse;
+  }
+  
+  return extractedLines.join('\n');
+};
+
 // Type definitions for Web Speech API
 declare global {
   interface Window {
@@ -1265,18 +1434,29 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
       console.log('🔍 Processed Text Length:', processedText.length);
       console.log('🔍 Processed Text:', processedText);
       
+      // SMART RESPONSE FILTERING - Apply filtering based on question type
+      const questionType = detectQuestionType(userMessage.content, selectedLanguage);
+      console.log('🔍 Detected Question Type:', questionType);
+      
+      let finalProcessedText = processedText;
+      if (questionType !== 'FULL_PANCHANGAM') {
+        finalProcessedText = extractSpecificInfo(processedText, questionType);
+        console.log('🔍 Filtered Response Length:', finalProcessedText.length);
+        console.log('🔍 Filtered Response:', finalProcessedText);
+      }
+      
       // Prepare the assistant message
       let assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
-        content: processedText,
+        content: finalProcessedText,
         timestamp: new Date()
       };
       
       // UNIFIED PREMIUM AI VOICES: Generate audio based on selected voice
       if (import.meta.env.VITE_OPENAI_API_KEY && selectedVoice === 'openai-premium') {
         try {
-          const translationResult = await translateWithOpenAI(processedText, selectedLanguage);
+          const translationResult = await translateWithOpenAI(finalProcessedText, selectedLanguage);
           if (translationResult) {
             assistantMessage = {
               ...assistantMessage,
