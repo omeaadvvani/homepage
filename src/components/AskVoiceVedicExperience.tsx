@@ -496,17 +496,17 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
     return !!import.meta.env.VITE_OPENAI_API_KEY;
   };
 
-  // Get OpenAI voice display names
+  // Get OpenAI voice display names - UNIFIED PREMIUM AI VOICES
   const getOpenAIVoiceForLanguage = (language: string) => {
     const openAIVoiceMap: Record<string, string> = {
-      'en': 'GPT-4o Premium (English)',
-      'hi': 'GPT-4o Premium (Hindi)', 
-      'te': 'GPT-4o Premium (Telugu)',
-      'ta': 'GPT-4o Premium (Tamil)',
-      'kn': 'GPT-4o Premium (Kannada)',
-      'ml': 'GPT-4o Premium (Malayalam)'
+      'en': 'GPT-4o Premium Nova (English - Indian Accent)',
+      'hi': 'GPT-4o Premium Nova (Hindi)', 
+      'te': 'GPT-4o Premium Nova (Telugu)',
+      'ta': 'GPT-4o Premium Echo (Tamil)',
+      'kn': 'GPT-4o Premium Fable (Kannada)',
+      'ml': 'GPT-4o Premium Onyx (Malayalam)'
     };
-    return openAIVoiceMap[language] || 'GPT-4o Premium (English)';
+    return openAIVoiceMap[language] || 'GPT-4o Premium Nova (English - Indian Accent)';
   };
 
   // IMPROVED: Curated language-specific voice options for better UX
@@ -659,13 +659,13 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
   const [selectedLanguage, setSelectedLanguage] = useState("en");
   const [playingMsgId, setPlayingMsgId] = useState<string | null>(null);
 
-  // IMPROVED: Update voice options when language changes or speech synthesis voices are loaded
+  // UNIFIED PREMIUM AI VOICES: Update voice options when language changes
   useEffect(() => {
     const updateVoices = () => {
       let voiceOptionsToShow: Array<{label: string, value: string, lang: string, language: string}> = [];
 
-      // If OpenAI is available and not English, show OpenAI voice
-      if (isOpenAIAvailable() && selectedLanguage !== 'en') {
+      // UNIFIED: Use OpenAI for ALL languages when available
+      if (isOpenAIAvailable()) {
         const openAIVoice = {
           label: getOpenAIVoiceForLanguage(selectedLanguage),
           value: 'openai-premium',
@@ -674,10 +674,10 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
         };
         voiceOptionsToShow = [openAIVoice];
         
-        // Set OpenAI as selected for non-English
+        // Set OpenAI as selected for ALL languages
         setSelectedVoice('openai-premium');
       } else {
-        // For English or when OpenAI unavailable, show system voices
+        // Fallback: Only when OpenAI unavailable, show system voices
         const curatedVoices = getCuratedVoicesForLanguage(selectedLanguage);
         voiceOptionsToShow = curatedVoices;
         
@@ -1273,8 +1273,8 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
         timestamp: new Date()
       };
       
-      // OpenAI Translation and Audio Generation
-      if (selectedLanguage !== 'en' && import.meta.env.VITE_OPENAI_API_KEY) {
+      // UNIFIED PREMIUM AI VOICES: Generate audio based on selected voice
+      if (import.meta.env.VITE_OPENAI_API_KEY && selectedVoice === 'openai-premium') {
         try {
           const translationResult = await translateWithOpenAI(processedText, selectedLanguage);
           if (translationResult) {
@@ -1516,9 +1516,9 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
               ))}
             </select>
             
-            {/* Voice type indicator */}
+            {/* Voice type indicator - UNIFIED PREMIUM AI VOICES */}
             <div className="mt-1 text-xs text-spiritual-600 flex items-center gap-1">
-              {isOpenAIAvailable() && selectedLanguage !== 'en' ? (
+              {isOpenAIAvailable() ? (
                 <>
                   <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
                   <span>Premium AI Voice</span>
@@ -1526,7 +1526,7 @@ const AskVoiceVedicExperience: React.FC<AskVoiceVedicExperienceProps> = ({
               ) : (
                 <>
                   <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
-                  <span>System Voice</span>
+                  <span>System Voice (Fallback)</span>
                 </>
               )}
             </div>

@@ -64,10 +64,10 @@ class OpenAITranslationService {
     }
   }
 
-  // Language voice mapping for natural TTS
+  // Language voice mapping for natural TTS - OPTIMIZED FOR INDIAN ACCENT
   private getVoiceForLanguage(language: string): string {
     const voiceMap: Record<string, string> = {
-      'English': 'alloy',
+      'English': 'nova', // Premium voice for better Indian accent
       'Hindi': 'nova',
       'Telugu': 'nova', 
       'Tamil': 'echo',
@@ -75,7 +75,7 @@ class OpenAITranslationService {
       'Malayalam': 'onyx'
     };
     
-    return voiceMap[language] || 'alloy';
+    return voiceMap[language] || 'nova'; // Default to premium voice
   }
 
   // Get language-specific translation prompt
